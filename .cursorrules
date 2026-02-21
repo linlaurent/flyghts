@@ -1,0 +1,25 @@
+# marimo Project Rules
+
+## Project Type & Core Principles
+- This is a **marimo** reactive Python notebook project.
+- All notebooks are standard `.py` files, not `.ipynb` files.
+- Code follows reactive execution principles: dependencies between cells are automatically derived; **circular dependencies are forbidden**.
+
+## Dependency & Environment Management
+- Use sandboxed environments managed by `uv`. 
+
+## Coding & Structure Conventions
+- **Cell structure**: Each cell corresponds to a function decorated with `@app.cell`. Data flow between cells is implicit via return values (`return`) and parameters (`__cell_1_var`).
+- **Reusable code**: Functions intended to be imported externally are decorated with `@app.function`, classes with `@app.class_`. Such functions/classes must be “pure”, depending only on imports, constants, or other pure functions/classes.
+- **Type hints**: Add **type annotations** for all variables and function return values. marimo propagates these types to downstream cells, which is crucial for accurate autocompletion in Cursor.
+- **UI elements**: Use the `mo.ui` module to create interactive elements (sliders, dropdowns, plots, etc.). Their values are accessed via the `.value` attribute.
+- **File watching**: Use `mo.watch.file` or `mo.watch.directory` to monitor data files and enable live updates.
+
+## File Structure
+- Main logic: resides in one or more modular `.py` notebook files in the root directory.
+- Helper modules: standard `.py` files (non‑marimo) can be created as utility libraries and imported by marimo notebooks. marimo can watch these modules for changes.
+
+## Specific Instructions
+- **Editing mode**: When editing a `.py` notebook file with Cursor, the recommended workflow is to run `marimo edit --watch` in the terminal. Changes saved in Cursor will then automatically sync to the marimo UI in the browser.
+- **Running mode**: For deployment or batch processing, start the notebook with `marimo run --watch`, or execute it as a regular Python script (`python notebook.py`).
+- **Code generation**: When generating new marimo cells, ensure they follow the `@app.cell` function wrapper pattern. Avoid defining variables outside the cell functions.

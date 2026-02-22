@@ -19,13 +19,27 @@ uv sync
 
 ```bash
 uv run pytest tests/ -v
-# or with the project venv: pytest tests/ -v
 ```
 
 Using pip:
 
 ```bash
 pip install -e .
+```
+
+### Dump Script
+
+Dump all flights from or to Hong Kong for a date or date range:
+
+```bash
+# Single day (default: yesterday)
+uv run python scripts/dump_hk_flights.py -o flights.csv
+
+# Date range
+uv run python scripts/dump_hk_flights.py --start 2026-01-01 --end 2026-02-20 -o flights.csv
+
+# Debug API response
+uv run python scripts/dump_hk_flights.py --debug
 ```
 
 ### CLI

@@ -618,10 +618,10 @@ def main() -> None:
                             y="Share (%)",
                             color="Route",
                             labels={"Share (%)": "Share (%)"},
-                            custom_data=["Flights", "Total"],
+                            custom_data=["Flights", "Total", "Route"],
                         )
                         fig_route_share_time.update_traces(
-                            hovertemplate="%{x}<br>Flights: %{customdata[0]:,}<br>Total (denom): %{customdata[1]:,}<br>Share: %{y}%<extra></extra>",
+                            hovertemplate="%{customdata[2]}<br>%{x}<br>Flights: %{customdata[0]:,}<br>Total (denom): %{customdata[1]:,}<br>Share: %{y}%<extra></extra>",
                         )
                         fig_route_share_time.update_layout(
                             height=350,
@@ -629,6 +629,49 @@ def main() -> None:
                             yaxis=dict(title="Share (%)"),
                         )
                         st.plotly_chart(fig_route_share_time, width="stretch")
+
+                    # Flights per route normalized by airline's daily flights
+                    airline_flights_per_date = (
+                        df_airline.groupby(df_airline["date"].dt.date).size().rename("AirlineTotal")
+                    )
+                    by_date_dest_norm = (
+                        df_airline.assign(route_dest=route_dest_airline)
+                        .groupby([df_airline["date"].dt.date, "route_dest"])
+                        .size()
+                        .reset_index(name="Flights")
+                    )
+                    by_date_dest_norm.columns = ["Date", "route_dest", "Flights"]
+                    by_date_dest_norm = by_date_dest_norm[by_date_dest_norm["route_dest"].isin(top_dests)]
+                    by_date_dest_norm = by_date_dest_norm.merge(
+                        airline_flights_per_date,
+                        left_on="Date",
+                        right_index=True,
+                        how="left",
+                    )
+                    by_date_dest_norm["Norm (%)"] = (
+                        100 * by_date_dest_norm["Flights"] / by_date_dest_norm["AirlineTotal"]
+                    ).round(1)
+                    by_date_dest_norm["Route"] = by_date_dest_norm["route_dest"].apply(
+                        lambda iata: get_airport(iata).name if get_airport(iata) else iata
+                    )
+                    if not by_date_dest_norm.empty:
+                        fig_route_norm = px.line(
+                            by_date_dest_norm,
+                            x="Date",
+                            y="Norm (%)",
+                            color="Route",
+                            labels={"Norm (%)": "Share of airline flights (%)"},
+                            custom_data=["Flights", "AirlineTotal", "Route"],
+                        )
+                        fig_route_norm.update_traces(
+                            hovertemplate="%{customdata[2]}<br>%{x}<br>Flights: %{customdata[0]:,}<br>Airline total (denom): %{customdata[1]:,}<br>Norm: %{y}%<extra></extra>",
+                        )
+                        fig_route_norm.update_layout(
+                            height=350,
+                            title="Share of airline flights (%) over time by route",
+                            yaxis=dict(title="Share of airline flights (%)"),
+                        )
+                        st.plotly_chart(fig_route_norm, width="stretch")
 
                 st.dataframe(route_df[["Airport", "Name", "City", "Country", "Flights", "Share (%)"]] if not route_df.empty else pd.DataFrame())
 
@@ -702,10 +745,10 @@ def main() -> None:
                             y="Flights",
                             color="Route",
                             labels={"Flights": "Number of flights"},
-                            custom_data=["Total"],
+                            custom_data=["Total", "Route"],
                         )
                         fig_route_count_time.update_traces(
-                            hovertemplate="%{x}<br>Flights: %{y:,}<br>Total (denom): %{customdata[0]:,}<extra></extra>",
+                            hovertemplate="%{customdata[1]}<br>%{x}<br>Flights: %{y:,}<br>Total (denom): %{customdata[0]:,}<extra></extra>",
                         )
                         fig_route_count_time.update_layout(
                             height=350,
@@ -751,6 +794,10 @@ def main() -> None:
                             y="Flights",
                             color="Type",
                             labels={"date": "Date", "Flights": "Number of flights"},
+                            custom_data=["Type"],
+                        )
+                        fig_cargo.update_traces(
+                            hovertemplate="%{customdata[0]}<br>%{x}<br>Flights: %{y:,}<extra></extra>",
                         )
                         fig_cargo.update_layout(height=350)
                         st.plotly_chart(fig_cargo, width="stretch")
@@ -892,10 +939,10 @@ def main() -> None:
                             y="Share (%)",
                             color="Airline",
                             labels={"Share (%)": "Share (%)"},
-                            custom_data=["Flights", "Total"],
+                            custom_data=["Flights", "Total", "Airline"],
                         )
                         fig_share_day.update_traces(
-                            hovertemplate="%{x}<br>Flights: %{customdata[0]:,}<br>Total (denom): %{customdata[1]:,}<br>Share: %{y}%<extra></extra>",
+                            hovertemplate="%{customdata[2]}<br>%{x}<br>Flights: %{customdata[0]:,}<br>Total (denom): %{customdata[1]:,}<br>Share: %{y}%<extra></extra>",
                         )
                         fig_share_day.update_layout(
                             height=350,
@@ -977,10 +1024,10 @@ def main() -> None:
                             y="Flights",
                             color="Airline",
                             labels={"Flights": "Number of flights"},
-                            custom_data=["Total"],
+                            custom_data=["Total", "Airline"],
                         )
                         fig_count_day.update_traces(
-                            hovertemplate="%{x}<br>Flights: %{y:,}<br>Total (denom): %{customdata[0]:,}<extra></extra>",
+                            hovertemplate="%{customdata[1]}<br>%{x}<br>Flights: %{y:,}<br>Total (denom): %{customdata[0]:,}<extra></extra>",
                         )
                         fig_count_day.update_layout(
                             height=350,
@@ -1026,6 +1073,10 @@ def main() -> None:
                             y="Flights",
                             color="Type",
                             labels={"date": "Date", "Flights": "Number of flights"},
+                            custom_data=["Type"],
+                        )
+                        fig_route_cargo.update_traces(
+                            hovertemplate="%{customdata[0]}<br>%{x}<br>Flights: %{y:,}<extra></extra>",
                         )
                         fig_route_cargo.update_layout(height=350)
                         st.plotly_chart(fig_route_cargo, width="stretch")

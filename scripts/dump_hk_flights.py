@@ -5,6 +5,9 @@ Dump all flights from or to Hong Kong for a given date or date range.
 Output columns: origin, destination, flight_no, airline, operating_flight_no,
 operating_airline, scheduled_time, status, date, cargo. Cargo flights included by default.
 
+Note: The HK Airport API provides historical data for approximately the last 90 days only.
+Dates older than that may return 400 Bad Request.
+
 Usage:
     uv run python scripts/dump_hk_flights.py
     uv run python scripts/dump_hk_flights.py --date 2025-02-17

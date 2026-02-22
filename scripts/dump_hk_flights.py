@@ -17,6 +17,7 @@ Usage:
 import argparse
 import json
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
 
 import pandas as pd
@@ -25,6 +26,7 @@ import requests
 from flyghts.audit.sources.hk_airport import HKAirportSource
 
 API_URL = "https://www.hongkongairport.com/flightinfo-rest/rest/flights/past"
+MAX_WORKERS = 3
 
 
 def main() -> None:
@@ -100,19 +102,57 @@ def main() -> None:
 
     include_cargo = not args.no_cargo
     source = HKAirportSource()
-    all_raw = []
-    n_days = len(date_range)
+
+    # Build list of fetch jobs: (sort_key, date, arrival, cargo)
+    jobs = []
     for i, d in enumerate(date_range):
-        if n_days > 1:
-            print(f"Fetching {d} ({i + 1}/{n_days})...", file=sys.stderr)
         if include_cargo:
-            all_raw.extend(source.fetch_flights(d, arrival=False, cargo=False))
-            all_raw.extend(source.fetch_flights(d, arrival=True, cargo=False))
-            all_raw.extend(source.fetch_flights(d, arrival=False, cargo=True))
-            all_raw.extend(source.fetch_flights(d, arrival=True, cargo=True))
+            jobs.append((i, d, False, False))
+            jobs.append((i, d, True, False))
+            jobs.append((i, d, False, True))
+            jobs.append((i, d, True, True))
         else:
-            all_raw.extend(source.fetch_flights(d, arrival=False, cargo=False))
-            all_raw.extend(source.fetch_flights(d, arrival=True, cargo=False))
+            jobs.append((i, d, False, False))
+            jobs.append((i, d, True, False))
+
+    def fetch_one(job: tuple) -> tuple:
+        sort_key, d, arrival, cargo = job
+        raw = source.fetch_flights(d, arrival=arrival, cargo=cargo)
+        return (sort_key, arrival, cargo, raw)
+
+    results_by_key: dict[tuple, list] = {}
+    n_days = len(date_range)
+    completed = 0
+
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        future_to_job = {executor.submit(fetch_one, job): job for job in jobs}
+        for future in as_completed(future_to_job):
+            job = future_to_job[future]
+            sort_key, d, arrival, cargo = job[0], job[1], job[2], job[3]
+            try:
+                _, arrival, cargo, raw = future.result()
+                results_by_key[(sort_key, arrival, cargo)] = raw
+            except Exception as e:
+                print(
+                    f"Error fetching {d} arrival={arrival} cargo={cargo}: {e}",
+                    file=sys.stderr,
+                )
+                raise
+            completed += 1
+            if n_days > 1 and completed % (4 if include_cargo else 2) == 0:
+                print(f"Fetched {completed}/{len(jobs)}...", file=sys.stderr)
+
+    # Reassemble in original order (by date, then dep/arr pax, dep/arr cargo)
+    all_raw = []
+    for i in range(len(date_range)):
+        if include_cargo:
+            all_raw.extend(results_by_key.get((i, False, False), []))
+            all_raw.extend(results_by_key.get((i, True, False), []))
+            all_raw.extend(results_by_key.get((i, False, True), []))
+            all_raw.extend(results_by_key.get((i, True, True), []))
+        else:
+            all_raw.extend(results_by_key.get((i, False, False), []))
+            all_raw.extend(results_by_key.get((i, True, False), []))
 
     flights = [source.raw_to_flight(r) for r in all_raw]
 

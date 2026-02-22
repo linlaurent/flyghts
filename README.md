@@ -38,6 +38,9 @@ uv run python scripts/dump_hk_flights.py -o flights.csv
 # Date range
 uv run python scripts/dump_hk_flights.py --start 2026-01-01 --end 2026-02-20 -o flights.csv
 
+# Include cargo flights (adds cargo column for dashboard filtering)
+uv run python scripts/dump_hk_flights.py --start 2026-01-01 --end 2026-02-20 --cargo -o flights.csv
+
 # Debug API response
 uv run python scripts/dump_hk_flights.py --debug
 ```

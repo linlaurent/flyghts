@@ -19,6 +19,7 @@ class Flight:
     # Optional HK-specific fields
     gate: Optional[str] = None
     terminal: Optional[str] = None
+    cargo: Optional[bool] = None
 
     def route(self) -> str:
         """Return route as ORIGIN-DESTINATION."""

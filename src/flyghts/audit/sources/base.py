@@ -18,6 +18,7 @@ class RawFlight:
     date: date
     gate: Optional[str] = None
     terminal: Optional[str] = None
+    cargo: Optional[bool] = None
 
 
 @runtime_checkable

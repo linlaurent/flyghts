@@ -94,8 +94,14 @@ def main() -> None:
     for i, d in enumerate(date_range):
         if n_days > 1:
             print(f"Fetching {d} ({i + 1}/{n_days})...", file=sys.stderr)
-        all_raw.extend(source.fetch_flights(d, arrival=False, cargo=args.cargo))
-        all_raw.extend(source.fetch_flights(d, arrival=True, cargo=args.cargo))
+        if args.cargo:
+            all_raw.extend(source.fetch_flights(d, arrival=False, cargo=False))
+            all_raw.extend(source.fetch_flights(d, arrival=True, cargo=False))
+            all_raw.extend(source.fetch_flights(d, arrival=False, cargo=True))
+            all_raw.extend(source.fetch_flights(d, arrival=True, cargo=True))
+        else:
+            all_raw.extend(source.fetch_flights(d, arrival=False, cargo=False))
+            all_raw.extend(source.fetch_flights(d, arrival=True, cargo=False))
 
     flights = [source.raw_to_flight(r) for r in all_raw]
 
@@ -145,7 +151,7 @@ def _debug_response(flight_date: date, cargo: bool) -> None:
 def _to_dataframe(flights: list) -> pd.DataFrame:
     if not flights:
         return pd.DataFrame(
-            columns=["origin", "destination", "flight_no", "airline", "scheduled_time", "status", "date"]
+            columns=["origin", "destination", "flight_no", "airline", "scheduled_time", "status", "date", "cargo"]
         )
     return pd.DataFrame(
         [
@@ -157,6 +163,7 @@ def _to_dataframe(flights: list) -> pd.DataFrame:
                 "scheduled_time": f.scheduled_time,
                 "status": f.status,
                 "date": f.date.isoformat(),
+                "cargo": f.cargo if f.cargo is not None else False,
             }
             for f in flights
         ]

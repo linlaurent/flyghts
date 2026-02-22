@@ -25,6 +25,14 @@ def load_flights() -> pd.DataFrame:
     """Load and parse flights.csv."""
     df = pd.read_csv(FLIGHTS_CSV)
     df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
+    if "cargo" in df.columns:
+        def _to_bool(x):
+            if pd.isna(x):
+                return False
+            if isinstance(x, bool):
+                return x
+            return str(x).lower() in ("true", "1", "yes")
+        df["cargo"] = df["cargo"].apply(_to_bool)
     return df
 
 
@@ -33,13 +41,19 @@ def apply_filters(
     direction: str,
     start_date: pd.Timestamp,
     end_date: pd.Timestamp,
+    cargo_filter: str | None = None,
 ) -> pd.DataFrame:
-    """Filter by direction and date range."""
+    """Filter by direction, date range, and optionally cargo."""
     mask = (df["date"] >= start_date) & (df["date"] <= end_date)
     if direction == "From HKG":
         mask = mask & (df["origin"] == HKG)
     elif direction == "To HKG":
         mask = mask & (df["destination"] == HKG)
+    if cargo_filter and "cargo" in df.columns:
+        if cargo_filter == "Passenger only":
+            mask = mask & (~df["cargo"])
+        elif cargo_filter == "Cargo only":
+            mask = mask & df["cargo"]
     return df[mask]
 
 
@@ -91,6 +105,18 @@ def main() -> None:
         )
         top_n = st.slider("Top N for rankings", min_value=5, max_value=50, value=20)
 
+        has_cargo = "cargo" in df_all.columns
+        if has_cargo:
+            cargo_filter = st.radio(
+                "Flight type",
+                options=["All", "Passenger only", "Cargo only"],
+                index=0,
+                help="Filter by passenger vs cargo flights (requires cargo column in data)",
+            )
+        else:
+            cargo_filter = None
+            st.caption("No cargo column in data. Re-dump with --cargo to enable.")
+
     if start_date > end_date:
         st.error("Start date must be before or equal to end date.")
         return
@@ -100,10 +126,23 @@ def main() -> None:
         direction,
         pd.Timestamp(start_date),
         pd.Timestamp(end_date),
+        cargo_filter=cargo_filter if has_cargo else None,
     )
     total_flights = len(df)
 
     st.metric("Total flights (filtered)", f"{total_flights:,}")
+
+    # --- Filtered data table ---
+    with st.expander("View filtered data", expanded=False):
+        st.dataframe(
+            df,
+            use_container_width=True,
+            column_config={
+                "date": st.column_config.DateColumn("Date", format="YYYY-MM-DD"),
+                "scheduled_time": st.column_config.DatetimeColumn("Scheduled", format="YYYY-MM-DD HH:mm"),
+                **({"cargo": st.column_config.CheckboxColumn("Cargo")} if "cargo" in df.columns else {}),
+            },
+        )
 
     # --- Top Companies ---
     st.header("Top airlines by flight count")

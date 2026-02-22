@@ -38,24 +38,24 @@ class HKAirportSource:
                     items = wrapper.get("list") or wrapper.get("List") or []
                     date_str = wrapper.get("date") or wrapper.get("Date") or flight_date.strftime("%Y-%m-%d")
                     for item in items:
-                        for raw in self._parse_list_item(item, date_str, arrival):
+                        for raw in self._parse_list_item(item, date_str, arrival, cargo):
                             flights.append(raw)
             else:
                 date_str = flight_date.strftime("%Y-%m-%d")
                 for item in data:
-                    for raw in self._parse_list_item(item, date_str, arrival):
+                    for raw in self._parse_list_item(item, date_str, arrival, cargo):
                         flights.append(raw)
         else:
             flight_list = data.get("List") or data.get("list") or []
             date_str = data.get("Date") or data.get("date") or flight_date.strftime("%Y-%m-%d")
             for item in flight_list:
-                for raw in self._parse_list_item(item, date_str, arrival):
+                for raw in self._parse_list_item(item, date_str, arrival, cargo):
                     flights.append(raw)
 
         return flights
 
     def _parse_list_item(
-        self, item: dict, date_str: str, arrival: bool
+        self, item: dict, date_str: str, arrival: bool, cargo: bool = False
     ) -> List[RawFlight]:
         """Parse a single list item from the API response (may contain multiple flight numbers)."""
         if arrival:
@@ -112,6 +112,7 @@ class HKAirportSource:
                         date=datetime.strptime(date_str, "%Y-%m-%d").date(),
                         gate=gate,
                         terminal=terminal,
+                        cargo=cargo,
                     )
                 )
 
@@ -127,6 +128,7 @@ class HKAirportSource:
                     date=datetime.strptime(date_str, "%Y-%m-%d").date(),
                     gate=gate,
                     terminal=terminal,
+                    cargo=cargo,
                 )
             )
 
@@ -179,6 +181,7 @@ class HKAirportSource:
             date=raw.date,
             gate=raw.gate,
             terminal=raw.terminal,
+            cargo=raw.cargo,
         )
 
     @property

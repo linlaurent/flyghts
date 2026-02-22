@@ -21,6 +21,18 @@ class AirportInfo:
 
 _airports_cache: Optional[dict[str, dict]] = None
 
+# Manual overrides for airports not in OpenFlights (preserved across fetch updates)
+_AIRPORT_OVERRIDES: dict[str, dict] = {
+    "TFU": {
+        "iata": "TFU",
+        "name": "Chengdu Tianfu International Airport",
+        "city": "Chengdu",
+        "country": "China",
+        "latitude": 30.323,
+        "longitude": 104.445,
+    },
+}
+
 
 def _load_airports() -> dict[str, dict]:
     global _airports_cache
@@ -31,6 +43,7 @@ def _load_airports() -> dict[str, dict]:
                 _airports_cache = json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
             _airports_cache = {}
+        _airports_cache = {**_airports_cache, **_AIRPORT_OVERRIDES}
     return _airports_cache
 
 

@@ -18,6 +18,11 @@ class AirlineInfo:
 
 _airlines_cache: Optional[dict[str, dict]] = None
 
+# Manual overrides for airlines not in OpenFlights (preserved across fetch updates)
+_AIRLINE_OVERRIDES: dict[str, dict] = {
+    "HGB": {"icao": "HGB", "name": "Greater Bay Airlines", "country": "Hong Kong"},
+}
+
 
 def _load_airlines() -> dict[str, dict]:
     global _airlines_cache
@@ -28,6 +33,7 @@ def _load_airlines() -> dict[str, dict]:
                 _airlines_cache = json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
             _airlines_cache = {}
+        _airlines_cache = {**_airlines_cache, **_AIRLINE_OVERRIDES}
     return _airlines_cache
 
 

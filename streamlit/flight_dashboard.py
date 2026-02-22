@@ -111,6 +111,14 @@ def main() -> None:
         )
         top_n = st.slider("Top N for rankings", min_value=5, max_value=50, value=20)
 
+        st.subheader("Statistic for rankings")
+        statistic_type = st.radio(
+            "Top destinations & airlines display",
+            options=["Sum over period", "Daily average", "Weekly average", "Yearly average"],
+            index=0,
+            help="Sum = raw count; Daily/Weekly/Yearly = normalized averages",
+        )
+
         has_cargo = "cargo" in df_all.columns
         if has_cargo:
             cargo_filter = st.radio(
@@ -147,6 +155,29 @@ def main() -> None:
         operating_only=operating_only if has_operating else False,
     )
     total_flights = len(df)
+    num_days = (end_date - start_date).days + 1
+    num_weeks = num_days / 7.0
+
+    def scale_count(raw_count: float) -> float:
+        """Scale raw flight count by selected statistic type."""
+        if statistic_type == "Sum over period":
+            return raw_count
+        if statistic_type == "Daily average":
+            return raw_count / num_days
+        if statistic_type == "Weekly average":
+            return raw_count / num_weeks
+        # Yearly average (annualized rate)
+        return raw_count * 365 / num_days
+
+    def stat_label() -> str:
+        """Label for the flights axis/chart."""
+        if statistic_type == "Sum over period":
+            return "Number of flights"
+        if statistic_type == "Daily average":
+            return "Flights per day"
+        if statistic_type == "Weekly average":
+            return "Flights per week"
+        return "Flights per year (annualized)"
 
     st.metric("Total flights (filtered)", f"{total_flights:,}")
 
@@ -223,7 +254,7 @@ def main() -> None:
         name = info.name if info else icao
         country = info.country if info else ""
         airline_rows.append(
-            {"Airline": name, "ICAO": icao, "Country": country, "Flights": count}
+            {"Airline": name, "ICAO": icao, "Country": country, "Flights": scale_count(count)}
         )
     airline_df = pd.DataFrame(
         airline_rows,
@@ -237,7 +268,7 @@ def main() -> None:
         orientation="h",
         color="Flights",
         color_continuous_scale="Blues",
-        labels={"Flights": "Number of flights"},
+        labels={"Flights": stat_label()},
     )
     fig_airlines.update_layout(
         height=400 + top_n * 12,
@@ -268,7 +299,7 @@ def main() -> None:
                 "Name": info.name if info else "",
                 "City": info.city if info else "",
                 "Country": info.country if info else "",
-                "Flights": count,
+                "Flights": scale_count(count),
             })
         airport_df = pd.DataFrame(
             airport_rows,
@@ -286,6 +317,7 @@ def main() -> None:
             orientation="h",
             color="Flights",
             color_continuous_scale="Greens",
+            labels={"Flights": stat_label()},
         )
         fig_apt.update_layout(
             height=400 + min(top_n, len(display_df)) * 12,
@@ -296,11 +328,11 @@ def main() -> None:
         st.dataframe(airport_df[["Airport", "Name", "City", "Country", "Flights"]])
 
     with tab_city:
-        city_counts: dict[str, int] = {}
+        city_counts: dict[str, float] = {}
         for iata, count in dest_counts.items():
             info = get_airport(iata)
             city = info.city if info and info.city else iata
-            city_counts[city] = city_counts.get(city, 0) + count
+            city_counts[city] = city_counts.get(city, 0.0) + scale_count(count)
         city_sorted = sorted(city_counts.items(), key=lambda x: -x[1])[:top_n]
         city_df = pd.DataFrame(
             [{"City": c, "Flights": n} for c, n in city_sorted],
@@ -313,6 +345,7 @@ def main() -> None:
             orientation="h",
             color="Flights",
             color_continuous_scale="Oranges",
+            labels={"Flights": stat_label()},
         )
         fig_city.update_layout(
             height=400 + min(top_n, len(city_df)) * 12,
@@ -323,11 +356,11 @@ def main() -> None:
         st.dataframe(city_df)
 
     with tab_country:
-        country_counts: dict[str, int] = {}
+        country_counts: dict[str, float] = {}
         for iata, count in dest_counts.items():
             info = get_airport(iata)
             country = info.country if info and info.country else iata
-            country_counts[country] = country_counts.get(country, 0) + count
+            country_counts[country] = country_counts.get(country, 0.0) + scale_count(count)
         country_sorted = sorted(country_counts.items(), key=lambda x: -x[1])[:top_n]
         country_df = pd.DataFrame(
             [{"Country": c, "Flights": n} for c, n in country_sorted],
@@ -340,6 +373,7 @@ def main() -> None:
             orientation="h",
             color="Flights",
             color_continuous_scale="Purples",
+            labels={"Flights": stat_label()},
         )
         fig_country.update_layout(
             height=400 + min(top_n, len(country_df)) * 12,
@@ -351,6 +385,15 @@ def main() -> None:
 
     # --- Interactive Map ---
     st.header("Interactive map: flight flow by destination")
+
+    map_point_by = st.radio(
+        "Map points by",
+        options=["City (airport)", "Country"],
+        index=1,
+        horizontal=True,
+        help="Show each destination as a precise city/airport, or aggregate by country.",
+    )
+    map_by_country = map_point_by == "Country"
 
     # Map filter: operating airline (optional) – use same column as top airlines for consistency
     map_airline_col = "operating_airline" if (operating_only and has_operating) else "airline"
@@ -373,16 +416,42 @@ def main() -> None:
     map_dest_counts = get_destination_column(df_map, direction).value_counts()
 
     map_data = []
-    for iata, count in map_dest_counts.items():
-        info = get_airport(iata)
-        if info and (info.latitude != 0 or info.longitude != 0):
+    if map_by_country:
+        # Aggregate by country: sum counts, use centroid of airport coords per country
+        country_agg: dict[str, list[tuple[float, float, int]]] = {}  # country -> [(lat, lon, count), ...]
+        for iata, count in map_dest_counts.items():
+            info = get_airport(iata)
+            if not info or (info.latitude == 0 and info.longitude == 0):
+                continue
+            country = info.country or iata
+            if country not in country_agg:
+                country_agg[country] = []
+            country_agg[country].append((info.latitude, info.longitude, count))
+        for country, points in country_agg.items():
+            total = sum(p[2] for p in points)
+            if total == 0:
+                continue
+            # Weighted centroid by flight count
+            lat = sum(p[0] * p[2] for p in points) / total
+            lon = sum(p[1] * p[2] for p in points) / total
             map_data.append({
-                "iata": iata,
-                "lat": info.latitude,
-                "lon": info.longitude,
-                "count": count,
-                "label": f"{iata} ({info.city or '?'}, {info.country or '?'}): {count}",
+                "iata": country,
+                "lat": lat,
+                "lon": lon,
+                "count": total,
+                "label": f"{country}: {total:,} flights",
             })
+    else:
+        for iata, count in map_dest_counts.items():
+            info = get_airport(iata)
+            if info and (info.latitude != 0 or info.longitude != 0):
+                map_data.append({
+                    "iata": iata,
+                    "lat": info.latitude,
+                    "lon": info.longitude,
+                    "count": count,
+                    "label": f"{iata} ({info.city or '?'}, {info.country or '?'}): {count:,}",
+                })
     map_df = pd.DataFrame(map_data)
 
     if map_df.empty:
@@ -392,32 +461,33 @@ def main() -> None:
             st.caption(f"Map shows {len(df_map):,} flights from {sel_map_airline}")
         fig_map = go.Figure()
 
-        # Flow lines from HKG to each destination (line width ∝ flight count)
+        # Flow lines from HKG to each destination (single trace with None separators)
         count_max = map_df["count"].max()
+        line_lons: list[float | None] = []
+        line_lats: list[float | None] = []
         for _, row in map_df.iterrows():
-            # Scale width from 0.8 to 8 based on relative importance
-            rel = row["count"] / count_max if count_max > 0 else 1
-            width = 0.8 + 7.2 * rel
-            fig_map.add_trace(
-                go.Scattergeo(
-                    lon=[HKG_LON, row["lon"]],
-                    lat=[HKG_LAT, row["lat"]],
-                    mode="lines",
-                    line=dict(width=width, color="rgba(100,150,200,0.5)"),
-                    hoverinfo="skip",
-                )
-            )
-
-        # Destination markers (size = flight count)
+            line_lons.extend([HKG_LON, row["lon"], None])
+            line_lats.extend([HKG_LAT, row["lat"], None])
         fig_map.add_trace(
             go.Scattergeo(
-                lon=map_df["lon"],
-                lat=map_df["lat"],
-                text=map_df["label"],
+                lon=line_lons[:-1],
+                lat=line_lats[:-1],
+                mode="lines",
+                line=dict(width=2, color="rgba(100,150,200,0.5)"),
+                hoverinfo="skip",
+            )
+        )
+
+        # Destination markers (size = flight count); use lists for Plotly compatibility
+        fig_map.add_trace(
+            go.Scattergeo(
+                lon=map_df["lon"].tolist(),
+                lat=map_df["lat"].tolist(),
+                text=map_df["label"].tolist(),
                 mode="markers",
                 marker=dict(
-                    size=map_df["count"].clip(upper=2000) ** 0.5 + 3,
-                    color=map_df["count"],
+                    size=(map_df["count"].clip(upper=2000) ** 0.5 + 3).tolist(),
+                    color=map_df["count"].tolist(),
                     colorscale="Viridis",
                     showscale=True,
                     colorbar=dict(title="Flights"),
@@ -435,6 +505,7 @@ def main() -> None:
                 mode="markers+text",
                 marker=dict(size=15, color="red", symbol="star"),
                 textposition="top center",
+                textfont=dict(color="black"),
                 hoverinfo="text",
             )
         )

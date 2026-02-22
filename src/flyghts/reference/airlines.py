@@ -43,6 +43,7 @@ _AIRLINE_OVERRIDES: dict[str, dict] = {
     "RCR": {"icao": "RCR", "name": "Romcargo Airlines", "country": "Romania"},
     "RMY": {"icao": "RMY", "name": "Raya Airways", "country": "Malaysia"},
     "SJX": {"icao": "SJX", "name": "Starlux Airlines", "country": "Taiwan"},
+    "TGW": {"icao": "TGW", "name": "Scoot", "country": "Singapore"},
     "TMN": {"icao": "TMN", "name": "Tasman Cargo Airlines", "country": "Australia"},
     "UZU": {"icao": "UZU", "name": "SpaceBee Airlines", "country": "Uzbekistan"},
     "WCM": {"icao": "WCM", "name": "World Cargo Airlines", "country": "Malaysia"},

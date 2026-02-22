@@ -481,6 +481,9 @@ def main() -> None:
             showland=True,
             coastlinewidth=0.5,
             landcolor="rgb(243,243,243)",
+            showcountries=True,
+            countrycolor="rgba(150,150,150,0.6)",
+            countrywidth=0.5,
         )
         fig_map.update_layout(
             height=600,

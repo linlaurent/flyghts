@@ -659,6 +659,199 @@ def main() -> None:
                 else:
                     st.caption("No cargo column in data.")
 
+    # --- Route deep dive ---
+    st.header("Route deep dive")
+    # Group bidirectional routes: HKG-TPE and TPE-HKG become one route with summed counts
+    route_series = df["origin"] + "-" + df["destination"]
+    route_pairs = route_series.apply(lambda s: "-".join(sorted(s.split("-", 1))) if "-" in s else s)
+    route_counts = route_pairs.value_counts()
+    route_options_raw = route_counts.head(min(30, len(route_counts)))
+    route_display_options: list[str] = []
+    route_str_to_airports: dict[str, tuple[str, str]] = {}
+    for route_str, count in route_options_raw.items():
+        parts = route_str.split("-", 1)
+        if len(parts) == 2:
+            a, b = parts[0], parts[1]
+            other = b if a == HKG else a
+            info = get_airport(other)
+            name = info.name if info and info.name else other
+            label = f"{other} - {name} - {count:,} flights"
+            route_display_options.append(label)
+            route_str_to_airports[label] = (a, b)
+
+    if not route_display_options:
+        st.info("No routes in the filtered data.")
+    else:
+        sel_route_display = st.selectbox(
+            "Select route",
+            options=route_display_options,
+            index=0,
+            help="Explore statistics for a route (both directions grouped).",
+        )
+        airport_a, airport_b = route_str_to_airports.get(sel_route_display, ("", ""))
+        mask_both = (
+            ((df["origin"] == airport_a) & (df["destination"] == airport_b))
+            | ((df["origin"] == airport_b) & (df["destination"] == airport_a))
+        )
+        df_route = df[mask_both]
+
+        if df_route.empty:
+            st.info("No flights for this route in the selected filters.")
+        else:
+            other = airport_b if airport_a == HKG else airport_a
+            other_info = get_airport(other)
+            name = other_info.name if other_info and other_info.name else other
+            route_label = f"{other} - {name}"
+            st.subheader(route_label)
+
+            n_route = len(df_route)
+            pct_route = 100 * n_route / total_flights if total_flights > 0 else 0
+            m1, m2 = st.columns(2)
+            with m1:
+                st.metric("Total flights on route", f"{n_route:,}")
+            with m2:
+                st.metric("Share of traffic", f"{pct_route:.1f}%")
+
+            tab_route_airlines, tab_route_time, tab_route_hour, tab_route_cargo = st.tabs([
+                "Top airlines",
+                "Flights over time",
+                "Flights by hour",
+                "Cargo vs passenger",
+            ])
+
+            with tab_route_airlines:
+                airline_counts_route = df_route[airline_col].value_counts()
+                total_on_route = len(df_route)
+                airline_rows = []
+                for icao, count in airline_counts_route.head(top_n).items():
+                    info = get_airline(icao)
+                    name = info.name if info else icao
+                    share = 100 * count / total_on_route if total_on_route > 0 else 0
+                    airline_rows.append({
+                        "Airline": name,
+                        "ICAO": icao,
+                        "Flights": count,
+                        "Share (%)": round(share, 1),
+                    })
+                airline_route_df = pd.DataFrame(
+                    airline_rows,
+                    columns=["Airline", "ICAO", "Flights", "Share (%)"],
+                )
+                if not airline_route_df.empty:
+                    fig_route_airlines = px.bar(
+                        airline_route_df,
+                        x="Flights",
+                        y="Airline",
+                        orientation="h",
+                        color="Share (%)",
+                        color_continuous_scale="Viridis",
+                        range_color=[0, 100],
+                        labels={"Flights": "Number of flights", "Share (%)": "Share (%)"},
+                        text=airline_route_df["Share (%)"].apply(lambda x: f"{x}%"),
+                    )
+                    fig_route_airlines.update_layout(
+                        height=300 + min(top_n, len(airline_route_df)) * 12,
+                        yaxis={"categoryorder": "total ascending"},
+                        showlegend=False,
+                    )
+                    fig_route_airlines.update_traces(textposition="outside")
+                    st.plotly_chart(fig_route_airlines, width="stretch")
+                st.dataframe(airline_route_df[["Airline", "ICAO", "Flights", "Share (%)"]] if not airline_route_df.empty else pd.DataFrame())
+
+            with tab_route_time:
+                by_date_route = df_route.groupby(df_route["date"].dt.date).size().reset_index(name="Flights")
+                by_date_route.columns = ["Date", "Flights"]
+                if not by_date_route.empty:
+                    total_by_date = df.groupby(df["date"].dt.date).size().reset_index(name="Total")
+                    total_by_date.columns = ["Date", "Total"]
+                    share_route_df = by_date_route.merge(total_by_date, on="Date", how="left")
+                    share_route_df["Share"] = (
+                        100 * share_route_df["Flights"] / share_route_df["Total"]
+                    ).fillna(0)
+
+                    fig_route_time = go.Figure()
+                    fig_route_time.add_trace(
+                        go.Scatter(
+                            x=share_route_df["Date"],
+                            y=share_route_df["Flights"],
+                            name="Flights",
+                            line=dict(color="#1f77b4"),
+                        )
+                    )
+                    fig_route_time.add_trace(
+                        go.Scatter(
+                            x=share_route_df["Date"],
+                            y=share_route_df["Share"],
+                            name="Share of traffic (%)",
+                            yaxis="y2",
+                            line=dict(color="#ff7f0e"),
+                        )
+                    )
+                    fig_route_time.update_layout(
+                        height=350,
+                        xaxis=dict(title="Date"),
+                        yaxis=dict(title="Number of flights", side="left"),
+                        yaxis2=dict(
+                            title="Share of traffic (%)",
+                            side="right",
+                            overlaying="y",
+                            range=[0, 100],
+                        ),
+                        legend=dict(x=1.1, xanchor="left"),
+                    )
+                    st.plotly_chart(fig_route_time, width="stretch")
+                else:
+                    st.caption("No date data.")
+
+            with tab_route_hour:
+                if "scheduled_time" in df_route.columns:
+                    df_route_hour = df_route.dropna(subset=["scheduled_time"])
+                    df_route_hour = df_route_hour.copy()
+                    df_route_hour["hour"] = pd.to_datetime(df_route_hour["scheduled_time"], errors="coerce").dt.hour
+                    df_route_hour = df_route_hour.dropna(subset=["hour"])
+                    by_hour_route = df_route_hour.groupby("hour").size().reset_index(name="Flights")
+                    if not by_hour_route.empty:
+                        fig_route_hour = px.bar(
+                            by_hour_route,
+                            x="hour",
+                            y="Flights",
+                            labels={"hour": "Hour of day", "Flights": "Number of flights"},
+                        )
+                        fig_route_hour.update_layout(height=350)
+                        st.plotly_chart(fig_route_hour, width="stretch")
+                    else:
+                        st.caption("No scheduled time data for this route.")
+                else:
+                    st.caption("No scheduled_time column in data.")
+
+            with tab_route_cargo:
+                if "cargo" in df_route.columns:
+                    cargo_by_date_route = df_route.groupby(
+                        [df_route["date"].dt.date, "cargo"]
+                    ).size().reset_index(name="Flights")
+                    cargo_by_date_route["Type"] = cargo_by_date_route["cargo"].map(
+                        {True: "Cargo", False: "Passenger"}
+                    )
+                    if not cargo_by_date_route.empty:
+                        fig_route_cargo = px.line(
+                            cargo_by_date_route,
+                            x="date",
+                            y="Flights",
+                            color="Type",
+                            labels={"date": "Date", "Flights": "Number of flights"},
+                        )
+                        fig_route_cargo.update_layout(height=350)
+                        st.plotly_chart(fig_route_cargo, width="stretch")
+                    cargo_passenger_r = (df_route["cargo"] == False).sum()
+                    cargo_cargo_r = (df_route["cargo"] == True).sum()
+                    cargo_route_df = pd.DataFrame([
+                        {"Type": "Passenger", "Flights": cargo_passenger_r},
+                        {"Type": "Cargo", "Flights": cargo_cargo_r},
+                    ])
+                    st.dataframe(cargo_route_df)
+                else:
+                    st.caption("No cargo column in data.")
+
 
 if __name__ == "__main__":
     main()

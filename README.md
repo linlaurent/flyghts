@@ -41,6 +41,9 @@ uv run python scripts/dump_hk_flights.py --start 2026-01-01 --end 2026-02-20 -o 
 # Include cargo flights (adds cargo column for dashboard filtering)
 uv run python scripts/dump_hk_flights.py --start 2026-01-01 --end 2026-02-20 --cargo -o flights.csv
 
+# Deduplicate: keep only operating carrier rows (one per physical flight; drops code-share duplicates)
+uv run python scripts/dump_hk_flights.py --start 2026-01-01 --end 2026-02-20 --deduplicate -o flights.csv
+
 # Debug API response
 uv run python scripts/dump_hk_flights.py --debug
 ```
@@ -85,7 +88,7 @@ marimo run marimo/flight_audit.py
 
 ### Streamlit Dashboard
 
-Analyze `flights.csv` with interactive charts: top airlines, top destinations (airport/city/country), and an interactive map of flight flows. Use filters for direction (from/to/both HKG) and date range.
+Analyze `flights.csv` with interactive charts: top airlines, top destinations (airport/city/country), and an interactive map of flight flows. Use filters for direction (from/to/both HKG) and date range. When the CSV has `operating_airline` columns, enable "Operating carrier only" to exclude code-share duplicates and view one row per physical flight.
 
 ```bash
 uv run streamlit run streamlit/flight_dashboard.py

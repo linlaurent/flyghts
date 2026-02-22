@@ -20,6 +20,8 @@ class Flight:
     gate: Optional[str] = None
     terminal: Optional[str] = None
     cargo: Optional[bool] = None
+    operating_flight_no: str = ""
+    operating_airline: str = ""
 
     def route(self) -> str:
         """Return route as ORIGIN-DESTINATION."""

@@ -205,7 +205,7 @@ class TestHKAirportSourceFetchFlights:
 
     @patch("flyghts.audit.sources.hk_airport.requests.get")
     def test_multiple_flights_in_item(self, mock_get: MagicMock) -> None:
-        """Item with multiple flight numbers yields multiple RawFlights."""
+        """Item with multiple flight numbers yields multiple RawFlights with operating carrier from first."""
         item = {
             "Destination": "TPE",
             "Time": "08:30",
@@ -224,7 +224,9 @@ class TestHKAirportSourceFetchFlights:
 
         assert len(raw_flights) == 2
         assert raw_flights[0].flight_no == "CX421" and raw_flights[0].airline == "CX"
+        assert raw_flights[0].operating_flight_no == "CX421" and raw_flights[0].operating_airline == "CX"
         assert raw_flights[1].flight_no == "KA4871" and raw_flights[1].airline == "KA"
+        assert raw_flights[1].operating_flight_no == "CX421" and raw_flights[1].operating_airline == "CX"
 
 
 class TestHKAirportSourceRawToFlight:

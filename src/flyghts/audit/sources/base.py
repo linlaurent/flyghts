@@ -19,6 +19,8 @@ class RawFlight:
     gate: Optional[str] = None
     terminal: Optional[str] = None
     cargo: Optional[bool] = None
+    operating_flight_no: str = ""
+    operating_airline: str = ""
 
 
 @runtime_checkable

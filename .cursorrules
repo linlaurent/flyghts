@@ -24,3 +24,4 @@
 - **Running mode**: For deployment or batch processing, start the notebook with `marimo run --watch`, or execute it as a regular Python script (`python notebook.py`).
 - **Code generation**: When generating new marimo cells, ensure they follow the `@app.cell` function wrapper pattern. Avoid defining variables outside the cell functions.
 - **README.md** Check if any meaningful change to apply to README.md after each big change
+- Docstrings : Check if any meaningful change to apply to each file's docstring after each big change

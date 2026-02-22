@@ -92,6 +92,18 @@ class HKAirportSource:
         if not flight_nos and (item.get("No") or item.get("FlightNo") or item.get("Airline")):
             flight_nos = [item]
 
+        # First flight in list is the operating carrier (HK API convention)
+        op_flight_no = ""
+        op_airline = ""
+        if flight_nos and isinstance(flight_nos[0], dict):
+            op_flight_no = self._get_str(
+                flight_nos[0],
+                "No", "no", "FlightNo", "flightNo", "number", "flight_number",
+            ) or ""
+            op_airline = self._get_str(
+                flight_nos[0], "Airline", "airline", "carrier", "Carrier"
+            ) or ""
+
         parsed = []
         for fn in flight_nos:
             if not isinstance(fn, dict):
@@ -113,6 +125,8 @@ class HKAirportSource:
                         gate=gate,
                         terminal=terminal,
                         cargo=cargo,
+                        operating_flight_no=op_flight_no,
+                        operating_airline=op_airline,
                     )
                 )
 
@@ -129,6 +143,8 @@ class HKAirportSource:
                     gate=gate,
                     terminal=terminal,
                     cargo=cargo,
+                    operating_flight_no=op_flight_no,
+                    operating_airline=op_airline,
                 )
             )
 
@@ -182,6 +198,8 @@ class HKAirportSource:
             gate=raw.gate,
             terminal=raw.terminal,
             cargo=raw.cargo,
+            operating_flight_no=raw.operating_flight_no,
+            operating_airline=raw.operating_airline,
         )
 
     @property

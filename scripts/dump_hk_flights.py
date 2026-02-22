@@ -2,10 +2,15 @@
 """
 Dump all flights from or to Hong Kong for a given date or date range.
 
+Output columns: origin, destination, flight_no, airline, operating_flight_no,
+operating_airline, scheduled_time, status, date, cargo (if --cargo).
+
 Usage:
     uv run python scripts/dump_hk_flights.py
     uv run python scripts/dump_hk_flights.py --date 2025-02-17
     uv run python scripts/dump_hk_flights.py --start 2026-01-01 --end 2026-02-20 -o flights.csv
+    uv run python scripts/dump_hk_flights.py --cargo -o flights.csv   # include cargo flights
+    uv run python scripts/dump_hk_flights.py --deduplicate -o flights.csv  # one row per physical flight
     uv run python scripts/dump_hk_flights.py --debug  # inspect raw API response
 """
 
@@ -54,6 +59,11 @@ def main() -> None:
         "--cargo",
         action="store_true",
         help="Include cargo flights (default: passenger only)",
+    )
+    parser.add_argument(
+        "--deduplicate",
+        action="store_true",
+        help="Keep only operating carrier rows (one per physical flight; drops code-share duplicates)",
     )
     parser.add_argument(
         "--debug",
@@ -105,6 +115,9 @@ def main() -> None:
 
     flights = [source.raw_to_flight(r) for r in all_raw]
 
+    if args.deduplicate:
+        flights = [f for f in flights if f.operating_airline and f.airline == f.operating_airline]
+
     if args.output:
         df = _to_dataframe(flights)
         df.to_csv(args.output, index=False)
@@ -151,7 +164,11 @@ def _debug_response(flight_date: date, cargo: bool) -> None:
 def _to_dataframe(flights: list) -> pd.DataFrame:
     if not flights:
         return pd.DataFrame(
-            columns=["origin", "destination", "flight_no", "airline", "scheduled_time", "status", "date", "cargo"]
+            columns=[
+                "origin", "destination", "flight_no", "airline",
+                "operating_flight_no", "operating_airline",
+                "scheduled_time", "status", "date", "cargo",
+            ]
         )
     return pd.DataFrame(
         [
@@ -160,6 +177,8 @@ def _to_dataframe(flights: list) -> pd.DataFrame:
                 "destination": f.destination,
                 "flight_no": f.flight_no,
                 "airline": f.airline,
+                "operating_flight_no": f.operating_flight_no,
+                "operating_airline": f.operating_airline,
                 "scheduled_time": f.scheduled_time,
                 "status": f.status,
                 "date": f.date.isoformat(),

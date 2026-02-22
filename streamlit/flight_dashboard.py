@@ -43,8 +43,9 @@ def apply_filters(
     start_date: pd.Timestamp,
     end_date: pd.Timestamp,
     cargo_filter: str | None = None,
+    operating_only: bool = False,
 ) -> pd.DataFrame:
-    """Filter by direction, date range, and optionally cargo."""
+    """Filter by direction, date range, optionally cargo, and optionally operating-only."""
     mask = (df["date"] >= start_date) & (df["date"] <= end_date)
     if direction == "From HKG":
         mask = mask & (df["origin"] == HKG)
@@ -55,6 +56,8 @@ def apply_filters(
             mask = mask & (~df["cargo"])
         elif cargo_filter == "Cargo only":
             mask = mask & df["cargo"]
+    if operating_only and "operating_airline" in df.columns:
+        mask = mask & (df["airline"] == df["operating_airline"])
     return df[mask]
 
 
@@ -120,6 +123,17 @@ def main() -> None:
             cargo_filter = None
             st.caption("No cargo column in data. Re-dump with --cargo to enable.")
 
+        has_operating = "operating_airline" in df_all.columns
+        if has_operating:
+            operating_only = st.checkbox(
+                "Operating carrier only",
+                value=False,
+                help="Exclude code-share duplicates; show one row per physical flight",
+            )
+        else:
+            operating_only = False
+            st.caption("No operating carrier columns. Re-dump to enable.")
+
     if start_date > end_date:
         st.error("Start date must be before or equal to end date.")
         return
@@ -130,6 +144,7 @@ def main() -> None:
         pd.Timestamp(start_date),
         pd.Timestamp(end_date),
         cargo_filter=cargo_filter if has_cargo else None,
+        operating_only=operating_only if has_operating else False,
     )
     total_flights = len(df)
 
@@ -156,7 +171,8 @@ def main() -> None:
                 help="Leave empty to show all",
             )
         with col3:
-            airlines = sorted(df["airline"].dropna().unique().tolist())
+            airline_col_sel = "operating_airline" if (operating_only and has_operating) else "airline"
+            airlines = sorted(df[airline_col_sel].dropna().unique().tolist())
             sel_airline = st.multiselect(
                 "Airline",
                 options=airlines,
@@ -176,7 +192,8 @@ def main() -> None:
         if sel_dest:
             df_display = df_display[df_display["destination"].isin(sel_dest)]
         if sel_airline:
-            df_display = df_display[df_display["airline"].isin(sel_airline)]
+            col_for_filter = "operating_airline" if (operating_only and has_operating) else "airline"
+            df_display = df_display[df_display[col_for_filter].isin(sel_airline)]
         if search:
             search_lower = search.strip().lower()
             mask = (
@@ -186,19 +203,18 @@ def main() -> None:
             df_display = df_display[mask]
 
         st.caption(f"Showing {len(df_display):,} of {len(df):,} rows")
-        st.dataframe(
-            df_display,
-            use_container_width=True,
-            column_config={
-                "date": st.column_config.DateColumn("Date", format="YYYY-MM-DD"),
-                "scheduled_time": st.column_config.DatetimeColumn("Scheduled", format="YYYY-MM-DD HH:mm"),
-                **({"cargo": st.column_config.CheckboxColumn("Cargo")} if "cargo" in df.columns else {}),
-            },
-        )
+        col_config = {
+            "date": st.column_config.DateColumn("Date", format="YYYY-MM-DD"),
+            "scheduled_time": st.column_config.DatetimeColumn("Scheduled", format="YYYY-MM-DD HH:mm"),
+            **({"cargo": st.column_config.CheckboxColumn("Cargo")} if "cargo" in df.columns else {}),
+            **({"operating_airline": st.column_config.TextColumn("Operating")} if "operating_airline" in df.columns else {}),
+        }
+        st.dataframe(df_display, use_container_width=True, column_config=col_config)
 
     # --- Top Companies ---
     st.header("Top airlines by flight count")
-    airline_counts = df["airline"].value_counts()
+    airline_col = "operating_airline" if (operating_only and has_operating) else "airline"
+    airline_counts = df[airline_col].value_counts()
     top_airlines = airline_counts.head(top_n)
 
     airline_rows = []

@@ -29,7 +29,7 @@ pip install -e .
 
 ### Dump Script
 
-Dump all flights from or to Hong Kong for a date or date range. Passenger and cargo flights are included by default:
+Dump all flights from or to Hong Kong for a date or date range. Passenger and cargo flights are included by default. The API provides historical data for approximately the last 90 days only.
 
 ```bash
 # Single day (default: yesterday)

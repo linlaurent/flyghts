@@ -351,8 +351,29 @@ def main() -> None:
 
     # --- Interactive Map ---
     st.header("Interactive map: flight flow by destination")
+
+    # Map filter: operating airline (optional) – use same column as top airlines for consistency
+    map_airline_col = "operating_airline" if (operating_only and has_operating) else "airline"
+    map_airlines = sorted(df[map_airline_col].dropna().unique().tolist())
+    map_airline_options = ["All"]
+    map_display_to_code: dict[str, str] = {}
+    for code in map_airlines:
+        display = f"{code} - {info.name}" if (info := get_airline(code)) and info.name else code
+        map_airline_options.append(display)
+        map_display_to_code[display] = code
+    sel_map_airline = st.selectbox(
+        "Filter by airline",
+        options=map_airline_options,
+        index=0,
+        help="Only affects the map.",
+    )
+    df_map = df
+    if sel_map_airline != "All":
+        df_map = df[df[map_airline_col] == map_display_to_code[sel_map_airline]]
+    map_dest_counts = get_destination_column(df_map, direction).value_counts()
+
     map_data = []
-    for iata, count in dest_counts.items():
+    for iata, count in map_dest_counts.items():
         info = get_airport(iata)
         if info and (info.latitude != 0 or info.longitude != 0):
             map_data.append({
@@ -367,24 +388,25 @@ def main() -> None:
     if map_df.empty:
         st.info("No destination airports with valid coordinates in the reference data.")
     else:
+        if sel_map_airline != "All":
+            st.caption(f"Map shows {len(df_map):,} flights from {sel_map_airline}")
         fig_map = go.Figure()
 
-        # Flow lines from HKG to each destination
-        lons = []
-        lats = []
+        # Flow lines from HKG to each destination (line width ∝ flight count)
+        count_max = map_df["count"].max()
         for _, row in map_df.iterrows():
-            lons.extend([HKG_LON, row["lon"], None])
-            lats.extend([HKG_LAT, row["lat"], None])
-
-        fig_map.add_trace(
-            go.Scattergeo(
-                lon=lons,
-                lat=lats,
-                mode="lines",
-                line=dict(width=1, color="rgba(100,150,200,0.4)"),
-                hoverinfo="skip",
+            # Scale width from 0.8 to 8 based on relative importance
+            rel = row["count"] / count_max if count_max > 0 else 1
+            width = 0.8 + 7.2 * rel
+            fig_map.add_trace(
+                go.Scattergeo(
+                    lon=[HKG_LON, row["lon"]],
+                    lat=[HKG_LAT, row["lat"]],
+                    mode="lines",
+                    line=dict(width=width, color="rgba(100,150,200,0.5)"),
+                    hoverinfo="skip",
+                )
             )
-        )
 
         # Destination markers (size = flight count)
         fig_map.add_trace(

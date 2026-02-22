@@ -4,6 +4,7 @@ Flight Dashboard - Analyze HK flight data from flights.csv
 Run with: uv run streamlit run streamlit/flight_dashboard.py
 """
 
+from datetime import date as date_type
 from pathlib import Path
 
 import pandas as pd
@@ -81,6 +82,8 @@ def main() -> None:
     df_all = load_flights()
     min_date = df_all["date"].min().date()
     max_date = df_all["date"].max().date()
+    default_date = date_type(2026, 2, 20)
+    start_end_default = default_date if min_date <= default_date <= max_date else min_date
 
     # Sidebar filters
     with st.sidebar:
@@ -93,13 +96,13 @@ def main() -> None:
         )
         start_date = st.date_input(
             "Start date",
-            value=min_date,
+            value=start_end_default,
             min_value=min_date,
             max_value=max_date,
         )
         end_date = st.date_input(
             "End date",
-            value=max_date,
+            value=start_end_default,
             min_value=min_date,
             max_value=max_date,
         )
@@ -110,7 +113,7 @@ def main() -> None:
             cargo_filter = st.radio(
                 "Flight type",
                 options=["All", "Passenger only", "Cargo only"],
-                index=0,
+                index=1,
                 help="Filter by passenger vs cargo flights (requires cargo column in data)",
             )
         else:

@@ -94,7 +94,7 @@ def main() -> None:
         direction = st.radio(
             "Direction",
             options=["From HKG", "To HKG", "Both"],
-            index=0,
+            index=2,
             help="From HKG = departures, To HKG = arrivals, Both = all flights",
         )
         start_date = st.date_input(
@@ -127,7 +127,7 @@ def main() -> None:
         if has_operating:
             operating_only = st.checkbox(
                 "Operating carrier only",
-                value=False,
+                value=True,
                 help="Exclude code-share duplicates; show one row per physical flight",
             )
         else:
@@ -225,7 +225,10 @@ def main() -> None:
         airline_rows.append(
             {"Airline": name, "ICAO": icao, "Country": country, "Flights": count}
         )
-    airline_df = pd.DataFrame(airline_rows)
+    airline_df = pd.DataFrame(
+        airline_rows,
+        columns=["Airline", "ICAO", "Country", "Flights"],
+    )
 
     fig_airlines = px.bar(
         airline_df,
@@ -267,7 +270,10 @@ def main() -> None:
                 "Country": info.country if info else "",
                 "Flights": count,
             })
-        airport_df = pd.DataFrame(airport_rows)
+        airport_df = pd.DataFrame(
+            airport_rows,
+            columns=["Airport", "Name", "City", "Country", "Flights"],
+        )
         display_df = airport_df.copy()
         display_df["Label"] = display_df.apply(
             lambda r: f"{r['Airport']} - {r['Name']}" if r["Name"] else r["Airport"],
@@ -296,9 +302,10 @@ def main() -> None:
             city = info.city if info and info.city else iata
             city_counts[city] = city_counts.get(city, 0) + count
         city_sorted = sorted(city_counts.items(), key=lambda x: -x[1])[:top_n]
-        city_df = pd.DataFrame([
-            {"City": c, "Flights": n} for c, n in city_sorted
-        ])
+        city_df = pd.DataFrame(
+            [{"City": c, "Flights": n} for c, n in city_sorted],
+            columns=["City", "Flights"],
+        )
         fig_city = px.bar(
             city_df,
             x="Flights",
@@ -322,9 +329,10 @@ def main() -> None:
             country = info.country if info and info.country else iata
             country_counts[country] = country_counts.get(country, 0) + count
         country_sorted = sorted(country_counts.items(), key=lambda x: -x[1])[:top_n]
-        country_df = pd.DataFrame([
-            {"Country": c, "Flights": n} for c, n in country_sorted
-        ])
+        country_df = pd.DataFrame(
+            [{"Country": c, "Flights": n} for c, n in country_sorted],
+            columns=["Country", "Flights"],
+        )
         fig_country = px.bar(
             country_df,
             x="Flights",

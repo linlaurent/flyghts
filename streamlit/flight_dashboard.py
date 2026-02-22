@@ -356,7 +356,7 @@ def main() -> None:
     map_point_by = st.radio(
         "Map points by",
         options=["City (airport)", "Country"],
-        index=0,
+        index=1,
         horizontal=True,
         help="Show each destination as a precise city/airport, or aggregate by country.",
     )
@@ -383,16 +383,42 @@ def main() -> None:
     map_dest_counts = get_destination_column(df_map, direction).value_counts()
 
     map_data = []
-    for iata, count in map_dest_counts.items():
-        info = get_airport(iata)
-        if info and (info.latitude != 0 or info.longitude != 0):
+    if map_by_country:
+        # Aggregate by country: sum counts, use centroid of airport coords per country
+        country_agg: dict[str, list[tuple[float, float, int]]] = {}  # country -> [(lat, lon, count), ...]
+        for iata, count in map_dest_counts.items():
+            info = get_airport(iata)
+            if not info or (info.latitude == 0 and info.longitude == 0):
+                continue
+            country = info.country or iata
+            if country not in country_agg:
+                country_agg[country] = []
+            country_agg[country].append((info.latitude, info.longitude, count))
+        for country, points in country_agg.items():
+            total = sum(p[2] for p in points)
+            if total == 0:
+                continue
+            # Weighted centroid by flight count
+            lat = sum(p[0] * p[2] for p in points) / total
+            lon = sum(p[1] * p[2] for p in points) / total
             map_data.append({
-                "iata": iata,
-                "lat": info.latitude,
-                "lon": info.longitude,
-                "count": count,
-                "label": f"{iata} ({info.city or '?'}, {info.country or '?'}): {count}",
+                "iata": country,
+                "lat": lat,
+                "lon": lon,
+                "count": total,
+                "label": f"{country}: {total:,} flights",
             })
+    else:
+        for iata, count in map_dest_counts.items():
+            info = get_airport(iata)
+            if info and (info.latitude != 0 or info.longitude != 0):
+                map_data.append({
+                    "iata": iata,
+                    "lat": info.latitude,
+                    "lon": info.longitude,
+                    "count": count,
+                    "label": f"{iata} ({info.city or '?'}, {info.country or '?'}): {count:,}",
+                })
     map_df = pd.DataFrame(map_data)
 
     if map_df.empty:

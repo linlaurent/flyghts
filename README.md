@@ -80,6 +80,14 @@ marimo edit marimo/flight_audit.py
 marimo run marimo/flight_audit.py
 ```
 
+### Streamlit Dashboard
+
+Analyze `flights.csv` with interactive charts: top airlines, top destinations (airport/city/country), and an interactive map of flight flows. Use filters for direction (from/to/both HKG) and date range.
+
+```bash
+uv run streamlit run streamlit/flight_dashboard.py
+```
+
 ## Data Source
 
 Uses the [Hong Kong International Airport Open API](https://data.gov.hk/en-data/dataset/aahk-team1-flight-info) for historical flight data (updated to previous calendar day).

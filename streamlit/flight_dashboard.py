@@ -86,8 +86,10 @@ def main() -> None:
     df_all = load_flights()
     min_date = df_all["date"].min().date()
     max_date = df_all["date"].max().date()
-    default_date = date_type(2026, 2, 20)
-    start_end_default = default_date if min_date <= default_date <= max_date else min_date
+    default_start = date_type(2025, 11, 23)
+    default_end = date_type(2026, 2, 20)
+    start_default = default_start if min_date <= default_start <= max_date else min_date
+    end_default = default_end if min_date <= default_end <= max_date else max_date
 
     # Sidebar filters
     with st.sidebar:
@@ -100,17 +102,17 @@ def main() -> None:
         )
         start_date = st.date_input(
             "Start date",
-            value=start_end_default,
+            value=start_default,
             min_value=min_date,
             max_value=max_date,
         )
         end_date = st.date_input(
             "End date",
-            value=start_end_default,
+            value=end_default,
             min_value=min_date,
             max_value=max_date,
         )
-        top_n = st.slider("Top N for rankings", min_value=5, max_value=50, value=20)
+        top_n = st.slider("Top N for rankings", min_value=5, max_value=50, value=10)
 
         has_cargo = "cargo" in df_all.columns
         if has_cargo:
@@ -846,10 +848,10 @@ def main() -> None:
     route_series = df["origin"] + "-" + df["destination"]
     route_pairs = route_series.apply(lambda s: "-".join(sorted(s.split("-", 1))) if "-" in s else s)
     route_counts = route_pairs.value_counts()
-    route_options_raw = route_counts.head(min(30, len(route_counts)))
+    # Build full route list (all routes) for searchable selection
     route_display_options: list[str] = []
     route_str_to_airports: dict[str, tuple[str, str]] = {}
-    for route_str, count in route_options_raw.items():
+    for route_str, count in route_counts.items():
         parts = route_str.split("-", 1)
         if len(parts) == 2:
             a, b = parts[0], parts[1]
@@ -860,12 +862,25 @@ def main() -> None:
             route_display_options.append(label)
             route_str_to_airports[label] = (a, b)
 
-    if not route_display_options:
-        st.info("No routes in the filtered data.")
+    route_search = st.text_input(
+        "Search routes by airport code or name",
+        placeholder="e.g. HNL, Honolulu, TPE",
+        help="Filter the route list by typing airport code (IATA) or airport name.",
+    )
+    search_lower = route_search.strip().lower()
+    if search_lower:
+        filtered_routes = [r for r in route_display_options if search_lower in r.lower()]
+    else:
+        filtered_routes = route_display_options
+
+    if not filtered_routes:
+        st.info(
+            "No routes match your search." if search_lower else "No routes in the filtered data."
+        )
     else:
         sel_route_display = st.selectbox(
             "Select route",
-            options=route_display_options,
+            options=filtered_routes,
             index=0,
             help="Explore statistics for a route (both directions grouped).",
         )

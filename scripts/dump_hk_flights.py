@@ -22,6 +22,7 @@ from datetime import date, timedelta
 
 import pandas as pd
 import requests
+from tqdm import tqdm
 
 from flyghts.audit.sources.hk_airport import HKAirportSource
 
@@ -121,26 +122,26 @@ def main() -> None:
         return (sort_key, arrival, cargo, raw)
 
     results_by_key: dict[tuple, list] = {}
-    n_days = len(date_range)
-    completed = 0
 
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         future_to_job = {executor.submit(fetch_one, job): job for job in jobs}
-        for future in as_completed(future_to_job):
+        for future in tqdm(
+            as_completed(future_to_job),
+            total=len(jobs),
+            desc="Fetching flights",
+            unit="call",
+        ):
             job = future_to_job[future]
             sort_key, d, arrival, cargo = job[0], job[1], job[2], job[3]
             try:
                 _, arrival, cargo, raw = future.result()
                 results_by_key[(sort_key, arrival, cargo)] = raw
             except Exception as e:
-                print(
+                tqdm.write(
                     f"Error fetching {d} arrival={arrival} cargo={cargo}: {e}",
                     file=sys.stderr,
                 )
                 raise
-            completed += 1
-            if n_days > 1 and completed % (4 if include_cargo else 2) == 0:
-                print(f"Fetched {completed}/{len(jobs)}...", file=sys.stderr)
 
     # Reassemble in original order (by date, then dep/arr pax, dep/arr cargo)
     all_raw = []

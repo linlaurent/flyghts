@@ -209,7 +209,7 @@ def main() -> None:
             **({"cargo": st.column_config.CheckboxColumn("Cargo")} if "cargo" in df.columns else {}),
             **({"operating_airline": st.column_config.TextColumn("Operating")} if "operating_airline" in df.columns else {}),
         }
-        st.dataframe(df_display, use_container_width=True, column_config=col_config)
+        st.dataframe(df_display, width="stretch", column_config=col_config)
 
     # --- Top Companies ---
     st.header("Top airlines by flight count")
@@ -244,9 +244,9 @@ def main() -> None:
         yaxis={"categoryorder": "total ascending"},
         showlegend=False,
     )
-    st.plotly_chart(fig_airlines, use_container_width=True)
+    st.plotly_chart(fig_airlines, width="stretch")
     with st.expander("View table"):
-        st.dataframe(airline_df, use_container_width=True)
+        st.dataframe(airline_df, width="stretch")
 
     # --- Top Destinations ---
     st.header("Top destinations")
@@ -292,7 +292,7 @@ def main() -> None:
             yaxis={"categoryorder": "total ascending"},
             showlegend=False,
         )
-        st.plotly_chart(fig_apt, use_container_width=True)
+        st.plotly_chart(fig_apt, width="stretch")
         st.dataframe(airport_df[["Airport", "Name", "City", "Country", "Flights"]])
 
     with tab_city:
@@ -319,7 +319,7 @@ def main() -> None:
             yaxis={"categoryorder": "total ascending"},
             showlegend=False,
         )
-        st.plotly_chart(fig_city, use_container_width=True)
+        st.plotly_chart(fig_city, width="stretch")
         st.dataframe(city_df)
 
     with tab_country:
@@ -346,7 +346,7 @@ def main() -> None:
             yaxis={"categoryorder": "total ascending"},
             showlegend=False,
         )
-        st.plotly_chart(fig_country, use_container_width=True)
+        st.plotly_chart(fig_country, width="stretch")
         st.dataframe(country_df)
 
     # --- Interactive Map ---
@@ -460,7 +460,7 @@ def main() -> None:
             margin=dict(l=0, r=0, t=0, b=0),
             showlegend=False,
         )
-        st.plotly_chart(fig_map, use_container_width=True)
+        st.plotly_chart(fig_map, width="stretch")
 
     # --- Airline deep dive ---
     st.header("Airline deep dive")
@@ -562,7 +562,7 @@ def main() -> None:
                         showlegend=False,
                     )
                     fig_route.update_traces(textposition="outside")
-                    st.plotly_chart(fig_route, use_container_width=True)
+                    st.plotly_chart(fig_route, width="stretch")
                 st.dataframe(route_df[["Airport", "Name", "City", "Country", "Flights", "Share (%)"]] if not route_df.empty else pd.DataFrame())
 
             with tab_time:
@@ -606,7 +606,7 @@ def main() -> None:
                         ),
                         legend=dict(x=1.1, xanchor="left"),
                     )
-                    st.plotly_chart(fig_time, use_container_width=True)
+                    st.plotly_chart(fig_time, width="stretch")
                 else:
                     st.caption("No date data.")
 
@@ -625,7 +625,7 @@ def main() -> None:
                             labels={"hour": "Hour of day", "Flights": "Number of flights"},
                         )
                         fig_hour.update_layout(height=350)
-                        st.plotly_chart(fig_hour, use_container_width=True)
+                        st.plotly_chart(fig_hour, width="stretch")
                     else:
                         st.caption("No scheduled time data for this airline.")
                 else:
@@ -648,7 +648,7 @@ def main() -> None:
                             labels={"date": "Date", "Flights": "Number of flights"},
                         )
                         fig_cargo.update_layout(height=350)
-                        st.plotly_chart(fig_cargo, use_container_width=True)
+                        st.plotly_chart(fig_cargo, width="stretch")
                     cargo_passenger = (df_airline["cargo"] == False).sum()
                     cargo_cargo = (df_airline["cargo"] == True).sum()
                     cargo_df = pd.DataFrame([

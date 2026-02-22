@@ -3,13 +3,13 @@
 Dump all flights from or to Hong Kong for a given date or date range.
 
 Output columns: origin, destination, flight_no, airline, operating_flight_no,
-operating_airline, scheduled_time, status, date, cargo (if --cargo).
+operating_airline, scheduled_time, status, date, cargo. Cargo flights included by default.
 
 Usage:
     uv run python scripts/dump_hk_flights.py
     uv run python scripts/dump_hk_flights.py --date 2025-02-17
     uv run python scripts/dump_hk_flights.py --start 2026-01-01 --end 2026-02-20 -o flights.csv
-    uv run python scripts/dump_hk_flights.py --cargo -o flights.csv   # include cargo flights
+    uv run python scripts/dump_hk_flights.py --no-cargo -o flights.csv   # passenger only
     uv run python scripts/dump_hk_flights.py --deduplicate -o flights.csv  # one row per physical flight
     uv run python scripts/dump_hk_flights.py --debug  # inspect raw API response
 """
@@ -56,9 +56,9 @@ def main() -> None:
         help="Output CSV file. Default: stdout",
     )
     parser.add_argument(
-        "--cargo",
+        "--no-cargo",
         action="store_true",
-        help="Include cargo flights (default: passenger only)",
+        help="Exclude cargo flights (default: include both passenger and cargo)",
     )
     parser.add_argument(
         "--deduplicate",
@@ -95,16 +95,17 @@ def main() -> None:
         date_range = [flight_date]
 
     if args.debug:
-        _debug_response(date_range[0], args.cargo)
+        _debug_response(date_range[0], cargo=not args.no_cargo)
         return
 
+    include_cargo = not args.no_cargo
     source = HKAirportSource()
     all_raw = []
     n_days = len(date_range)
     for i, d in enumerate(date_range):
         if n_days > 1:
             print(f"Fetching {d} ({i + 1}/{n_days})...", file=sys.stderr)
-        if args.cargo:
+        if include_cargo:
             all_raw.extend(source.fetch_flights(d, arrival=False, cargo=False))
             all_raw.extend(source.fetch_flights(d, arrival=True, cargo=False))
             all_raw.extend(source.fetch_flights(d, arrival=False, cargo=True))

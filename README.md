@@ -29,7 +29,7 @@ pip install -e .
 
 ### Dump Script
 
-Dump all flights from or to Hong Kong for a date or date range:
+Dump all flights from or to Hong Kong for a date or date range. Passenger and cargo flights are included by default:
 
 ```bash
 # Single day (default: yesterday)
@@ -38,8 +38,8 @@ uv run python scripts/dump_hk_flights.py -o flights.csv
 # Date range
 uv run python scripts/dump_hk_flights.py --start 2026-01-01 --end 2026-02-20 -o flights.csv
 
-# Include cargo flights (adds cargo column for dashboard filtering)
-uv run python scripts/dump_hk_flights.py --start 2026-01-01 --end 2026-02-20 --cargo -o flights.csv
+# Passenger only (exclude cargo)
+uv run python scripts/dump_hk_flights.py --start 2026-01-01 --end 2026-02-20 --no-cargo -o flights.csv
 
 # Deduplicate: keep only operating carrier rows (one per physical flight; drops code-share duplicates)
 uv run python scripts/dump_hk_flights.py --start 2026-01-01 --end 2026-02-20 --deduplicate -o flights.csv
@@ -88,7 +88,7 @@ marimo run marimo/flight_audit.py
 
 ### Streamlit Dashboard
 
-Analyze `flights.csv` with interactive charts: top airlines, top destinations (airport/city/country), and an interactive map of flight flows. Use filters for direction (from/to/both HKG) and date range. When the CSV has `operating_airline` columns, enable "Operating carrier only" to exclude code-share duplicates and view one row per physical flight.
+Analyze `flights.csv` with interactive charts: top airlines, top destinations (airport/city/country), and an interactive map of flight flows. Filters include direction (default: both from and to HKG), date range, flight type (passenger/cargo), and operating carrier only (default: on, to exclude code-share duplicates).
 
 ```bash
 uv run streamlit run streamlit/flight_dashboard.py

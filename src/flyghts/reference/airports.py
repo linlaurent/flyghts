@@ -23,6 +23,38 @@ _airports_cache: Optional[dict[str, dict]] = None
 
 # Manual overrides for airports not in OpenFlights (preserved across fetch updates)
 _AIRPORT_OVERRIDES: dict[str, dict] = {
+    "BSZ": {
+        "iata": "BSZ",
+        "name": "Manas International Airport",
+        "city": "Bishkek",
+        "country": "Kyrgyzstan",
+        "latitude": 43.0613,
+        "longitude": 74.4776,
+    },
+    "HSA": {
+        "iata": "HSA",
+        "name": "Hazret Sultan International Airport",
+        "city": "Turkistan",
+        "country": "Kazakhstan",
+        "latitude": 43.311,
+        "longitude": 68.55,
+    },
+    "INC": {
+        "iata": "INC",
+        "name": "Yinchuan Hedong International Airport",
+        "city": "Yinchuan",
+        "country": "China",
+        "latitude": 38.3217,
+        "longitude": 106.3925,
+    },
+    "NLU": {
+        "iata": "NLU",
+        "name": "Felipe Ángeles International Airport",
+        "city": "Zumpango",
+        "country": "Mexico",
+        "latitude": 19.7567,
+        "longitude": -99.0153,
+    },
     "TFU": {
         "iata": "TFU",
         "name": "Chengdu Tianfu International Airport",
@@ -30,6 +62,14 @@ _AIRPORT_OVERRIDES: dict[str, dict] = {
         "country": "China",
         "latitude": 30.323,
         "longitude": 104.445,
+    },
+    "UBN": {
+        "iata": "UBN",
+        "name": "Chinggis Khaan International Airport",
+        "city": "Ulaanbaatar",
+        "country": "Mongolia",
+        "latitude": 47.647,
+        "longitude": 106.82,
     },
 }
 

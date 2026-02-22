@@ -137,8 +137,57 @@ def main() -> None:
 
     # --- Filtered data table ---
     with st.expander("View filtered data", expanded=False):
+        # Column filters
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            origins = sorted(df["origin"].dropna().unique().tolist())
+            sel_origin = st.multiselect(
+                "Origin",
+                options=origins,
+                default=[],
+                help="Leave empty to show all",
+            )
+        with col2:
+            destinations = sorted(df["destination"].dropna().unique().tolist())
+            sel_dest = st.multiselect(
+                "Destination",
+                options=destinations,
+                default=[],
+                help="Leave empty to show all",
+            )
+        with col3:
+            airlines = sorted(df["airline"].dropna().unique().tolist())
+            sel_airline = st.multiselect(
+                "Airline",
+                options=airlines,
+                default=[],
+                help="Leave empty to show all",
+            )
+        with col4:
+            search = st.text_input(
+                "Search",
+                placeholder="Search in flight_no, status...",
+                help="Case-insensitive search across flight_no and status",
+            )
+
+        df_display = df.copy()
+        if sel_origin:
+            df_display = df_display[df_display["origin"].isin(sel_origin)]
+        if sel_dest:
+            df_display = df_display[df_display["destination"].isin(sel_dest)]
+        if sel_airline:
+            df_display = df_display[df_display["airline"].isin(sel_airline)]
+        if search:
+            search_lower = search.strip().lower()
+            mask = (
+                df_display["flight_no"].astype(str).str.lower().str.contains(search_lower, na=False)
+                | df_display["status"].astype(str).str.lower().str.contains(search_lower, na=False)
+            )
+            df_display = df_display[mask]
+
+        st.caption(f"Showing {len(df_display):,} of {len(df):,} rows")
         st.dataframe(
-            df,
+            df_display,
             use_container_width=True,
             column_config={
                 "date": st.column_config.DateColumn("Date", format="YYYY-MM-DD"),

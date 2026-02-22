@@ -756,6 +756,44 @@ def main() -> None:
                     )
                     fig_route_airlines.update_traces(textposition="outside")
                     st.plotly_chart(fig_route_airlines, width="stretch")
+
+                    # Share per day by airline (top N only)
+                    top_airlines_route = set(airline_counts_route.head(top_n).index)
+                    by_date_airline = (
+                        df_route.groupby([df_route["date"].dt.date, airline_col])
+                        .size()
+                        .reset_index(name="Flights")
+                    )
+                    by_date_airline.columns = ["Date", "ICAO", "Flights"]
+                    total_per_date = df_route.groupby(df_route["date"].dt.date).size()
+                    by_date_airline = by_date_airline[
+                        by_date_airline["ICAO"].isin(top_airlines_route)
+                    ]
+                    by_date_airline = by_date_airline.merge(
+                        total_per_date.rename("Total"),
+                        left_on="Date",
+                        right_index=True,
+                    )
+                    by_date_airline["Share (%)"] = (
+                        100 * by_date_airline["Flights"] / by_date_airline["Total"]
+                    ).round(1)
+                    by_date_airline["Airline"] = by_date_airline["ICAO"].apply(
+                        lambda c: get_airline(c).name if get_airline(c) else c
+                    )
+                    if not by_date_airline.empty:
+                        fig_share_day = px.line(
+                            by_date_airline,
+                            x="Date",
+                            y="Share (%)",
+                            color="Airline",
+                            labels={"Share (%)": "Share (%)"},
+                        )
+                        fig_share_day.update_layout(
+                            height=350,
+                            yaxis=dict(title="Share (%)"),
+                        )
+                        st.plotly_chart(fig_share_day, width="stretch")
+
                 st.dataframe(airline_route_df[["Airline", "ICAO", "Flights", "Share (%)"]] if not airline_route_df.empty else pd.DataFrame())
 
             with tab_route_time:

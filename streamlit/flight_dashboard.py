@@ -355,15 +355,6 @@ def main() -> None:
     # --- Interactive Map ---
     st.header("Interactive map: flight flow by destination")
 
-    map_point_by = st.radio(
-        "Map points by",
-        options=["City (airport)", "Country"],
-        index=1,
-        horizontal=True,
-        help="Show each destination as a precise city/airport, or aggregate by country.",
-    )
-    map_by_country = map_point_by == "Country"
-
     # Map filter: operating airline (optional) – use same column as top airlines for consistency
     map_airline_col = "operating_airline" if (operating_only and has_operating) else "airline"
     map_airlines = sorted(df[map_airline_col].dropna().unique().tolist())
@@ -373,12 +364,24 @@ def main() -> None:
         display = f"{code} - {info.name}" if (info := get_airline(code)) and info.name else code
         map_airline_options.append(display)
         map_display_to_code[display] = code
-    sel_map_airline = st.selectbox(
-        "Filter by airline",
-        options=map_airline_options,
-        index=0,
-        help="Only affects the map.",
-    )
+
+    col_map_by, col_map_airline = st.columns(2)
+    with col_map_by:
+        map_point_by = st.radio(
+            "Map points by",
+            options=["City (airport)", "Country"],
+            index=1,
+            horizontal=True,
+            help="Show each destination as a precise city/airport, or aggregate by country.",
+        )
+    with col_map_airline:
+        sel_map_airline = st.selectbox(
+            "Filter by airline",
+            options=map_airline_options,
+            index=0,
+            help="Only affects the map.",
+        )
+    map_by_country = map_point_by == "Country"
     df_map = df
     if sel_map_airline != "All":
         df_map = df[df[map_airline_col] == map_display_to_code[sel_map_airline]]
@@ -809,6 +812,9 @@ def main() -> None:
                         st.caption("No date data.")
 
                 with tab_hour:
+                    st.caption(
+                        "Departure time for flights from HKG; arrival time for flights to HKG."
+                    )
                     if "scheduled_time" in df_airline.columns:
                         df_airline_hour = df_airline.dropna(subset=["scheduled_time"])
                         df_airline_hour = df_airline_hour.copy()
@@ -1104,6 +1110,9 @@ def main() -> None:
                     st.caption("No date data.")
 
             with tab_route_hour:
+                st.caption(
+                    "Departure time for flights from HKG; arrival time for flights to HKG."
+                )
                 if "scheduled_time" in df_route.columns:
                     df_route_hour = df_route.dropna(subset=["scheduled_time"])
                     df_route_hour = df_route_hour.copy()

@@ -7,6 +7,7 @@ Run with: uv run streamlit run streamlit/flight_dashboard.py
 from datetime import date as date_type
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -506,6 +507,15 @@ def main() -> None:
 
             dest_codes_airline = get_destination_column(df_airline, direction)
             dest_counts_airline = dest_codes_airline.value_counts()
+            if direction == "From HKG":
+                route_dest_airline = df_airline["destination"]
+            elif direction == "To HKG":
+                route_dest_airline = df_airline["origin"]
+            else:
+                route_dest_airline = pd.Series(
+                    np.where(df_airline["origin"] == HKG, df_airline["destination"], df_airline["origin"]),
+                    index=df_airline.index,
+                )
 
             tab_routes, tab_time, tab_hour, tab_cargo = st.tabs([
                 "Top routes",
@@ -563,6 +573,63 @@ def main() -> None:
                     )
                     fig_route.update_traces(textposition="outside")
                     st.plotly_chart(fig_route, width="stretch")
+
+                    # Share % over time for top N routes
+                    top_dests = set(dest_counts_airline.head(route_n).index)
+                    by_date_dest = (
+                        df_airline.assign(route_dest=route_dest_airline)
+                        .groupby([df_airline["date"].dt.date, "route_dest"])
+                        .size()
+                        .reset_index(name="Flights")
+                    )
+                    by_date_dest.columns = ["Date", "route_dest", "Flights"]
+                    by_date_dest = by_date_dest[by_date_dest["route_dest"].isin(top_dests)]
+                    if direction == "From HKG":
+                        dest_col_df = df["destination"]
+                    elif direction == "To HKG":
+                        dest_col_df = df["origin"]
+                    else:
+                        dest_col_df = pd.Series(
+                            np.where(df["origin"] == HKG, df["destination"], df["origin"]),
+                            index=df.index,
+                        )
+                    total_by_date_dest = (
+                        df.assign(route_dest=dest_col_df)
+                        .groupby([df["date"].dt.date, "route_dest"])
+                        .size()
+                        .reset_index(name="Total")
+                    )
+                    total_by_date_dest.columns = ["Date", "route_dest", "Total"]
+                    by_date_dest = by_date_dest.merge(
+                        total_by_date_dest,
+                        on=["Date", "route_dest"],
+                        how="left",
+                    )
+                    by_date_dest["Share (%)"] = (
+                        100 * by_date_dest["Flights"] / by_date_dest["Total"]
+                    ).round(1)
+                    by_date_dest["Route"] = by_date_dest["route_dest"].apply(
+                        lambda iata: get_airport(iata).name if get_airport(iata) else iata
+                    )
+                    if not by_date_dest.empty:
+                        fig_route_share_time = px.line(
+                            by_date_dest,
+                            x="Date",
+                            y="Share (%)",
+                            color="Route",
+                            labels={"Share (%)": "Share (%)"},
+                            custom_data=["Flights", "Total"],
+                        )
+                        fig_route_share_time.update_traces(
+                            hovertemplate="%{x}<br>Flights: %{customdata[0]:,}<br>Total (denom): %{customdata[1]:,}<br>Share: %{y}%<extra></extra>",
+                        )
+                        fig_route_share_time.update_layout(
+                            height=350,
+                            title="Share of traffic (%) over time by route",
+                            yaxis=dict(title="Share (%)"),
+                        )
+                        st.plotly_chart(fig_route_share_time, width="stretch")
+
                 st.dataframe(route_df[["Airport", "Name", "City", "Country", "Flights", "Share (%)"]] if not route_df.empty else pd.DataFrame())
 
             with tab_time:
@@ -607,6 +674,44 @@ def main() -> None:
                         legend=dict(x=1.1, xanchor="left"),
                     )
                     st.plotly_chart(fig_time, width="stretch")
+
+                    # Flights over time per route (top N)
+                    top_dests_time = set(dest_counts_airline.head(top_n).index)
+                    by_date_dest_time = (
+                        df_airline.assign(route_dest=route_dest_airline)
+                        .groupby([df_airline["date"].dt.date, "route_dest"])
+                        .size()
+                        .reset_index(name="Flights")
+                    )
+                    by_date_dest_time.columns = ["Date", "route_dest", "Flights"]
+                    by_date_dest_time = by_date_dest_time[
+                        by_date_dest_time["route_dest"].isin(top_dests_time)
+                    ]
+                    by_date_dest_time = by_date_dest_time.merge(
+                        total_by_date_dest[["Date", "route_dest", "Total"]],
+                        on=["Date", "route_dest"],
+                        how="left",
+                    )
+                    by_date_dest_time["Route"] = by_date_dest_time["route_dest"].apply(
+                        lambda iata: get_airport(iata).name if get_airport(iata) else iata
+                    )
+                    if not by_date_dest_time.empty:
+                        fig_route_count_time = px.line(
+                            by_date_dest_time,
+                            x="Date",
+                            y="Flights",
+                            color="Route",
+                            labels={"Flights": "Number of flights"},
+                            custom_data=["Total"],
+                        )
+                        fig_route_count_time.update_traces(
+                            hovertemplate="%{x}<br>Flights: %{y:,}<br>Total (denom): %{customdata[0]:,}<extra></extra>",
+                        )
+                        fig_route_count_time.update_layout(
+                            height=350,
+                            title="Flights over time by route",
+                        )
+                        st.plotly_chart(fig_route_count_time, width="stretch")
                 else:
                     st.caption("No date data.")
 
@@ -787,9 +892,14 @@ def main() -> None:
                             y="Share (%)",
                             color="Airline",
                             labels={"Share (%)": "Share (%)"},
+                            custom_data=["Flights", "Total"],
+                        )
+                        fig_share_day.update_traces(
+                            hovertemplate="%{x}<br>Flights: %{customdata[0]:,}<br>Total (denom): %{customdata[1]:,}<br>Share: %{y}%<extra></extra>",
                         )
                         fig_share_day.update_layout(
                             height=350,
+                            title="Share of traffic (%) over time by airline",
                             yaxis=dict(title="Share (%)"),
                         )
                         st.plotly_chart(fig_share_day, width="stretch")
@@ -838,6 +948,45 @@ def main() -> None:
                         legend=dict(x=1.1, xanchor="left"),
                     )
                     st.plotly_chart(fig_route_time, width="stretch")
+
+                    # Flights over time per airline (top N only)
+                    top_airlines_route = set(airline_counts_route.head(top_n).index)
+                    by_date_airline_time = (
+                        df_route.groupby([df_route["date"].dt.date, airline_col])
+                        .size()
+                        .reset_index(name="Flights")
+                    )
+                    by_date_airline_time.columns = ["Date", "ICAO", "Flights"]
+                    by_date_airline_time = by_date_airline_time[
+                        by_date_airline_time["ICAO"].isin(top_airlines_route)
+                    ]
+                    total_per_date_route = df_route.groupby(df_route["date"].dt.date).size().rename("Total")
+                    by_date_airline_time = by_date_airline_time.merge(
+                        total_per_date_route,
+                        left_on="Date",
+                        right_index=True,
+                        how="left",
+                    )
+                    by_date_airline_time["Airline"] = by_date_airline_time["ICAO"].apply(
+                        lambda c: get_airline(c).name if get_airline(c) else c
+                    )
+                    if not by_date_airline_time.empty:
+                        fig_count_day = px.line(
+                            by_date_airline_time,
+                            x="Date",
+                            y="Flights",
+                            color="Airline",
+                            labels={"Flights": "Number of flights"},
+                            custom_data=["Total"],
+                        )
+                        fig_count_day.update_traces(
+                            hovertemplate="%{x}<br>Flights: %{y:,}<br>Total (denom): %{customdata[0]:,}<extra></extra>",
+                        )
+                        fig_count_day.update_layout(
+                            height=350,
+                            title="Flights over time by airline",
+                        )
+                        st.plotly_chart(fig_count_day, width="stretch")
                 else:
                     st.caption("No date data.")
 

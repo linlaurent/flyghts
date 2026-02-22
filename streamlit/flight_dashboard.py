@@ -524,6 +524,190 @@ def main() -> None:
         )
         st.plotly_chart(fig_map, use_container_width=True)
 
+    # --- Airline deep dive ---
+    st.header("Airline deep dive")
+    dive_airlines = sorted(df[airline_col].dropna().unique().tolist())
+    dive_airline_options: list[str] = []
+    dive_display_to_code: dict[str, str] = {}
+    for code in dive_airlines:
+        display = f"{code} - {info.name}" if (info := get_airline(code)) and info.name else code
+        dive_airline_options.append(display)
+        dive_display_to_code[display] = code
+
+    if not dive_airline_options:
+        st.info("No airlines in the filtered data.")
+    else:
+        default_dive_idx = 0
+        for i, opt in enumerate(dive_airline_options):
+            if opt.startswith("CPA -") or dive_display_to_code.get(opt) == "CPA":
+                default_dive_idx = i
+                break
+
+        sel_dive_airline = st.selectbox(
+            "Select airline",
+            options=dive_airline_options,
+            index=min(default_dive_idx, len(dive_airline_options) - 1),
+            help="Explore statistics for a single airline.",
+        )
+        dive_icao = dive_display_to_code.get(sel_dive_airline, "") if sel_dive_airline else ""
+        df_airline = df[df[airline_col] == dive_icao] if dive_icao else pd.DataFrame()
+
+        if df_airline.empty:
+            st.info("No flights for this airline in the selected filters.")
+        else:
+            dive_name = get_airline(dive_icao).name if get_airline(dive_icao) else dive_icao
+            st.subheader(f"{dive_name}")
+
+            n_airline = len(df_airline)
+            pct = 100 * n_airline / total_flights if total_flights > 0 else 0
+            m1, m2 = st.columns(2)
+            with m1:
+                st.metric("Total flights", f"{n_airline:,}")
+            with m2:
+                st.metric("Share of traffic", f"{pct:.1f}%")
+
+            dest_codes_airline = get_destination_column(df_airline, direction)
+            dest_counts_airline = dest_codes_airline.value_counts()
+
+            tab_routes, tab_time, tab_hour, tab_cargo = st.tabs([
+                "Top routes",
+                "Flights over time",
+                "Flights by hour",
+                "Cargo vs passenger",
+            ])
+
+            with tab_routes:
+                route_n = min(top_n, len(dest_counts_airline))
+                route_rows = []
+                for iata, count in dest_counts_airline.head(route_n).items():
+                    info = get_airport(iata)
+                    route_rows.append({
+                        "Airport": iata,
+                        "Name": info.name if info else "",
+                        "City": info.city if info else "",
+                        "Country": info.country if info else "",
+                        "Flights": count,
+                    })
+                route_df = pd.DataFrame(
+                    route_rows,
+                    columns=["Airport", "Name", "City", "Country", "Flights"],
+                )
+                if not route_df.empty:
+                    route_df["Label"] = route_df.apply(
+                        lambda r: f"{r['Airport']} - {r['Name']}" if r["Name"] else r["Airport"],
+                        axis=1,
+                    )
+                    fig_route = px.bar(
+                        route_df,
+                        x="Flights",
+                        y="Label",
+                        orientation="h",
+                        color="Flights",
+                        color_continuous_scale="Teal",
+                        labels={"Flights": "Number of flights"},
+                    )
+                    fig_route.update_layout(
+                        height=300 + route_n * 12,
+                        yaxis={"categoryorder": "total ascending"},
+                        showlegend=False,
+                    )
+                    st.plotly_chart(fig_route, use_container_width=True)
+                st.dataframe(route_df[["Airport", "Name", "City", "Country", "Flights"]] if not route_df.empty else pd.DataFrame())
+
+            with tab_time:
+                by_date = df_airline.groupby(df_airline["date"].dt.date).size().reset_index(name="Flights")
+                by_date.columns = ["Date", "Flights"]
+                if not by_date.empty:
+                    total_by_date = df.groupby(df["date"].dt.date).size().reset_index(name="Total")
+                    total_by_date.columns = ["Date", "Total"]
+                    share_df = by_date.merge(total_by_date, on="Date", how="left")
+                    share_df["Share"] = (
+                        100 * share_df["Flights"] / share_df["Total"]
+                    ).fillna(0)
+
+                    fig_time = go.Figure()
+                    fig_time.add_trace(
+                        go.Scatter(
+                            x=share_df["Date"],
+                            y=share_df["Flights"],
+                            name="Flights",
+                            line=dict(color="#1f77b4"),
+                        )
+                    )
+                    fig_time.add_trace(
+                        go.Scatter(
+                            x=share_df["Date"],
+                            y=share_df["Share"],
+                            name="Share of traffic (%)",
+                            yaxis="y2",
+                            line=dict(color="#ff7f0e"),
+                        )
+                    )
+                    fig_time.update_layout(
+                        height=350,
+                        xaxis=dict(title="Date"),
+                        yaxis=dict(title="Number of flights", side="left"),
+                        yaxis2=dict(
+                            title="Share of traffic (%)",
+                            side="right",
+                            overlaying="y",
+                            range=[0, 100],
+                        ),
+                        legend=dict(x=1.1, xanchor="left"),
+                    )
+                    st.plotly_chart(fig_time, use_container_width=True)
+                else:
+                    st.caption("No date data.")
+
+            with tab_hour:
+                if "scheduled_time" in df_airline.columns:
+                    df_airline_hour = df_airline.dropna(subset=["scheduled_time"])
+                    df_airline_hour = df_airline_hour.copy()
+                    df_airline_hour["hour"] = pd.to_datetime(df_airline_hour["scheduled_time"], errors="coerce").dt.hour
+                    df_airline_hour = df_airline_hour.dropna(subset=["hour"])
+                    by_hour = df_airline_hour.groupby("hour").size().reset_index(name="Flights")
+                    if not by_hour.empty:
+                        fig_hour = px.bar(
+                            by_hour,
+                            x="hour",
+                            y="Flights",
+                            labels={"hour": "Hour of day", "Flights": "Number of flights"},
+                        )
+                        fig_hour.update_layout(height=350)
+                        st.plotly_chart(fig_hour, use_container_width=True)
+                    else:
+                        st.caption("No scheduled time data for this airline.")
+                else:
+                    st.caption("No scheduled_time column in data.")
+
+            with tab_cargo:
+                if "cargo" in df_airline.columns:
+                    cargo_by_date = df_airline.groupby(
+                        [df_airline["date"].dt.date, "cargo"]
+                    ).size().reset_index(name="Flights")
+                    cargo_by_date["Type"] = cargo_by_date["cargo"].map(
+                        {True: "Cargo", False: "Passenger"}
+                    )
+                    if not cargo_by_date.empty:
+                        fig_cargo = px.line(
+                            cargo_by_date,
+                            x="date",
+                            y="Flights",
+                            color="Type",
+                            labels={"date": "Date", "Flights": "Number of flights"},
+                        )
+                        fig_cargo.update_layout(height=350)
+                        st.plotly_chart(fig_cargo, use_container_width=True)
+                    cargo_passenger = (df_airline["cargo"] == False).sum()
+                    cargo_cargo = (df_airline["cargo"] == True).sum()
+                    cargo_df = pd.DataFrame([
+                        {"Type": "Passenger", "Flights": cargo_passenger},
+                        {"Type": "Cargo", "Flights": cargo_cargo},
+                    ])
+                    st.dataframe(cargo_df)
+                else:
+                    st.caption("No cargo column in data.")
+
 
 if __name__ == "__main__":
     main()

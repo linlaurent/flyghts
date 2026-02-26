@@ -131,10 +131,8 @@ def main() -> None:
     df_all = load_flights()
     min_date = df_all["date"].min().date()
     max_date = df_all["date"].max().date()
-    default_start = date_type(2025, 11, 23)
-    default_end = date_type(2026, 2, 20)
-    start_default = default_start if min_date <= default_start <= max_date else min_date
-    end_default = default_end if min_date <= default_end <= max_date else max_date
+    start_default = min_date
+    end_default = max_date
 
     # Sidebar filters
     with st.sidebar:

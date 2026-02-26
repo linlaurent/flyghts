@@ -5,16 +5,20 @@ Dump all flights from or to Hong Kong for a given date or date range.
 Output columns: origin, destination, flight_no, airline, operating_flight_no,
 operating_airline, scheduled_time, status, date, cargo. Cargo flights included by default.
 
+When writing to a file (-o), the script merges with existing data: dates present in
+the new pull replace the corresponding dates in the old file, while older dates are kept.
+
 Note: The HK Airport API provides historical data for approximately the last 90 days only.
 Dates older than that may return 400 Bad Request.
 
 Usage:
-    uv run python scripts/dump_hk_flights.py
+    uv run python scripts/dump_hk_flights.py                              # past 30 days to stdout
+    uv run python scripts/dump_hk_flights.py -o flights.csv               # past 30 days, merge into file
     uv run python scripts/dump_hk_flights.py --date 2025-02-17
     uv run python scripts/dump_hk_flights.py --start 2026-01-01 --end 2026-02-20 -o flights.csv
-    uv run python scripts/dump_hk_flights.py --no-cargo -o flights.csv   # passenger only
-    uv run python scripts/dump_hk_flights.py --deduplicate -o flights.csv  # one row per physical flight
-    uv run python scripts/dump_hk_flights.py --debug  # inspect raw API response
+    uv run python scripts/dump_hk_flights.py --no-cargo -o flights.csv    # passenger only
+    uv run python scripts/dump_hk_flights.py --deduplicate -o flights.csv # one row per physical flight
+    uv run python scripts/dump_hk_flights.py --debug                      # inspect raw API response
 """
 
 import argparse
@@ -22,6 +26,7 @@ import json
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
+from pathlib import Path
 
 import pandas as pd
 import requests
@@ -40,7 +45,7 @@ def main() -> None:
         "-d",
         type=str,
         default=None,
-        help="Single date (YYYY-MM-DD). Default: yesterday",
+        help="Single date (YYYY-MM-DD). Default: past 30 days",
     )
     parser.add_argument(
         "--start",
@@ -97,8 +102,9 @@ def main() -> None:
             sys.exit(1)
         date_range = [flight_date]
     else:
-        flight_date = date.today() - timedelta(days=1)
-        date_range = [flight_date]
+        end_d = date.today() - timedelta(days=1)
+        start_d = date.today() - timedelta(days=30)
+        date_range = _date_range(start_d, end_d)
 
     if args.debug:
         _debug_response(date_range[0], cargo=not args.no_cargo)
@@ -164,9 +170,23 @@ def main() -> None:
         flights = [f for f in flights if f.operating_airline and f.airline == f.operating_airline]
 
     if args.output:
-        df = _to_dataframe(flights)
+        new_df = _to_dataframe(flights)
+        new_dates = set(new_df["date"].unique())
+        existing_path = Path(args.output)
+        if existing_path.exists():
+            old_df = pd.read_csv(existing_path, dtype=str)
+            kept_df = old_df[~old_df["date"].isin(new_dates)]
+            df = pd.concat([kept_df, new_df], ignore_index=True)
+            n_old_kept = len(kept_df["date"].unique()) if not kept_df.empty else 0
+            print(
+                f"Wrote {len(df)} flights to {args.output} "
+                f"({len(new_dates)} days refreshed, {n_old_kept} old days kept)",
+                file=sys.stderr,
+            )
+        else:
+            df = new_df
+            print(f"Wrote {len(df)} flights ({len(date_range)} days) to {args.output}", file=sys.stderr)
         df.to_csv(args.output, index=False)
-        print(f"Wrote {len(flights)} flights ({len(date_range)} days) to {args.output}", file=sys.stderr)
     else:
         df = _to_dataframe(flights)
         print(df.to_csv(index=False))

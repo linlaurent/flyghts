@@ -88,7 +88,7 @@ marimo run marimo/flight_audit.py
 
 ### Streamlit Dashboard
 
-Analyze `flights.csv` with interactive charts: top airlines, top destinations (airport/city/country), and an interactive map of flight flows. Filters include direction (default: both from and to HKG), date range, flight type (passenger/cargo), and operating carrier only (default: on, to exclude code-share duplicates).
+Analyze `flights.csv` with interactive charts: top airlines, top destinations (airport/city/country), an interactive map of flight flows (with multi-airline overlay for comparison), airline deep dive, airline comparison (2+ airlines side by side across routes, time series, hourly distribution, and cargo/passenger split), and route deep dive. Filters include direction (default: both from and to HKG), date range, flight type (passenger/cargo), and operating carrier only (default: on, to exclude code-share duplicates).
 
 ```bash
 uv run streamlit run streamlit/flight_dashboard.py

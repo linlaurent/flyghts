@@ -1,5 +1,7 @@
 """
-Flight Dashboard - Analyze HK flight data from flights.csv
+Flight Dashboard - Analyze HK flight data.
+
+Reads per-date CSVs from data/ directory (preferred), or falls back to flights.csv.
 
 Features: top airlines/destinations, interactive map with multi-airline overlay,
 airline deep dive, airline comparison (2+ airlines side by side), route deep dive.
@@ -22,13 +24,21 @@ HKG = "HKG"
 HKG_LAT = 22.3080
 HKG_LON = 113.9185
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DATA_DIR = PROJECT_ROOT / "data"
 FLIGHTS_CSV = PROJECT_ROOT / "flights.csv"
 
 
 @st.cache_data
 def load_flights() -> pd.DataFrame:
-    """Load and parse flights.csv."""
-    df = pd.read_csv(FLIGHTS_CSV)
+    """Load flight data from per-date CSVs in data/, or fall back to flights.csv."""
+    if DATA_DIR.exists() and any(DATA_DIR.glob("*.csv")):
+        dfs = [pd.read_csv(f) for f in sorted(DATA_DIR.glob("*.csv"))]
+        df = pd.concat(dfs, ignore_index=True)
+    elif FLIGHTS_CSV.exists():
+        df = pd.read_csv(FLIGHTS_CSV)
+    else:
+        st.error("No flight data found. Run the dump script first.")
+        st.stop()
     df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
     if "cargo" in df.columns:
         def _to_bool(x):

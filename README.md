@@ -31,20 +31,26 @@ pip install -e .
 
 Dump all flights from or to Hong Kong for a date or date range. Passenger and cargo flights are included by default. The API provides historical data for approximately the last 90 days only.
 
+Two output modes:
+- `--data-dir data/` writes one CSV per date (e.g. `data/2026-02-25.csv`). This is the preferred mode for deployment -- only changed dates are overwritten, keeping git diffs small.
+- `-o flights.csv` writes a single CSV, merging with existing data (overlapping dates are replaced).
+
 ```bash
-# Single day (default: yesterday)
+# Initial backfill: past 30 days into per-date files
+uv run python scripts/dump_hk_flights.py --data-dir data/
+
+# Daily refresh: last 2 days only (used by GitHub Actions)
+uv run python scripts/dump_hk_flights.py --days 2 --data-dir data/
+
+# Custom date range
+uv run python scripts/dump_hk_flights.py --start 2026-01-01 --end 2026-02-20 --data-dir data/
+
+# Single file mode (legacy)
 uv run python scripts/dump_hk_flights.py -o flights.csv
 
-# Date range
-uv run python scripts/dump_hk_flights.py --start 2026-01-01 --end 2026-02-20 -o flights.csv
-
-# Passenger only (exclude cargo)
-uv run python scripts/dump_hk_flights.py --start 2026-01-01 --end 2026-02-20 --no-cargo -o flights.csv
-
-# Deduplicate: keep only operating carrier rows (one per physical flight; drops code-share duplicates)
-uv run python scripts/dump_hk_flights.py --start 2026-01-01 --end 2026-02-20 --deduplicate -o flights.csv
-
-# Debug API response
+# Passenger only / deduplicate / debug
+uv run python scripts/dump_hk_flights.py --no-cargo --data-dir data/
+uv run python scripts/dump_hk_flights.py --deduplicate --data-dir data/
 uv run python scripts/dump_hk_flights.py --debug
 ```
 
@@ -88,11 +94,19 @@ marimo run marimo/flight_audit.py
 
 ### Streamlit Dashboard
 
-Analyze `flights.csv` with interactive charts: top airlines, top destinations (airport/city/country), an interactive map of flight flows (with multi-airline overlay for comparison), airline deep dive, airline comparison (2+ airlines side by side across routes, time series, hourly distribution, and cargo/passenger split), and route deep dive. Filters include direction (default: both from and to HKG), date range, flight type (passenger/cargo), and operating carrier only (default: on, to exclude code-share duplicates).
+Interactive dashboard with top airlines, top destinations (airport/city/country), flight flow map (with multi-airline overlay), airline deep dive, airline comparison, and route deep dive. Reads from `data/` directory (per-date CSVs) or falls back to `flights.csv`.
 
 ```bash
 uv run streamlit run streamlit/flight_dashboard.py
 ```
+
+### Deployment (Streamlit Community Cloud)
+
+1. Push the repo to GitHub (including `data/*.csv` files).
+2. Connect to [Streamlit Community Cloud](https://share.streamlit.io) and deploy `streamlit/flight_dashboard.py`.
+3. A GitHub Actions workflow (`.github/workflows/update_flights.yml`) runs daily at 02:00 UTC, fetches the last 2 days of flight data, and commits the updated per-date CSVs. Streamlit Cloud auto-redeploys on push.
+
+To trigger a manual refresh, go to Actions > "Update flight data" > Run workflow.
 
 ## Data Source
 

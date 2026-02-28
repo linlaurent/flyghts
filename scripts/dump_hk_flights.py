@@ -5,19 +5,22 @@ Dump all flights from or to Hong Kong for a given date or date range.
 Output columns: origin, destination, flight_no, airline, operating_flight_no,
 operating_airline, scheduled_time, status, date, cargo. Cargo flights included by default.
 
-When writing to a file (-o), the script merges with existing data: dates present in
-the new pull replace the corresponding dates in the old file, while older dates are kept.
+Output modes:
+  --data-dir DIR  Write one CSV per date into DIR (e.g. data/2026-02-25.csv).
+  -o FILE         Write all flights to a single CSV, merging with existing data.
+  (neither)       Print to stdout.
 
 Note: The HK Airport API provides historical data for approximately the last 90 days only.
 Dates older than that may return 400 Bad Request.
 
 Usage:
-    uv run python scripts/dump_hk_flights.py                              # past 30 days to stdout
-    uv run python scripts/dump_hk_flights.py -o flights.csv               # past 30 days, merge into file
+    uv run python scripts/dump_hk_flights.py --data-dir data/             # past 30 days, per-date files
+    uv run python scripts/dump_hk_flights.py --days 2 --data-dir data/    # last 2 days (daily refresh)
+    uv run python scripts/dump_hk_flights.py -o flights.csv               # past 30 days, single file
     uv run python scripts/dump_hk_flights.py --date 2025-02-17
-    uv run python scripts/dump_hk_flights.py --start 2026-01-01 --end 2026-02-20 -o flights.csv
-    uv run python scripts/dump_hk_flights.py --no-cargo -o flights.csv    # passenger only
-    uv run python scripts/dump_hk_flights.py --deduplicate -o flights.csv # one row per physical flight
+    uv run python scripts/dump_hk_flights.py --start 2026-01-01 --end 2026-02-20 --data-dir data/
+    uv run python scripts/dump_hk_flights.py --no-cargo --data-dir data/  # passenger only
+    uv run python scripts/dump_hk_flights.py --deduplicate --data-dir data/
     uv run python scripts/dump_hk_flights.py --debug                      # inspect raw API response
 """
 
@@ -60,11 +63,23 @@ def main() -> None:
         help="End date for range (YYYY-MM-DD). Use with --start",
     )
     parser.add_argument(
+        "--days",
+        type=int,
+        default=None,
+        help="Fetch the last N days (shorthand for --start/--end)",
+    )
+    parser.add_argument(
         "--output",
         "-o",
         type=str,
         default=None,
-        help="Output CSV file. Default: stdout",
+        help="Output single CSV file (merges with existing). Default: stdout",
+    )
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default=None,
+        help="Output directory for per-date CSV files (e.g. data/)",
     )
     parser.add_argument(
         "--no-cargo",
@@ -82,6 +97,10 @@ def main() -> None:
         help="Print raw API response structure and exit",
     )
     args = parser.parse_args()
+
+    if args.output and args.data_dir:
+        print("Error: --output and --data-dir are mutually exclusive", file=sys.stderr)
+        sys.exit(1)
 
     if args.start and args.end:
         try:
@@ -101,6 +120,10 @@ def main() -> None:
             print(f"Error: Invalid date {args.date}", file=sys.stderr)
             sys.exit(1)
         date_range = [flight_date]
+    elif args.days:
+        end_d = date.today() - timedelta(days=1)
+        start_d = date.today() - timedelta(days=args.days)
+        date_range = _date_range(start_d, end_d)
     else:
         end_d = date.today() - timedelta(days=1)
         start_d = date.today() - timedelta(days=30)
@@ -169,7 +192,19 @@ def main() -> None:
     if args.deduplicate:
         flights = [f for f in flights if f.operating_airline and f.airline == f.operating_airline]
 
-    if args.output:
+    if args.data_dir:
+        data_dir = Path(args.data_dir)
+        data_dir.mkdir(parents=True, exist_ok=True)
+        new_df = _to_dataframe(flights)
+        n_written = 0
+        for date_str, group in new_df.groupby("date"):
+            group.to_csv(data_dir / f"{date_str}.csv", index=False)
+            n_written += len(group)
+        print(
+            f"Wrote {n_written} flights across {new_df['date'].nunique()} days to {data_dir}/",
+            file=sys.stderr,
+        )
+    elif args.output:
         new_df = _to_dataframe(flights)
         new_dates = set(new_df["date"].unique())
         existing_path = Path(args.output)

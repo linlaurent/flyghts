@@ -219,157 +219,103 @@ def main() -> None:
     airline_col = "operating_airline" if (operating_only and has_operating) else "airline"
 
     if section == "Overview":
-        # --- Top Companies ---
-        st.header("Top airlines by flight count")
+        dest_codes = get_destination_column(df, direction)
+        dest_counts = dest_codes.value_counts()
         airline_counts = df[airline_col].value_counts()
         top_airlines = airline_counts.head(top_n)
 
+        # Build all four datasets
         airline_rows = []
         for icao, count in top_airlines.items():
             info = get_airline(icao)
-            name = info.name if info else icao
-            country = info.country if info else ""
             share = 100 * count / total_flights if total_flights > 0 else 0
             airline_rows.append(
-                {"Airline": name, "ICAO": icao, "Country": country, "Flights": count, "Share (%)": round(share, 1)}
+                {"Airline": info.name if info else icao, "Flights": count, "Share (%)": round(share, 1)}
             )
-        airline_df = pd.DataFrame(
-            airline_rows,
-            columns=["Airline", "ICAO", "Country", "Flights", "Share (%)"],
+        airline_df = pd.DataFrame(airline_rows, columns=["Airline", "Flights", "Share (%)"])
+
+        airport_rows = []
+        for iata, count in dest_counts.head(top_n).items():
+            info = get_airport(iata)
+            share = 100 * count / total_flights if total_flights > 0 else 0
+            label = f"{iata} - {info.name}" if info and info.name else iata
+            airport_rows.append({"Label": label, "Flights": count, "Share (%)": round(share, 1)})
+        airport_df = pd.DataFrame(airport_rows, columns=["Label", "Flights", "Share (%)"])
+
+        city_counts: dict[str, int] = {}
+        for iata, count in dest_counts.items():
+            info = get_airport(iata)
+            city = info.city if info and info.city else iata
+            city_counts[city] = city_counts.get(city, 0) + count
+        city_sorted = sorted(city_counts.items(), key=lambda x: -x[1])[:top_n]
+        city_df = pd.DataFrame(
+            [{"City": c, "Flights": n} for c, n in city_sorted],
+            columns=["City", "Flights"],
         )
+        city_df["Share (%)"] = (100 * city_df["Flights"] / total_flights).round(1) if total_flights else 0.0
+
+        country_counts: dict[str, int] = {}
+        for iata, count in dest_counts.items():
+            info = get_airport(iata)
+            country = info.country if info and info.country else iata
+            country_counts[country] = country_counts.get(country, 0) + count
+        country_sorted = sorted(country_counts.items(), key=lambda x: -x[1])[:top_n]
+        country_df = pd.DataFrame(
+            [{"Country": c, "Flights": n} for c, n in country_sorted],
+            columns=["Country", "Flights"],
+        )
+        country_df["Share (%)"] = (100 * country_df["Flights"] / total_flights).round(1) if total_flights else 0.0
+
+        chart_h = 320
+
         fig_airlines = px.bar(
-            airline_df,
-            x="Flights",
-            y="Airline",
-            orientation="h",
-            color="Flights",
-            color_continuous_scale="Blues",
-            labels={"Flights": "Number of flights"},
+            airline_df, x="Flights", y="Airline", orientation="h",
+            color="Flights", color_continuous_scale="Blues",
             text=airline_df["Share (%)"].apply(lambda x: f"{x}%"),
         )
         fig_airlines.update_traces(textposition="outside")
-        fig_airlines.update_layout(
-            height=400 + top_n * 12,
-            yaxis={"categoryorder": "total ascending"},
-            showlegend=False,
+        fig_airlines.update_layout(height=chart_h, yaxis={"categoryorder": "total ascending"}, showlegend=False)
+
+        fig_apt = px.bar(
+            airport_df, x="Flights", y="Label", orientation="h",
+            color="Flights", color_continuous_scale="Greens",
+            text=airport_df["Share (%)"].apply(lambda x: f"{x}%"),
         )
-        st.plotly_chart(fig_airlines, width="stretch")
-        with st.expander("View table"):
-            st.dataframe(airline_df, width="stretch")
+        fig_apt.update_traces(textposition="outside")
+        fig_apt.update_layout(height=chart_h, yaxis={"categoryorder": "total ascending"}, showlegend=False)
 
-        # --- Top Destinations ---
-        st.header("Top destinations")
-        dest_codes = get_destination_column(df, direction)
-        dest_counts = dest_codes.value_counts()
+        fig_city = px.bar(
+            city_df, x="Flights", y="City", orientation="h",
+            color="Flights", color_continuous_scale="Oranges",
+            text=city_df["Share (%)"].apply(lambda x: f"{x}%"),
+        )
+        fig_city.update_traces(textposition="outside")
+        fig_city.update_layout(height=chart_h, yaxis={"categoryorder": "total ascending"}, showlegend=False)
 
-        tab_airport, tab_city, tab_country = st.tabs([
-            "By airport (IATA)",
-            "By city",
-            "By country",
-        ])
+        fig_country = px.bar(
+            country_df, x="Flights", y="Country", orientation="h",
+            color="Flights", color_continuous_scale="Purples",
+            text=country_df["Share (%)"].apply(lambda x: f"{x}%"),
+        )
+        fig_country.update_traces(textposition="outside")
+        fig_country.update_layout(height=chart_h, yaxis={"categoryorder": "total ascending"}, showlegend=False)
 
-        with tab_airport:
-            airport_rows = []
-            for iata, count in dest_counts.head(top_n).items():
-                info = get_airport(iata)
-                share = 100 * count / total_flights if total_flights > 0 else 0
-                airport_rows.append({
-                    "Airport": iata,
-                    "Name": info.name if info else "",
-                    "City": info.city if info else "",
-                    "Country": info.country if info else "",
-                    "Flights": count,
-                    "Share (%)": round(share, 1),
-                })
-            airport_df = pd.DataFrame(
-                airport_rows,
-                columns=["Airport", "Name", "City", "Country", "Flights", "Share (%)"],
-            )
-            display_df = airport_df.copy()
-            display_df["Label"] = display_df.apply(
-                lambda r: f"{r['Airport']} - {r['Name']}" if r["Name"] else r["Airport"],
-                axis=1,
-            )
-            fig_apt = px.bar(
-                display_df,
-                x="Flights",
-                y="Label",
-                orientation="h",
-                color="Flights",
-                color_continuous_scale="Greens",
-                text=display_df["Share (%)"].apply(lambda x: f"{x}%"),
-            )
-            fig_apt.update_traces(textposition="outside")
-            fig_apt.update_layout(
-                height=400 + min(top_n, len(display_df)) * 12,
-                yaxis={"categoryorder": "total ascending"},
-                showlegend=False,
-            )
-            st.plotly_chart(fig_apt, width="stretch")
-            with st.expander("View table"):
-                st.dataframe(airport_df[["Airport", "Name", "City", "Country", "Flights", "Share (%)"]])
+        # 2x2 grid
+        r1c1, r1c2 = st.columns(2)
+        with r1c1:
+            st.subheader("Top airlines by flight count")
+            st.plotly_chart(fig_airlines, use_container_width=True)
+        with r1c2:
+            st.subheader("Top destinations by airport")
+            st.plotly_chart(fig_apt, use_container_width=True)
 
-        with tab_city:
-            city_counts: dict[str, int] = {}
-            for iata, count in dest_counts.items():
-                info = get_airport(iata)
-                city = info.city if info and info.city else iata
-                city_counts[city] = city_counts.get(city, 0) + count
-            city_sorted = sorted(city_counts.items(), key=lambda x: -x[1])[:top_n]
-            city_df = pd.DataFrame(
-                [{"City": c, "Flights": n} for c, n in city_sorted],
-                columns=["City", "Flights"],
-            )
-            city_df["Share (%)"] = (100 * city_df["Flights"] / total_flights).round(1) if total_flights else 0.0
-            fig_city = px.bar(
-                city_df,
-                x="Flights",
-                y="City",
-                orientation="h",
-                color="Flights",
-                color_continuous_scale="Oranges",
-                text=city_df["Share (%)"].apply(lambda x: f"{x}%"),
-            )
-            fig_city.update_traces(textposition="outside")
-            fig_city.update_layout(
-                height=400 + min(top_n, len(city_df)) * 12,
-                yaxis={"categoryorder": "total ascending"},
-                showlegend=False,
-            )
-            st.plotly_chart(fig_city, width="stretch")
-            with st.expander("View table"):
-                st.dataframe(city_df)
-
-        with tab_country:
-            country_counts: dict[str, int] = {}
-            for iata, count in dest_counts.items():
-                info = get_airport(iata)
-                country = info.country if info and info.country else iata
-                country_counts[country] = country_counts.get(country, 0) + count
-            country_sorted = sorted(country_counts.items(), key=lambda x: -x[1])[:top_n]
-            country_df = pd.DataFrame(
-                [{"Country": c, "Flights": n} for c, n in country_sorted],
-                columns=["Country", "Flights"],
-            )
-            country_df["Share (%)"] = (100 * country_df["Flights"] / total_flights).round(1) if total_flights else 0.0
-            fig_country = px.bar(
-                country_df,
-                x="Flights",
-                y="Country",
-                orientation="h",
-                color="Flights",
-                color_continuous_scale="Purples",
-                text=country_df["Share (%)"].apply(lambda x: f"{x}%"),
-            )
-            fig_country.update_traces(textposition="outside")
-            fig_country.update_layout(
-                height=400 + min(top_n, len(country_df)) * 12,
-                yaxis={"categoryorder": "total ascending"},
-                showlegend=False,
-            )
-            st.plotly_chart(fig_country, width="stretch")
-            with st.expander("View table"):
-                st.dataframe(country_df)
+        r2c1, r2c2 = st.columns(2)
+        with r2c1:
+            st.subheader("Top destinations by city")
+            st.plotly_chart(fig_city, use_container_width=True)
+        with r2c2:
+            st.subheader("Top destinations by country")
+            st.plotly_chart(fig_country, use_container_width=True)
 
         # --- Interactive Map ---
         st.header("Interactive map: flight flow by destination")

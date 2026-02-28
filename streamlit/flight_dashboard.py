@@ -3,8 +3,9 @@ Flight Dashboard - Analyze HK flight data.
 
 Reads per-date CSVs from data/ directory (preferred), or falls back to flights.csv.
 
-Features: top airlines/destinations, interactive map with multi-airline overlay,
-airline deep dive, airline comparison (2+ airlines side by side), route deep dive.
+Features: top airlines/destinations, interactive map with multi-airline overlay and
+country filtering, airline deep dive, airline comparison (2+ airlines side by side),
+route deep dive.
 
 Run with: uv run streamlit run streamlit/flight_dashboard.py
 """
@@ -417,7 +418,18 @@ def main() -> None:
         map_airline_display.append(display)
         map_display_to_code[display] = code
 
-    col_map_by, col_map_airline = st.columns(2)
+    # Build country list from destination airports in current data
+    _dest_codes_for_countries = get_destination_column(df, direction)
+    _country_set: set[str] = set()
+    _iata_to_country: dict[str, str] = {}
+    for _iata in _dest_codes_for_countries.unique():
+        _info = get_airport(_iata)
+        if _info and _info.country:
+            _country_set.add(_info.country)
+            _iata_to_country[_iata] = _info.country
+    map_country_options = sorted(_country_set)
+
+    col_map_by, col_map_airline, col_map_country = st.columns(3)
     with col_map_by:
         map_point_by = st.radio(
             "Map points by",
@@ -433,8 +445,28 @@ def main() -> None:
             default=[],
             help="Leave empty to show all. Select airlines to compare on map with distinct colors.",
         )
+    with col_map_country:
+        sel_map_countries = st.multiselect(
+            "Filter by country",
+            options=map_country_options,
+            default=[],
+            help="Leave empty to show all. Select countries to show only routes to those countries.",
+        )
     map_by_country = map_point_by == "Country"
     sel_map_codes = [map_display_to_code[d] for d in sel_map_airlines if d in map_display_to_code]
+
+    # Apply country filter to the map dataframe
+    if sel_map_countries:
+        _allowed_iatas = {iata for iata, c in _iata_to_country.items() if c in sel_map_countries}
+        if direction == "From HKG":
+            _country_mask = df["destination"].isin(_allowed_iatas)
+        elif direction == "To HKG":
+            _country_mask = df["origin"].isin(_allowed_iatas)
+        else:
+            _country_mask = df["destination"].isin(_allowed_iatas) | df["origin"].isin(_allowed_iatas)
+        df_map = df[_country_mask]
+    else:
+        df_map = df
 
     _map_geo_opts = dict(
         scope="world",
@@ -449,7 +481,7 @@ def main() -> None:
 
     if not sel_map_codes:
         # All airlines — single-color mode
-        map_dest_counts = get_destination_column(df, direction).value_counts()
+        map_dest_counts = get_destination_column(df_map, direction).value_counts()
         map_data = build_map_points(map_dest_counts, map_by_country)
         map_df = pd.DataFrame(map_data)
 
@@ -502,7 +534,7 @@ def main() -> None:
             a_info = get_airline(code)
             a_name = a_info.name if a_info else code
 
-            df_a = df[df[map_airline_col] == code]
+            df_a = df_map[df_map[map_airline_col] == code]
             a_dest_counts = get_destination_column(df_a, direction).value_counts()
             a_points = build_map_points(a_dest_counts, map_by_country)
             a_df = pd.DataFrame(a_points)

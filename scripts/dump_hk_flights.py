@@ -196,6 +196,8 @@ def main() -> None:
         data_dir = Path(args.data_dir)
         data_dir.mkdir(parents=True, exist_ok=True)
         new_df = _to_dataframe(flights)
+        requested_dates = {d.isoformat() for d in date_range}
+        new_df = new_df[new_df["date"].isin(requested_dates)]
         n_written = 0
         for date_str, group in new_df.groupby("date"):
             group.to_csv(data_dir / f"{date_str}.csv", index=False)

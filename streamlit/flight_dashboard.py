@@ -659,10 +659,11 @@ def main() -> None:
                         index=df_airline.index,
                     )
 
-                tab_routes, tab_time, tab_hour, tab_cargo = st.tabs([
+                tab_routes, tab_time, tab_hour, tab_weekday, tab_cargo = st.tabs([
                     "Top routes",
                     "Flights over time",
                     "Flights by hour",
+                    "Flights by weekday",
                     "Cargo vs passenger",
                 ])
 
@@ -923,6 +924,32 @@ def main() -> None:
                             st.caption("No scheduled time data for this airline.")
                     else:
                         st.caption("No scheduled_time column in data.")
+
+                with tab_weekday:
+                    _weekday_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                    _wd = df_airline.copy()
+                    _wd["weekday"] = _wd["date"].dt.day_name()
+                    _wd_total = _wd.groupby("weekday").size().rename("Total")
+                    _wd_dates = _wd.groupby("weekday")["date"].apply(lambda s: s.dt.date.nunique()).rename("Days")
+                    _wd_df = pd.concat([_wd_total, _wd_dates], axis=1).reset_index()
+                    _wd_df["Avg"] = (_wd_df["Total"] / _wd_df["Days"]).round(1)
+                    _wd_df["weekday"] = pd.Categorical(_wd_df["weekday"], categories=_weekday_order, ordered=True)
+                    _wd_df = _wd_df.sort_values("weekday")
+                    if not _wd_df.empty:
+                        fig_wd = px.bar(
+                            _wd_df,
+                            x="weekday",
+                            y="Avg",
+                            labels={"weekday": "Day of week", "Avg": "Avg flights per day"},
+                            custom_data=["Total", "Days"],
+                        )
+                        fig_wd.update_traces(
+                            hovertemplate="%{x}<br>Avg: %{y}<br>Total: %{customdata[0]:,}<br>Days: %{customdata[1]}<extra></extra>",
+                        )
+                        fig_wd.update_layout(height=350)
+                        st.plotly_chart(fig_wd, width="stretch")
+                    else:
+                        st.caption("No date data for weekday analysis.")
 
                 with tab_cargo:
                     if "cargo" in df_airline.columns:
@@ -1293,10 +1320,11 @@ def main() -> None:
             with m2:
                 st.metric("Share of traffic", f"{pct_route:.1f}%")
 
-            tab_route_airlines, tab_route_time, tab_route_hour, tab_route_cargo = st.tabs([
+            tab_route_airlines, tab_route_time, tab_route_hour, tab_route_weekday, tab_route_cargo = st.tabs([
                 "Top airlines",
                 "Flights over time",
                 "Flights by hour",
+                "Flights by weekday",
                 "Cargo vs passenger",
             ])
 
@@ -1489,6 +1517,32 @@ def main() -> None:
                         st.caption("No scheduled time data for this route.")
                 else:
                     st.caption("No scheduled_time column in data.")
+
+            with tab_route_weekday:
+                _rwd_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                _rwd = df_route.copy()
+                _rwd["weekday"] = _rwd["date"].dt.day_name()
+                _rwd_total = _rwd.groupby("weekday").size().rename("Total")
+                _rwd_dates = _rwd.groupby("weekday")["date"].apply(lambda s: s.dt.date.nunique()).rename("Days")
+                _rwd_df = pd.concat([_rwd_total, _rwd_dates], axis=1).reset_index()
+                _rwd_df["Avg"] = (_rwd_df["Total"] / _rwd_df["Days"]).round(1)
+                _rwd_df["weekday"] = pd.Categorical(_rwd_df["weekday"], categories=_rwd_order, ordered=True)
+                _rwd_df = _rwd_df.sort_values("weekday")
+                if not _rwd_df.empty:
+                    fig_rwd = px.bar(
+                        _rwd_df,
+                        x="weekday",
+                        y="Avg",
+                        labels={"weekday": "Day of week", "Avg": "Avg flights per day"},
+                        custom_data=["Total", "Days"],
+                    )
+                    fig_rwd.update_traces(
+                        hovertemplate="%{x}<br>Avg: %{y}<br>Total: %{customdata[0]:,}<br>Days: %{customdata[1]}<extra></extra>",
+                    )
+                    fig_rwd.update_layout(height=350)
+                    st.plotly_chart(fig_rwd, width="stretch")
+                else:
+                    st.caption("No date data for weekday analysis.")
 
             with tab_route_cargo:
                 if "cargo" in df_route.columns:

@@ -130,6 +130,115 @@ def build_map_points(
     return points
 
 
+_MAP_GEO_OPTS = dict(
+    scope="world",
+    projection_type="natural earth",
+    showland=True,
+    coastlinewidth=0.5,
+    landcolor="rgb(243,243,243)",
+    showcountries=True,
+    countrycolor="rgba(150,150,150,0.6)",
+    countrywidth=0.5,
+)
+
+
+def _render_flight_map(
+    df_map: pd.DataFrame,
+    direction: str,
+    map_by_country: bool,
+    airline_codes: list[str],
+    airline_col: str,
+) -> None:
+    """Render interactive flight map from HKG. airline_codes: empty = single color, else multi-airline."""
+    if df_map.empty:
+        st.info("No flight data to display on map.")
+        return
+    map_dest_counts = get_destination_column(df_map, direction).value_counts()
+    map_data = build_map_points(map_dest_counts, map_by_country)
+    map_df = pd.DataFrame(map_data)
+    if map_df.empty:
+        st.info("No destination airports with valid coordinates in the reference data.")
+        return
+    fig_map = go.Figure()
+    if not airline_codes:
+        count_max = map_df["count"].max()
+        for _, row in map_df.iterrows():
+            rel = row["count"] / count_max if count_max > 0 else 1
+            width = 0.8 + 7.2 * rel
+            fig_map.add_trace(go.Scattergeo(
+                lon=[HKG_LON, row["lon"]], lat=[HKG_LAT, row["lat"]],
+                mode="lines",
+                line=dict(width=width, color="rgba(100,150,200,0.5)"),
+                hoverinfo="skip", showlegend=False,
+            ))
+        fig_map.add_trace(go.Scattergeo(
+            lon=map_df["lon"], lat=map_df["lat"],
+            text=map_df["label"], mode="markers",
+            marker=dict(
+                size=map_df["count"].clip(upper=2000) ** 0.5 + 3,
+                color=map_df["count"], colorscale="Viridis",
+                showscale=True, colorbar=dict(title="Flights"),
+            ),
+            hoverinfo="text", showlegend=False,
+        ))
+        show_legend = False
+    else:
+        palette = px.colors.qualitative.Plotly
+        airline_summaries: list[str] = []
+        for idx, code in enumerate(airline_codes):
+            color = palette[idx % len(palette)]
+            a_info = get_airline(code)
+            a_name = a_info.name if a_info else code
+            df_a = df_map[df_map[airline_col] == code]
+            a_dest_counts = get_destination_column(df_a, direction).value_counts()
+            a_points = build_map_points(a_dest_counts, map_by_country)
+            a_df = pd.DataFrame(a_points)
+            if a_df.empty:
+                continue
+            airline_summaries.append(f"{a_name}: {len(df_a):,} flights")
+            a_count_max = a_df["count"].max()
+            for _, row in a_df.iterrows():
+                rel = row["count"] / a_count_max if a_count_max > 0 else 1
+                width = 0.8 + 5.2 * rel
+                fig_map.add_trace(go.Scattergeo(
+                    lon=[HKG_LON, row["lon"]], lat=[HKG_LAT, row["lat"]],
+                    mode="lines",
+                    line=dict(width=width, color=color),
+                    opacity=0.4,
+                    hoverinfo="skip", showlegend=False,
+                ))
+            fig_map.add_trace(go.Scattergeo(
+                lon=a_df["lon"], lat=a_df["lat"],
+                text=a_df["label"].apply(lambda lbl, n=a_name: f"{n} | {lbl}"),
+                mode="markers",
+                marker=dict(
+                    size=a_df["count"].clip(upper=2000) ** 0.5 + 3,
+                    color=color,
+                ),
+                hoverinfo="text",
+                name=a_name, showlegend=True,
+            ))
+        if airline_summaries:
+            st.caption(" / ".join(airline_summaries))
+        elif airline_codes:
+            st.info("No destination airports with valid coordinates for the selected airlines.")
+            return
+        show_legend = bool(airline_codes)
+    fig_map.add_trace(go.Scattergeo(
+        lon=[HKG_LON], lat=[HKG_LAT],
+        text=["HKG (Hong Kong)"],
+        mode="markers+text",
+        marker=dict(size=15, color="red", symbol="star"),
+        textposition="top center",
+        hoverinfo="text", showlegend=False,
+    ))
+    fig_map.update_geos(**_MAP_GEO_OPTS)
+    fig_map.update_layout(
+        height=600, margin=dict(l=0, r=0, t=0, b=0), showlegend=show_legend,
+    )
+    st.plotly_chart(fig_map, width="stretch")
+
+
 def main() -> None:
     st.set_page_config(
         page_title="Flight Dashboard",
@@ -571,12 +680,13 @@ def main() -> None:
                             index=df_airline.index,
                         )
 
-                    tab_routes, tab_time, tab_hour, tab_weekday, tab_cargo = st.tabs([
+                    tab_routes, tab_time, tab_hour, tab_weekday, tab_cargo, tab_map = st.tabs([
                         "Top routes",
                         "Flights over time",
                         "Flights by hour",
                         "Flights by weekday",
                         "Cargo vs passenger",
+                        "Interactive map",
                     ])
 
                     with tab_routes:
@@ -895,6 +1005,24 @@ def main() -> None:
                         else:
                             st.caption("No cargo column in data.")
 
+                    with tab_map:
+                        map_point_by_dive = st.radio(
+                            "Map points by",
+                            options=["City (airport)", "Country"],
+                            index=1,
+                            horizontal=True,
+                            help="Show each destination as a precise city/airport, or aggregate by country.",
+                            key="airline_dive_map_by",
+                        )
+                        map_by_country_dive = map_point_by_dive == "Country"
+                        _render_flight_map(
+                            df_airline,
+                            direction,
+                            map_by_country_dive,
+                            [dive_icao],
+                            airline_col,
+                        )
+
         # --- Airline comparison ---
         st.header("Airline comparison")
         if not dive_airline_options:
@@ -941,12 +1069,13 @@ def main() -> None:
                 df_cmp = df[df[airline_col].isin(cmp_codes)].copy()
                 df_cmp["Airline"] = df_cmp[airline_col].map(cmp_names)
 
-                tab_cmp_routes, tab_cmp_time, tab_cmp_share, tab_cmp_hour, tab_cmp_cargo = st.tabs([
+                tab_cmp_routes, tab_cmp_time, tab_cmp_share, tab_cmp_hour, tab_cmp_cargo, tab_cmp_map = st.tabs([
                     "Top routes",
                     "Flights over time",
                     "Share of traffic over time",
                     "Flights by hour",
                     "Cargo vs passenger",
+                    "Interactive map",
                 ])
 
                 with tab_cmp_routes:
@@ -1121,6 +1250,24 @@ def main() -> None:
                                 st.plotly_chart(fig_cmp_cargo_time, width="stretch")
                     else:
                         st.caption("No cargo column in data.")
+
+                with tab_cmp_map:
+                    map_point_by_cmp = st.radio(
+                        "Map points by",
+                        options=["City (airport)", "Country"],
+                        index=1,
+                        horizontal=True,
+                        help="Show each destination as a precise city/airport, or aggregate by country.",
+                        key="airline_cmp_map_by",
+                    )
+                    map_by_country_cmp = map_point_by_cmp == "Country"
+                    _render_flight_map(
+                        df_cmp,
+                        direction,
+                        map_by_country_cmp,
+                        cmp_codes,
+                        airline_col,
+                    )
 
     else:
         # --- Route deep dive ---

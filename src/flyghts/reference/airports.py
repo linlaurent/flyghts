@@ -31,6 +31,22 @@ _AIRPORT_OVERRIDES: dict[str, dict] = {
         "latitude": 43.0613,
         "longitude": 74.4776,
     },
+    "EAR": {
+        "iata": "EAR",
+        "name": "Kearney Regional Airport",
+        "city": "Kearney",
+        "country": "United States",
+        "latitude": 40.727,
+        "longitude": -99.0068,
+    },
+    "EHU": {
+        "iata": "EHU",
+        "name": "Ezhou Huahu International Airport",
+        "city": "Ezhou",
+        "country": "China",
+        "latitude": 30.3483,
+        "longitude": 114.9625,
+    },
     "HSA": {
         "iata": "HSA",
         "name": "Hazret Sultan International Airport",
@@ -70,6 +86,14 @@ _AIRPORT_OVERRIDES: dict[str, dict] = {
         "country": "Mongolia",
         "latitude": 47.647,
         "longitude": 106.82,
+    },
+    "XWA": {
+        "iata": "XWA",
+        "name": "Williston Basin International Airport",
+        "city": "Williston",
+        "country": "United States",
+        "latitude": 48.2608,
+        "longitude": -103.7508,
     },
 }
 

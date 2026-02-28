@@ -68,13 +68,19 @@ def main() -> None:
         if not icao or icao == "\\N" or icao.upper() == "N/A":
             continue
         icao = icao.upper()
+        iata = row[3].strip() if len(row) > 3 else ""
+        if iata == "\\N" or iata.upper() == "N/A":
+            iata = ""
         country = row[6].strip() if len(row) > 6 else ""
         if icao not in airlines:
-            airlines[icao] = {
+            entry: dict[str, str] = {
                 "icao": icao,
                 "name": row[1].strip() or "",
                 "country": country,
             }
+            if iata:
+                entry["iata"] = iata.upper()
+            airlines[icao] = entry
     airlines_path = data_dir / "airlines.json"
     with open(airlines_path, "w") as f:
         json.dump(airlines, f, indent=0)

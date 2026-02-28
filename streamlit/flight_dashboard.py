@@ -229,6 +229,7 @@ def _render_flight_map(
         text=["HKG (Hong Kong)"],
         mode="markers+text",
         marker=dict(size=15, color="red", symbol="star"),
+        textfont=dict(color="black"),
         textposition="top center",
         hoverinfo="text", showlegend=False,
     ))
@@ -550,6 +551,7 @@ def main() -> None:
                     text=["HKG (Hong Kong)"],
                     mode="markers+text",
                     marker=dict(size=15, color="red", symbol="star"),
+                    textfont=dict(color="black"),
                     textposition="top center",
                     hoverinfo="text", showlegend=False,
                 ))
@@ -613,6 +615,7 @@ def main() -> None:
                     text=["HKG (Hong Kong)"],
                     mode="markers+text",
                     marker=dict(size=15, color="red", symbol="star"),
+                    textfont=dict(color="black"),
                     textposition="top center",
                     hoverinfo="text", showlegend=False,
                 ))

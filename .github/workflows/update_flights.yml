@@ -2,8 +2,8 @@ name: Update flight data
 
 on:
   schedule:
-    # Daily at 02:00 UTC (10:00 HKT) — after HK midnight data is finalized
-    - cron: "0 2 * * *"
+    # Daily at 18:00 UTC (02:00 HKT next day) — HK day is fully over
+    - cron: "0 18 * * *"
   workflow_dispatch: # Allow manual trigger
 
 jobs:

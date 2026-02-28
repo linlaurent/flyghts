@@ -279,14 +279,14 @@ def main() -> None:
         info = get_airline(icao)
         name = info.name if info else icao
         country = info.country if info else ""
+        share = 100 * count / total_flights if total_flights > 0 else 0
         airline_rows.append(
-            {"Airline": name, "ICAO": icao, "Country": country, "Flights": count}
+            {"Airline": name, "ICAO": icao, "Country": country, "Flights": count, "Share (%)": round(share, 1)}
         )
     airline_df = pd.DataFrame(
         airline_rows,
-        columns=["Airline", "ICAO", "Country", "Flights"],
+        columns=["Airline", "ICAO", "Country", "Flights", "Share (%)"],
     )
-
     fig_airlines = px.bar(
         airline_df,
         x="Flights",
@@ -295,7 +295,9 @@ def main() -> None:
         color="Flights",
         color_continuous_scale="Blues",
         labels={"Flights": "Number of flights"},
+        text=airline_df["Share (%)"].apply(lambda x: f"{x}%"),
     )
+    fig_airlines.update_traces(textposition="outside")
     fig_airlines.update_layout(
         height=400 + top_n * 12,
         yaxis={"categoryorder": "total ascending"},
@@ -320,16 +322,18 @@ def main() -> None:
         airport_rows = []
         for iata, count in dest_counts.head(top_n).items():
             info = get_airport(iata)
+            share = 100 * count / total_flights if total_flights > 0 else 0
             airport_rows.append({
                 "Airport": iata,
                 "Name": info.name if info else "",
                 "City": info.city if info else "",
                 "Country": info.country if info else "",
                 "Flights": count,
+                "Share (%)": round(share, 1),
             })
         airport_df = pd.DataFrame(
             airport_rows,
-            columns=["Airport", "Name", "City", "Country", "Flights"],
+            columns=["Airport", "Name", "City", "Country", "Flights", "Share (%)"],
         )
         display_df = airport_df.copy()
         display_df["Label"] = display_df.apply(
@@ -343,14 +347,16 @@ def main() -> None:
             orientation="h",
             color="Flights",
             color_continuous_scale="Greens",
+            text=display_df["Share (%)"].apply(lambda x: f"{x}%"),
         )
+        fig_apt.update_traces(textposition="outside")
         fig_apt.update_layout(
             height=400 + min(top_n, len(display_df)) * 12,
             yaxis={"categoryorder": "total ascending"},
             showlegend=False,
         )
         st.plotly_chart(fig_apt, width="stretch")
-        st.dataframe(airport_df[["Airport", "Name", "City", "Country", "Flights"]])
+        st.dataframe(airport_df[["Airport", "Name", "City", "Country", "Flights", "Share (%)"]])
 
     with tab_city:
         city_counts: dict[str, int] = {}
@@ -363,6 +369,7 @@ def main() -> None:
             [{"City": c, "Flights": n} for c, n in city_sorted],
             columns=["City", "Flights"],
         )
+        city_df["Share (%)"] = (100 * city_df["Flights"] / total_flights).round(1) if total_flights else 0.0
         fig_city = px.bar(
             city_df,
             x="Flights",
@@ -370,7 +377,9 @@ def main() -> None:
             orientation="h",
             color="Flights",
             color_continuous_scale="Oranges",
+            text=city_df["Share (%)"].apply(lambda x: f"{x}%"),
         )
+        fig_city.update_traces(textposition="outside")
         fig_city.update_layout(
             height=400 + min(top_n, len(city_df)) * 12,
             yaxis={"categoryorder": "total ascending"},
@@ -390,6 +399,7 @@ def main() -> None:
             [{"Country": c, "Flights": n} for c, n in country_sorted],
             columns=["Country", "Flights"],
         )
+        country_df["Share (%)"] = (100 * country_df["Flights"] / total_flights).round(1) if total_flights else 0.0
         fig_country = px.bar(
             country_df,
             x="Flights",
@@ -397,7 +407,9 @@ def main() -> None:
             orientation="h",
             color="Flights",
             color_continuous_scale="Purples",
+            text=country_df["Share (%)"].apply(lambda x: f"{x}%"),
         )
+        fig_country.update_traces(textposition="outside")
         fig_country.update_layout(
             height=400 + min(top_n, len(country_df)) * 12,
             yaxis={"categoryorder": "total ascending"},

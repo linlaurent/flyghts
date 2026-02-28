@@ -426,6 +426,22 @@ def main() -> None:
             st.subheader("Top destinations by country")
             st.plotly_chart(fig_country, use_container_width=True)
 
+        # --- Flights per day ---
+        st.header("Flights per day")
+        flights_per_day = df.groupby(df["date"].dt.date).size().reset_index(name="Flights")
+        flights_per_day.columns = ["Date", "Flights"]
+        if not flights_per_day.empty:
+            fig_per_day = px.line(
+                flights_per_day,
+                x="Date",
+                y="Flights",
+                labels={"Date": "Date", "Flights": "Number of flights"},
+            )
+            fig_per_day.update_layout(height=350)
+            st.plotly_chart(fig_per_day, use_container_width=True)
+        else:
+            st.caption("No date data.")
+
         # --- Interactive Map ---
         st.header("Interactive map: flight flow by destination")
 

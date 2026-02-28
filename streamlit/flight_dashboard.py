@@ -1185,31 +1185,62 @@ def main() -> None:
 
     # --- Route deep dive ---
     st.header("Route deep dive")
-    # Group bidirectional routes: HKG-TPE and TPE-HKG become one route with summed counts
-    route_series = df["origin"] + "-" + df["destination"]
-    route_pairs = route_series.apply(lambda s: "-".join(sorted(s.split("-", 1))) if "-" in s else s)
-    route_counts = route_pairs.value_counts()
-    # Build full route list (all routes) for searchable selection
+
+    route_by_country = st.radio(
+        "Route by",
+        options=["By city (airport)", "By country"],
+        index=0,
+        horizontal=True,
+        help="Dive into a single airport route, or aggregate all routes to a country.",
+        key="route_dive_by",
+    ) == "By country"
+
     route_display_options: list[str] = []
-    route_str_to_airports: dict[str, tuple[str, str]] = {}
-    for route_str, count in route_counts.items():
-        parts = route_str.split("-", 1)
-        if len(parts) == 2:
-            a, b = parts[0], parts[1]
-            other = b if a == HKG else a
-            info = get_airport(other)
-            name = info.name if info and info.name else other
-            label = f"{other} - {name} - {count:,} flights"
-            route_display_options.append(label)
-            route_str_to_airports[label] = (a, b)
+    if route_by_country:
+        # Aggregate flights by country
+        _route_dest_codes = get_destination_column(df, direction)
+        _route_country_counts: dict[str, int] = {}
+        _route_country_iatas: dict[str, set[str]] = {}
+        for iata, count in _route_dest_codes.value_counts().items():
+            info = get_airport(iata)
+            country = info.country if info and info.country else iata
+            _route_country_counts[country] = _route_country_counts.get(country, 0) + count
+            _route_country_iatas.setdefault(country, set()).add(iata)
+        for country, count in sorted(_route_country_counts.items(), key=lambda x: -x[1]):
+            route_display_options.append(f"{country} - {count:,} flights")
+    else:
+        # Group bidirectional routes: HKG-TPE and TPE-HKG become one route
+        route_series = df["origin"] + "-" + df["destination"]
+        route_pairs = route_series.apply(lambda s: "-".join(sorted(s.split("-", 1))) if "-" in s else s)
+        route_counts = route_pairs.value_counts()
+        route_str_to_airports: dict[str, tuple[str, str]] = {}
+        for route_str, count in route_counts.items():
+            parts = route_str.split("-", 1)
+            if len(parts) == 2:
+                a, b = parts[0], parts[1]
+                other = b if a == HKG else a
+                info = get_airport(other)
+                name = info.name if info and info.name else other
+                label = f"{other} - {name} - {count:,} flights"
+                route_display_options.append(label)
+                route_str_to_airports[label] = (a, b)
 
     col_search_r, col_select_r = st.columns(2)
     with col_search_r:
-        route_search = st.text_input(
-            "Search routes by airport code or name",
-            placeholder="e.g. HNL, Honolulu, TPE",
-            help="Filter the route list by typing airport code (IATA) or airport name.",
-        )
+        if route_by_country:
+            route_search = st.text_input(
+                "Search routes by country name",
+                placeholder="e.g. Japan, United States",
+                help="Filter the route list by typing a country name.",
+                key="route_dive_search",
+            )
+        else:
+            route_search = st.text_input(
+                "Search routes by airport code or name",
+                placeholder="e.g. HNL, Honolulu, TPE",
+                help="Filter the route list by typing airport code (IATA) or airport name.",
+                key="route_dive_search",
+            )
     search_lower = route_search.strip().lower()
     if search_lower:
         filtered_routes = [r for r in route_display_options if search_lower in r.lower()]
@@ -1228,20 +1259,30 @@ def main() -> None:
                 index=0,
                 help="Explore statistics for a route (both directions grouped).",
             )
-        airport_a, airport_b = route_str_to_airports.get(sel_route_display, ("", ""))
-        mask_both = (
-            ((df["origin"] == airport_a) & (df["destination"] == airport_b))
-            | ((df["origin"] == airport_b) & (df["destination"] == airport_a))
-        )
-        df_route = df[mask_both]
+
+        if route_by_country:
+            sel_country = sel_route_display.rsplit(" - ", 1)[0]
+            country_iatas = _route_country_iatas.get(sel_country, set())
+            mask_country = df["origin"].isin(country_iatas) | df["destination"].isin(country_iatas)
+            df_route = df[mask_country]
+        else:
+            airport_a, airport_b = route_str_to_airports.get(sel_route_display, ("", ""))
+            mask_both = (
+                ((df["origin"] == airport_a) & (df["destination"] == airport_b))
+                | ((df["origin"] == airport_b) & (df["destination"] == airport_a))
+            )
+            df_route = df[mask_both]
 
         if df_route.empty:
             st.info("No flights for this route in the selected filters.")
         else:
-            other = airport_b if airport_a == HKG else airport_a
-            other_info = get_airport(other)
-            name = other_info.name if other_info and other_info.name else other
-            route_label = f"{other} - {name}"
+            if route_by_country:
+                route_label = sel_country
+            else:
+                other = airport_b if airport_a == HKG else airport_a
+                other_info = get_airport(other)
+                name = other_info.name if other_info and other_info.name else other
+                route_label = f"{other} - {name}"
             st.subheader(route_label)
 
             n_route = len(df_route)

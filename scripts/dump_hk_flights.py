@@ -6,7 +6,7 @@ Output columns: origin, destination, flight_no, airline, operating_flight_no,
 operating_airline, scheduled_time, status, date, cargo. Cargo flights included by default.
 
 Output modes:
-  --data-dir DIR  Write one CSV per date into DIR (e.g. data/2026-02-25.csv).
+  --data-dir DIR  Write one CSV per date into DIR (e.g. data/hkg/2026-02-25.csv).
   -o FILE         Write all flights to a single CSV, merging with existing data.
   (neither)       Print to stdout.
 
@@ -14,14 +14,14 @@ Note: The HK Airport API provides historical data for approximately the last 90 
 Dates older than that may return 400 Bad Request.
 
 Usage:
-    uv run python scripts/dump_hk_flights.py --data-dir data/             # past 30 days, per-date files
-    uv run python scripts/dump_hk_flights.py --days 2 --data-dir data/    # last 2 days (daily refresh)
-    uv run python scripts/dump_hk_flights.py -o flights.csv               # past 30 days, single file
+    uv run python scripts/dump_hk_flights.py --data-dir data/hkg/             # past 30 days, per-date files
+    uv run python scripts/dump_hk_flights.py --days 2 --data-dir data/hkg/    # last 2 days (daily refresh)
+    uv run python scripts/dump_hk_flights.py -o flights.csv                   # past 30 days, single file
     uv run python scripts/dump_hk_flights.py --date 2025-02-17
-    uv run python scripts/dump_hk_flights.py --start 2026-01-01 --end 2026-02-20 --data-dir data/
-    uv run python scripts/dump_hk_flights.py --no-cargo --data-dir data/  # passenger only
-    uv run python scripts/dump_hk_flights.py --deduplicate --data-dir data/
-    uv run python scripts/dump_hk_flights.py --debug                      # inspect raw API response
+    uv run python scripts/dump_hk_flights.py --start 2026-01-01 --end 2026-02-20 --data-dir data/hkg/
+    uv run python scripts/dump_hk_flights.py --no-cargo --data-dir data/hkg/  # passenger only
+    uv run python scripts/dump_hk_flights.py --deduplicate --data-dir data/hkg/
+    uv run python scripts/dump_hk_flights.py --debug                          # inspect raw API response
 """
 
 import argparse

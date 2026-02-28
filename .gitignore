@@ -55,7 +55,7 @@ venv.bak/
 
 # Data files
 *.csv
-!data/*.csv
+!data/**/*.csv
 *.json
 !src/flyghts/reference/data/*.json
 *.xlsx

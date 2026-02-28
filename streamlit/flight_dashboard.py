@@ -1,7 +1,7 @@
 """
 Flight Dashboard - Analyze HK flight data.
 
-Reads per-date CSVs from data/ directory (preferred), or falls back to flights.csv.
+Reads per-date CSVs from data/hkg/ directory (preferred), or falls back to flights.csv.
 
 Features: top airlines/destinations, interactive map with multi-airline overlay and
 country filtering, airline deep dive, airline comparison (2+ airlines side by side),
@@ -25,13 +25,13 @@ HKG = "HKG"
 HKG_LAT = 22.3080
 HKG_LON = 113.9185
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
+DATA_DIR = PROJECT_ROOT / "data" / "hkg"
 FLIGHTS_CSV = PROJECT_ROOT / "flights.csv"
 
 
 @st.cache_data
 def load_flights() -> pd.DataFrame:
-    """Load flight data from per-date CSVs in data/, or fall back to flights.csv."""
+    """Load flight data from per-date CSVs in data/hkg/, or fall back to flights.csv."""
     if DATA_DIR.exists() and any(DATA_DIR.glob("*.csv")):
         dfs = [pd.read_csv(f) for f in sorted(DATA_DIR.glob("*.csv"))]
         df = pd.concat(dfs, ignore_index=True)

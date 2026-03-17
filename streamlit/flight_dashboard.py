@@ -1,16 +1,17 @@
 """
-Flight Dashboard - Analyze HK flight data.
+Flight Dashboard - Analyze flight data across multiple datasets.
 
-Reads per-date CSVs from data/hkg/ directory (preferred), or falls back to flights.csv.
+Supports HKG (Hong Kong International Airport) and US Domestic flight data.
+Reads per-date CSVs from data/{hkg,us}/ directories.
 
-Features: top airlines/destinations, interactive map with multi-airline overlay and
-country filtering, airline deep dive, airline comparison (2+ airlines side by side),
-route deep dive.
+Features: dataset selector, focus-airport picker, top airlines/destinations,
+interactive map with multi-airline overlay and country filtering, airline deep dive,
+airline comparison (2+ airlines side by side), route deep dive, delay analysis.
 
 Run with: uv run streamlit run streamlit/flight_dashboard.py
 """
 
-from datetime import date as date_type
+import re
 from pathlib import Path
 
 import numpy as np
@@ -21,24 +22,25 @@ import streamlit as st
 
 from flyghts.reference import get_airline, get_airport
 
-HKG = "HKG"
-HKG_LAT = 22.3080
-HKG_LON = 113.9185
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = PROJECT_ROOT / "data" / "hkg"
-FLIGHTS_CSV = PROJECT_ROOT / "flights.csv"
+
+DATASETS: dict[str, dict] = {
+    "HKG": {"dir": "hkg", "scope": "world", "default_airport": "HKG"},
+    "US Domestic": {"dir": "us", "scope": "usa", "default_airport": None},
+}
+
+_DELAY_RE = re.compile(r"\(\+(\d+)min\)")
 
 
 @st.cache_data
-def load_flights() -> pd.DataFrame:
-    """Load flight data from per-date CSVs in data/hkg/, or fall back to flights.csv."""
-    if DATA_DIR.exists() and any(DATA_DIR.glob("*.csv")):
-        dfs = [pd.read_csv(f) for f in sorted(DATA_DIR.glob("*.csv"))]
+def load_flights(dataset_key: str) -> pd.DataFrame:
+    """Load flight data from per-date CSVs for the given dataset."""
+    data_dir = PROJECT_ROOT / "data" / DATASETS[dataset_key]["dir"]
+    if data_dir.exists() and any(data_dir.glob("*.csv")):
+        dfs = [pd.read_csv(f) for f in sorted(data_dir.glob("*.csv"))]
         df = pd.concat(dfs, ignore_index=True)
-    elif FLIGHTS_CSV.exists():
-        df = pd.read_csv(FLIGHTS_CSV)
     else:
-        st.error("No flight data found. Run the dump script first.")
+        st.error(f"No flight data found for {dataset_key}. Run the dump script first.")
         st.stop()
     df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
     if "cargo" in df.columns:
@@ -55,17 +57,20 @@ def load_flights() -> pd.DataFrame:
 def apply_filters(
     df: pd.DataFrame,
     direction: str,
+    focus_airport: str,
     start_date: pd.Timestamp,
     end_date: pd.Timestamp,
     cargo_filter: str | None = None,
     operating_only: bool = False,
 ) -> pd.DataFrame:
-    """Filter by direction, date range, optionally cargo, and optionally operating-only."""
+    """Filter by direction relative to focus airport, date range, cargo, and operating-only."""
     mask = (df["date"] >= start_date) & (df["date"] <= end_date)
-    if direction == "From HKG":
-        mask = mask & (df["origin"] == HKG)
-    elif direction == "To HKG":
-        mask = mask & (df["destination"] == HKG)
+    if direction == "Departures":
+        mask = mask & (df["origin"] == focus_airport)
+    elif direction == "Arrivals":
+        mask = mask & (df["destination"] == focus_airport)
+    else:
+        mask = mask & ((df["origin"] == focus_airport) | (df["destination"] == focus_airport))
     if cargo_filter and "cargo" in df.columns:
         if cargo_filter == "Passenger only":
             mask = mask & (~df["cargo"])
@@ -76,16 +81,34 @@ def apply_filters(
     return df[mask]
 
 
-def get_destination_column(df: pd.DataFrame, direction: str) -> pd.Series:
-    """Return the series of non-HKG airport codes (destination for analysis)."""
-    if direction == "From HKG":
+def get_destination_column(df: pd.DataFrame, direction: str, focus_airport: str) -> pd.Series:
+    """Return the 'other end' airport codes relative to the focus airport."""
+    if direction == "Departures":
         return df["destination"]
-    if direction == "To HKG":
+    if direction == "Arrivals":
         return df["origin"]
-    # Both: concatenate origin and destination, exclude HKG
-    origins = df[df["origin"] != HKG]["origin"]
-    dests = df[df["destination"] != HKG]["destination"]
+    origins = df[df["origin"] != focus_airport]["origin"]
+    dests = df[df["destination"] != focus_airport]["destination"]
     return pd.concat([origins, dests])
+
+
+def parse_delay_minutes(status: str) -> int | None:
+    """Extract delay minutes from US-format status strings.
+
+    Returns 0 for on-time arrivals, positive int for late arrivals,
+    None for cancelled/diverted/unknown.
+    """
+    if not isinstance(status, str):
+        return None
+    s = status.strip()
+    if s.startswith("Cancelled") or s.startswith("Diverted"):
+        return None
+    m = _DELAY_RE.search(s)
+    if m:
+        return int(m.group(1))
+    if s.startswith("Arr ") or s.startswith("Dep "):
+        return 0
+    return None
 
 
 def build_map_points(
@@ -130,35 +153,43 @@ def build_map_points(
     return points
 
 
-_MAP_GEO_OPTS = dict(
-    scope="world",
-    projection_type="natural earth",
-    showland=True,
-    coastlinewidth=0.5,
-    landcolor="rgb(243,243,243)",
-    showcountries=True,
-    countrycolor="rgba(150,150,150,0.6)",
-    countrywidth=0.5,
-)
+def _get_map_geo_opts(scope: str = "world") -> dict:
+    """Return geo layout options parameterized by scope."""
+    return dict(
+        scope=scope,
+        projection_type="natural earth",
+        showland=True,
+        coastlinewidth=0.5,
+        landcolor="rgb(243,243,243)",
+        showcountries=True,
+        countrycolor="rgba(150,150,150,0.6)",
+        countrywidth=0.5,
+    )
 
 
 def _render_flight_map(
     df_map: pd.DataFrame,
     direction: str,
+    focus_airport: str,
+    focus_lat: float,
+    focus_lon: float,
     map_by_country: bool,
     airline_codes: list[str],
     airline_col: str,
+    geo_scope: str = "world",
 ) -> None:
-    """Render interactive flight map from HKG. airline_codes: empty = single color, else multi-airline."""
+    """Render interactive flight map from focus airport."""
     if df_map.empty:
         st.info("No flight data to display on map.")
         return
-    map_dest_counts = get_destination_column(df_map, direction).value_counts()
+    map_dest_counts = get_destination_column(df_map, direction, focus_airport).value_counts()
     map_data = build_map_points(map_dest_counts, map_by_country)
     map_df = pd.DataFrame(map_data)
     if map_df.empty:
         st.info("No destination airports with valid coordinates in the reference data.")
         return
+    f_info = get_airport(focus_airport)
+    f_label = f"{focus_airport} ({f_info.city})" if f_info and f_info.city else focus_airport
     fig_map = go.Figure()
     if not airline_codes:
         count_max = map_df["count"].max()
@@ -166,7 +197,7 @@ def _render_flight_map(
             rel = row["count"] / count_max if count_max > 0 else 1
             width = 0.8 + 7.2 * rel
             fig_map.add_trace(go.Scattergeo(
-                lon=[HKG_LON, row["lon"]], lat=[HKG_LAT, row["lat"]],
+                lon=[focus_lon, row["lon"]], lat=[focus_lat, row["lat"]],
                 mode="lines",
                 line=dict(width=width, color="rgba(100,150,200,0.5)"),
                 hoverinfo="skip", showlegend=False,
@@ -190,7 +221,7 @@ def _render_flight_map(
             a_info = get_airline(code)
             a_name = a_info.name if a_info else code
             df_a = df_map[df_map[airline_col] == code]
-            a_dest_counts = get_destination_column(df_a, direction).value_counts()
+            a_dest_counts = get_destination_column(df_a, direction, focus_airport).value_counts()
             a_points = build_map_points(a_dest_counts, map_by_country)
             a_df = pd.DataFrame(a_points)
             if a_df.empty:
@@ -201,7 +232,7 @@ def _render_flight_map(
                 rel = row["count"] / a_count_max if a_count_max > 0 else 1
                 width = 0.8 + 5.2 * rel
                 fig_map.add_trace(go.Scattergeo(
-                    lon=[HKG_LON, row["lon"]], lat=[HKG_LAT, row["lat"]],
+                    lon=[focus_lon, row["lon"]], lat=[focus_lat, row["lat"]],
                     mode="lines",
                     line=dict(width=width, color=color),
                     opacity=0.4,
@@ -225,15 +256,15 @@ def _render_flight_map(
             return
         show_legend = bool(airline_codes)
     fig_map.add_trace(go.Scattergeo(
-        lon=[HKG_LON], lat=[HKG_LAT],
-        text=["HKG (Hong Kong)"],
+        lon=[focus_lon], lat=[focus_lat],
+        text=[f_label],
         mode="markers+text",
         marker=dict(size=15, color="red", symbol="star"),
         textfont=dict(color="black"),
         textposition="top center",
         hoverinfo="text", showlegend=False,
     ))
-    fig_map.update_geos(**_MAP_GEO_OPTS)
+    fig_map.update_geos(**_get_map_geo_opts(geo_scope))
     fig_map.update_layout(
         height=600, margin=dict(l=0, r=0, t=0, b=0), showlegend=show_legend,
     )
@@ -246,21 +277,78 @@ def main() -> None:
         page_icon="✈️",
         layout="wide",
     )
-    st.title("✈️ HK Flight Traffic Dashboard")
-    st.caption("Analyze flight data to/from Hong Kong International Airport (HKG)")
 
-    df_all = load_flights()
+    # ── Sidebar: dataset ──
+    with st.sidebar:
+        st.header("Dataset")
+        dataset_key = st.radio(
+            "Dataset",
+            options=list(DATASETS.keys()),
+            index=0,
+            label_visibility="collapsed",
+        )
+
+    ds = DATASETS[dataset_key]
+    geo_scope = ds["scope"]
+    is_us = dataset_key == "US Domestic"
+    show_country = not is_us
+
+    df_all = load_flights(dataset_key)
+
+    # ── Sidebar: focus airport ──
+    with st.sidebar:
+        if ds["default_airport"]:
+            focus_airport = ds["default_airport"]
+        else:
+            airport_traffic = pd.concat([
+                df_all["origin"].value_counts(),
+                df_all["destination"].value_counts(),
+            ]).groupby(level=0).sum().sort_values(ascending=False)
+            airport_options: list[str] = []
+            airport_display_to_code: dict[str, str] = {}
+            for code in airport_traffic.index:
+                info = get_airport(code)
+                label = f"{code} - {info.city}" if info and info.city else code
+                airport_options.append(label)
+                airport_display_to_code[label] = code
+
+            st.markdown("---")
+            st.header("Focus airport")
+            sel_airport_display = st.selectbox(
+                "Airport",
+                options=airport_options,
+                index=0,
+                label_visibility="collapsed",
+            )
+            focus_airport = airport_display_to_code.get(
+                sel_airport_display, airport_traffic.index[0]
+            )
+
+    focus_info = get_airport(focus_airport)
+    focus_lat = focus_info.latitude if focus_info else 0.0
+    focus_lon = focus_info.longitude if focus_info else 0.0
+    focus_label = (
+        f"{focus_airport} ({focus_info.city})"
+        if focus_info and focus_info.city
+        else focus_airport
+    )
+
+    st.title(f"✈️ {focus_label} Flight Dashboard")
+    st.caption(f"Analyze flight data to/from {focus_label}")
+
     min_date = df_all["date"].min().date()
     max_date = df_all["date"].max().date()
-    start_default = min_date
-    end_default = max_date
 
-    # Sidebar filters
+    # ── Sidebar: section & filters ──
     with st.sidebar:
+        st.markdown("---")
         st.header("Section")
+        section_options = ["Overview", "Airline deep dive", "Route deep dive"]
+        if is_us:
+            section_options.append("Delay analysis")
         section = st.radio(
             "View",
-            options=["Overview", "Airline deep dive", "Route deep dive"],
+            options=section_options,
             index=0,
             label_visibility="collapsed",
             key="main_section",
@@ -269,35 +357,40 @@ def main() -> None:
         st.header("Filters")
         direction = st.radio(
             "Direction",
-            options=["From HKG", "To HKG", "Both"],
+            options=["Departures", "Arrivals", "Both"],
             index=2,
-            help="From HKG = departures, To HKG = arrivals, Both = all flights",
+            help=(
+                f"Departures = from {focus_airport}, "
+                f"Arrivals = to {focus_airport}, "
+                f"Both = all flights involving {focus_airport}"
+            ),
         )
         start_date = st.date_input(
             "Start date",
-            value=start_default,
+            value=min_date,
             min_value=min_date,
             max_value=max_date,
         )
         end_date = st.date_input(
             "End date",
-            value=end_default,
+            value=max_date,
             min_value=min_date,
             max_value=max_date,
         )
         top_n = st.slider("Top N for rankings", min_value=5, max_value=50, value=10)
 
         has_cargo = "cargo" in df_all.columns
-        if has_cargo:
+        if has_cargo and not is_us:
             cargo_filter = st.radio(
                 "Flight type",
                 options=["All", "Passenger only", "Cargo only"],
                 index=1,
-                help="Filter by passenger vs cargo flights (requires cargo column in data)",
+                help="Filter by passenger vs cargo flights",
             )
+        elif is_us:
+            cargo_filter = "Passenger only"
         else:
             cargo_filter = None
-            st.caption("No cargo column in data. Re-dump with --cargo to enable.")
 
         has_operating = "operating_airline" in df_all.columns
         if has_operating:
@@ -308,7 +401,6 @@ def main() -> None:
             )
         else:
             operating_only = False
-            st.caption("No operating carrier columns. Re-dump to enable.")
 
     if start_date > end_date:
         st.error("Start date must be before or equal to end date.")
@@ -317,6 +409,7 @@ def main() -> None:
     df = apply_filters(
         df_all,
         direction,
+        focus_airport,
         pd.Timestamp(start_date),
         pd.Timestamp(end_date),
         cargo_filter=cargo_filter if has_cargo else None,
@@ -328,13 +421,15 @@ def main() -> None:
 
     airline_col = "operating_airline" if (operating_only and has_operating) else "airline"
 
+    # ══════════════════════════════════════════════════════════════════════
+    #  OVERVIEW
+    # ══════════════════════════════════════════════════════════════════════
     if section == "Overview":
-        dest_codes = get_destination_column(df, direction)
+        dest_codes = get_destination_column(df, direction, focus_airport)
         dest_counts = dest_codes.value_counts()
         airline_counts = df[airline_col].value_counts()
         top_airlines = airline_counts.head(top_n)
 
-        # Build all four datasets
         airline_rows = []
         for icao, count in top_airlines.items():
             info = get_airline(icao)
@@ -364,17 +459,18 @@ def main() -> None:
         )
         city_df["Share (%)"] = (100 * city_df["Flights"] / total_flights).round(1) if total_flights else 0.0
 
-        country_counts: dict[str, int] = {}
-        for iata, count in dest_counts.items():
-            info = get_airport(iata)
-            country = info.country if info and info.country else iata
-            country_counts[country] = country_counts.get(country, 0) + count
-        country_sorted = sorted(country_counts.items(), key=lambda x: -x[1])[:top_n]
-        country_df = pd.DataFrame(
-            [{"Country": c, "Flights": n} for c, n in country_sorted],
-            columns=["Country", "Flights"],
-        )
-        country_df["Share (%)"] = (100 * country_df["Flights"] / total_flights).round(1) if total_flights else 0.0
+        if show_country:
+            country_counts: dict[str, int] = {}
+            for iata, count in dest_counts.items():
+                info = get_airport(iata)
+                country = info.country if info and info.country else iata
+                country_counts[country] = country_counts.get(country, 0) + count
+            country_sorted = sorted(country_counts.items(), key=lambda x: -x[1])[:top_n]
+            country_df = pd.DataFrame(
+                [{"Country": c, "Flights": n} for c, n in country_sorted],
+                columns=["Country", "Flights"],
+            )
+            country_df["Share (%)"] = (100 * country_df["Flights"] / total_flights).round(1) if total_flights else 0.0
 
         chart_h = 320
 
@@ -402,32 +498,36 @@ def main() -> None:
         fig_city.update_traces(textposition="outside")
         fig_city.update_layout(height=chart_h, yaxis={"categoryorder": "total ascending"}, showlegend=False)
 
-        fig_country = px.bar(
-            country_df, x="Flights", y="Country", orientation="h",
-            color="Flights", color_continuous_scale="Purples",
-            text=country_df["Share (%)"].apply(lambda x: f"{x}%"),
-        )
-        fig_country.update_traces(textposition="outside")
-        fig_country.update_layout(height=chart_h, yaxis={"categoryorder": "total ascending"}, showlegend=False)
+        if show_country:
+            fig_country = px.bar(
+                country_df, x="Flights", y="Country", orientation="h",
+                color="Flights", color_continuous_scale="Purples",
+                text=country_df["Share (%)"].apply(lambda x: f"{x}%"),
+            )
+            fig_country.update_traces(textposition="outside")
+            fig_country.update_layout(height=chart_h, yaxis={"categoryorder": "total ascending"}, showlegend=False)
 
-        # 2x2 grid
         r1c1, r1c2 = st.columns(2)
         with r1c1:
             st.subheader("Top airlines by flight count")
-            st.plotly_chart(fig_airlines, use_container_width=True)
+            st.plotly_chart(fig_airlines, width="stretch")
         with r1c2:
             st.subheader("Top destinations by airport")
-            st.plotly_chart(fig_apt, use_container_width=True)
+            st.plotly_chart(fig_apt, width="stretch")
 
-        r2c1, r2c2 = st.columns(2)
-        with r2c1:
+        if show_country:
+            r2c1, r2c2 = st.columns(2)
+            with r2c1:
+                st.subheader("Top destinations by city")
+                st.plotly_chart(fig_city, width="stretch")
+            with r2c2:
+                st.subheader("Top destinations by country")
+                st.plotly_chart(fig_country, width="stretch")
+        else:
             st.subheader("Top destinations by city")
-            st.plotly_chart(fig_city, use_container_width=True)
-        with r2c2:
-            st.subheader("Top destinations by country")
-            st.plotly_chart(fig_country, use_container_width=True)
+            st.plotly_chart(fig_city, width="stretch")
 
-        # --- Flights per day ---
+        # ── Flights per day ──
         st.header("Flights per day")
         flights_per_day = df.groupby(df["date"].dt.date).size().reset_index(name="Flights")
         flights_per_day.columns = ["Date", "Flights"]
@@ -439,11 +539,11 @@ def main() -> None:
                 labels={"Date": "Date", "Flights": "Number of flights"},
             )
             fig_per_day.update_layout(height=350)
-            st.plotly_chart(fig_per_day, use_container_width=True)
+            st.plotly_chart(fig_per_day, width="stretch")
         else:
             st.caption("No date data.")
 
-        # --- Interactive Map ---
+        # ── Interactive Map ──
         st.header("Interactive map: flight flow by destination")
 
         map_airline_col = "operating_airline" if (operating_only and has_operating) else "airline"
@@ -455,8 +555,7 @@ def main() -> None:
             map_airline_display.append(display)
             map_display_to_code[display] = code
 
-        # Build country list from destination airports in current data
-        _dest_codes_for_countries = get_destination_column(df, direction)
+        _dest_codes_for_countries = get_destination_column(df, direction, focus_airport)
         _country_set: set[str] = set()
         _iata_to_country: dict[str, str] = {}
         for _iata in _dest_codes_for_countries.unique():
@@ -466,12 +565,20 @@ def main() -> None:
                 _iata_to_country[_iata] = _info.country
         map_country_options = sorted(_country_set)
 
-        col_map_by, col_map_airline, col_map_country = st.columns(3)
+        if show_country:
+            col_map_by, col_map_airline, col_map_country = st.columns(3)
+        else:
+            col_map_by, col_map_airline = st.columns(2)
+            col_map_country = None
+
         with col_map_by:
+            map_point_opts = ["City (airport)"]
+            if show_country:
+                map_point_opts.append("Country")
             map_point_by = st.radio(
                 "Map points by",
-                options=["City (airport)", "Country"],
-                index=1,
+                options=map_point_opts,
+                index=0,
                 horizontal=True,
                 help="Show each destination as a precise city/airport, or aggregate by country.",
             )
@@ -482,22 +589,25 @@ def main() -> None:
                 default=[],
                 help="Leave empty to show all. Select airlines to compare on map with distinct colors.",
             )
-        with col_map_country:
-            sel_map_countries = st.multiselect(
-                "Filter by country",
-                options=map_country_options,
-                default=[],
-                help="Leave empty to show all. Select countries to show only routes to those countries.",
-            )
+        if col_map_country is not None:
+            with col_map_country:
+                sel_map_countries = st.multiselect(
+                    "Filter by country",
+                    options=map_country_options,
+                    default=[],
+                    help="Leave empty to show all. Select countries to show only routes to those countries.",
+                )
+        else:
+            sel_map_countries = []
+
         map_by_country = map_point_by == "Country"
         sel_map_codes = [map_display_to_code[d] for d in sel_map_airlines if d in map_display_to_code]
 
-        # Apply country filter to the map dataframe
         if sel_map_countries:
             _allowed_iatas = {iata for iata, c in _iata_to_country.items() if c in sel_map_countries}
-            if direction == "From HKG":
+            if direction == "Departures":
                 _country_mask = df["destination"].isin(_allowed_iatas)
-            elif direction == "To HKG":
+            elif direction == "Arrivals":
                 _country_mask = df["origin"].isin(_allowed_iatas)
             else:
                 _country_mask = df["destination"].isin(_allowed_iatas) | df["origin"].isin(_allowed_iatas)
@@ -505,128 +615,15 @@ def main() -> None:
         else:
             df_map = df
 
-        _map_geo_opts = dict(
-            scope="world",
-            projection_type="natural earth",
-            showland=True,
-            coastlinewidth=0.5,
-            landcolor="rgb(243,243,243)",
-            showcountries=True,
-            countrycolor="rgba(150,150,150,0.6)",
-            countrywidth=0.5,
+        _render_flight_map(
+            df_map, direction, focus_airport, focus_lat, focus_lon,
+            map_by_country, sel_map_codes, map_airline_col, geo_scope,
         )
 
-        if not sel_map_codes:
-            # All airlines — single-color mode
-            map_dest_counts = get_destination_column(df_map, direction).value_counts()
-            map_data = build_map_points(map_dest_counts, map_by_country)
-            map_df = pd.DataFrame(map_data)
-
-            if map_df.empty:
-                st.info("No destination airports with valid coordinates in the reference data.")
-            else:
-                fig_map = go.Figure()
-                count_max = map_df["count"].max()
-                for _, row in map_df.iterrows():
-                    rel = row["count"] / count_max if count_max > 0 else 1
-                    width = 0.8 + 7.2 * rel
-                    fig_map.add_trace(go.Scattergeo(
-                        lon=[HKG_LON, row["lon"]], lat=[HKG_LAT, row["lat"]],
-                        mode="lines",
-                        line=dict(width=width, color="rgba(100,150,200,0.5)"),
-                        hoverinfo="skip", showlegend=False,
-                    ))
-                fig_map.add_trace(go.Scattergeo(
-                    lon=map_df["lon"], lat=map_df["lat"],
-                    text=map_df["label"], mode="markers",
-                    marker=dict(
-                        size=map_df["count"].clip(upper=2000) ** 0.5 + 3,
-                        color=map_df["count"], colorscale="Viridis",
-                        showscale=True, colorbar=dict(title="Flights"),
-                    ),
-                    hoverinfo="text", showlegend=False,
-                ))
-                fig_map.add_trace(go.Scattergeo(
-                    lon=[HKG_LON], lat=[HKG_LAT],
-                    text=["HKG (Hong Kong)"],
-                    mode="markers+text",
-                    marker=dict(size=15, color="red", symbol="star"),
-                    textfont=dict(color="black"),
-                    textposition="top center",
-                    hoverinfo="text", showlegend=False,
-                ))
-                fig_map.update_geos(**_map_geo_opts)
-                fig_map.update_layout(
-                    height=600, margin=dict(l=0, r=0, t=0, b=0), showlegend=False,
-                )
-                st.plotly_chart(fig_map, width="stretch")
-        else:
-            # Multi-airline comparison mode
-            palette = px.colors.qualitative.Plotly
-            fig_map = go.Figure()
-            any_data = False
-            airline_summaries: list[str] = []
-
-            for idx, code in enumerate(sel_map_codes):
-                color = palette[idx % len(palette)]
-                a_info = get_airline(code)
-                a_name = a_info.name if a_info else code
-
-                df_a = df_map[df_map[map_airline_col] == code]
-                a_dest_counts = get_destination_column(df_a, direction).value_counts()
-                a_points = build_map_points(a_dest_counts, map_by_country)
-                a_df = pd.DataFrame(a_points)
-
-                if a_df.empty:
-                    continue
-                any_data = True
-                airline_summaries.append(f"{a_name}: {len(df_a):,} flights")
-
-                a_count_max = a_df["count"].max()
-                for _, row in a_df.iterrows():
-                    rel = row["count"] / a_count_max if a_count_max > 0 else 1
-                    width = 0.8 + 5.2 * rel
-                    fig_map.add_trace(go.Scattergeo(
-                        lon=[HKG_LON, row["lon"]], lat=[HKG_LAT, row["lat"]],
-                        mode="lines",
-                        line=dict(width=width, color=color),
-                        opacity=0.4,
-                        hoverinfo="skip", showlegend=False,
-                    ))
-
-                fig_map.add_trace(go.Scattergeo(
-                    lon=a_df["lon"], lat=a_df["lat"],
-                    text=a_df["label"].apply(lambda lbl, n=a_name: f"{n} | {lbl}"),
-                    mode="markers",
-                    marker=dict(
-                        size=a_df["count"].clip(upper=2000) ** 0.5 + 3,
-                        color=color,
-                    ),
-                    hoverinfo="text",
-                    name=a_name, showlegend=True,
-                ))
-
-            if not any_data:
-                st.info("No destination airports with valid coordinates for the selected airlines.")
-            else:
-                st.caption(" / ".join(airline_summaries))
-                fig_map.add_trace(go.Scattergeo(
-                    lon=[HKG_LON], lat=[HKG_LAT],
-                    text=["HKG (Hong Kong)"],
-                    mode="markers+text",
-                    marker=dict(size=15, color="red", symbol="star"),
-                    textfont=dict(color="black"),
-                    textposition="top center",
-                    hoverinfo="text", showlegend=False,
-                ))
-                fig_map.update_geos(**_map_geo_opts)
-                fig_map.update_layout(
-                    height=600, margin=dict(l=0, r=0, t=0, b=0), showlegend=True,
-                )
-                st.plotly_chart(fig_map, width="stretch")
-
+    # ══════════════════════════════════════════════════════════════════════
+    #  AIRLINE DEEP DIVE
+    # ══════════════════════════════════════════════════════════════════════
     elif section == "Airline deep dive":
-        # --- Airline deep dive ---
         st.header("Airline deep dive")
         dive_airlines = sorted(df[airline_col].dropna().unique().tolist())
         dive_airline_options: list[str] = []
@@ -643,7 +640,7 @@ def main() -> None:
             with col_search_a:
                 airline_search = st.text_input(
                     "Search airlines by code or name",
-                    placeholder="e.g. CPA, Cathay, Scoot",
+                    placeholder="e.g. CPA, Cathay, United",
                     help="Filter the airline list by typing ICAO code or airline name.",
                     key="airline_dive_search",
                 )
@@ -657,10 +654,11 @@ def main() -> None:
                 st.info("No airlines match your search.")
             else:
                 default_dive_idx = 0
-                for i, opt in enumerate(filtered_airlines):
-                    if opt.startswith("CPA -") or dive_display_to_code.get(opt) == "CPA":
-                        default_dive_idx = i
-                        break
+                if not is_us:
+                    for i, opt in enumerate(filtered_airlines):
+                        if opt.startswith("CPA -") or dive_display_to_code.get(opt) == "CPA":
+                            default_dive_idx = i
+                            break
 
                 with col_select_a:
                     sel_dive_airline = st.selectbox(
@@ -687,31 +685,41 @@ def main() -> None:
                     with m2:
                         st.metric("Share of traffic", f"{pct:.1f}%")
 
-                    dest_codes_airline = get_destination_column(df_airline, direction)
+                    dest_codes_airline = get_destination_column(df_airline, direction, focus_airport)
                     dest_counts_airline = dest_codes_airline.value_counts()
-                    if direction == "From HKG":
+                    if direction == "Departures":
                         route_dest_airline = df_airline["destination"]
-                    elif direction == "To HKG":
+                    elif direction == "Arrivals":
                         route_dest_airline = df_airline["origin"]
                     else:
                         route_dest_airline = pd.Series(
-                            np.where(df_airline["origin"] == HKG, df_airline["destination"], df_airline["origin"]),
+                            np.where(
+                                df_airline["origin"] == focus_airport,
+                                df_airline["destination"],
+                                df_airline["origin"],
+                            ),
                             index=df_airline.index,
                         )
 
-                    tab_routes, tab_time, tab_hour, tab_weekday, tab_cargo, tab_map = st.tabs([
+                    _dive_tab_names = [
                         "Top routes",
                         "Flights over time",
                         "Flights by hour",
                         "Flights by weekday",
-                        "Cargo vs passenger",
-                        "Interactive map",
-                    ])
+                    ]
+                    if not is_us:
+                        _dive_tab_names.append("Cargo vs passenger")
+                    _dive_tab_names.append("Interactive map")
+                    _dive_tabs = st.tabs(_dive_tab_names)
+                    if is_us:
+                        tab_routes, tab_time, tab_hour, tab_weekday, tab_map = _dive_tabs
+                        tab_cargo = None
+                    else:
+                        tab_routes, tab_time, tab_hour, tab_weekday, tab_cargo, tab_map = _dive_tabs
 
                     with tab_routes:
                         route_n = min(top_n, len(dest_counts_airline))
-                        # Denominator: match operating_only—physical flights when True, all records when False
-                        total_dest_counts = get_destination_column(df, direction).value_counts()
+                        total_dest_counts = get_destination_column(df, direction, focus_airport).value_counts()
                         route_rows = []
                         for iata, count in dest_counts_airline.head(route_n).items():
                             info = get_airport(iata)
@@ -758,7 +766,6 @@ def main() -> None:
                             fig_route.update_traces(textposition="outside")
                             st.plotly_chart(fig_route, width="stretch")
 
-                            # Share % over time for top N routes
                             top_dests = set(dest_counts_airline.head(route_n).index)
                             by_date_dest = (
                                 df_airline.assign(route_dest=route_dest_airline)
@@ -768,13 +775,13 @@ def main() -> None:
                             )
                             by_date_dest.columns = ["Date", "route_dest", "Flights"]
                             by_date_dest = by_date_dest[by_date_dest["route_dest"].isin(top_dests)]
-                            if direction == "From HKG":
+                            if direction == "Departures":
                                 dest_col_df = df["destination"]
-                            elif direction == "To HKG":
+                            elif direction == "Arrivals":
                                 dest_col_df = df["origin"]
                             else:
                                 dest_col_df = pd.Series(
-                                    np.where(df["origin"] == HKG, df["destination"], df["origin"]),
+                                    np.where(df["origin"] == focus_airport, df["destination"], df["origin"]),
                                     index=df.index,
                                 )
                             total_by_date_dest = (
@@ -814,7 +821,6 @@ def main() -> None:
                                 )
                                 st.plotly_chart(fig_route_share_time, width="stretch")
 
-                            # Flights per route normalized by airline's daily flights
                             airline_flights_per_date = (
                                 df_airline.groupby(df_airline["date"].dt.date).size().rename("AirlineTotal")
                             )
@@ -902,7 +908,6 @@ def main() -> None:
                             )
                             st.plotly_chart(fig_time, width="stretch")
 
-                            # Flights over time per route (top N)
                             top_dests_time = set(dest_counts_airline.head(top_n).index)
                             by_date_dest_time = (
                                 df_airline.assign(route_dest=route_dest_airline)
@@ -944,7 +949,8 @@ def main() -> None:
 
                     with tab_hour:
                         st.caption(
-                            "Departure time for flights from HKG; arrival time for flights to HKG."
+                            f"Departure time for flights from {focus_airport}; "
+                            f"arrival time for flights to {focus_airport}."
                         )
                         if "scheduled_time" in df_airline.columns:
                             df_airline_hour = df_airline.dropna(subset=["scheduled_time"])
@@ -992,57 +998,58 @@ def main() -> None:
                         else:
                             st.caption("No date data for weekday analysis.")
 
-                    with tab_cargo:
-                        if "cargo" in df_airline.columns:
-                            cargo_by_date = df_airline.groupby(
-                                [df_airline["date"].dt.date, "cargo"]
-                            ).size().reset_index(name="Flights")
-                            cargo_by_date["Type"] = cargo_by_date["cargo"].map(
-                                {True: "Cargo", False: "Passenger"}
-                            )
-                            if not cargo_by_date.empty:
-                                fig_cargo = px.line(
-                                    cargo_by_date,
-                                    x="date",
-                                    y="Flights",
-                                    color="Type",
-                                    labels={"date": "Date", "Flights": "Number of flights"},
-                                    custom_data=["Type"],
+                    if tab_cargo is not None:
+                        with tab_cargo:
+                            if "cargo" in df_airline.columns:
+                                cargo_by_date = df_airline.groupby(
+                                    [df_airline["date"].dt.date, "cargo"]
+                                ).size().reset_index(name="Flights")
+                                cargo_by_date["Type"] = cargo_by_date["cargo"].map(
+                                    {True: "Cargo", False: "Passenger"}
                                 )
-                                fig_cargo.update_traces(
-                                    hovertemplate="%{customdata[0]}<br>%{x}<br>Flights: %{y:,}<extra></extra>",
-                                )
-                                fig_cargo.update_layout(height=350)
-                                st.plotly_chart(fig_cargo, width="stretch")
-                            cargo_passenger = (df_airline["cargo"] == False).sum()
-                            cargo_cargo = (df_airline["cargo"] == True).sum()
-                            cargo_df = pd.DataFrame([
-                                {"Type": "Passenger", "Flights": cargo_passenger},
-                                {"Type": "Cargo", "Flights": cargo_cargo},
-                            ])
-                            st.dataframe(cargo_df)
-                        else:
-                            st.caption("No cargo column in data.")
+                                if not cargo_by_date.empty:
+                                    fig_cargo = px.line(
+                                        cargo_by_date,
+                                        x="date",
+                                        y="Flights",
+                                        color="Type",
+                                        labels={"date": "Date", "Flights": "Number of flights"},
+                                        custom_data=["Type"],
+                                    )
+                                    fig_cargo.update_traces(
+                                        hovertemplate="%{customdata[0]}<br>%{x}<br>Flights: %{y:,}<extra></extra>",
+                                    )
+                                    fig_cargo.update_layout(height=350)
+                                    st.plotly_chart(fig_cargo, width="stretch")
+                                cargo_passenger = (df_airline["cargo"] == False).sum()
+                                cargo_cargo = (df_airline["cargo"] == True).sum()
+                                cargo_df = pd.DataFrame([
+                                    {"Type": "Passenger", "Flights": cargo_passenger},
+                                    {"Type": "Cargo", "Flights": cargo_cargo},
+                                ])
+                                st.dataframe(cargo_df)
+                            else:
+                                st.caption("No cargo column in data.")
 
                     with tab_map:
-                        map_point_by_dive = st.radio(
-                            "Map points by",
-                            options=["City (airport)", "Country"],
-                            index=1,
-                            horizontal=True,
-                            help="Show each destination as a precise city/airport, or aggregate by country.",
-                            key="airline_dive_map_by",
-                        )
+                        if show_country:
+                            map_point_by_dive = st.radio(
+                                "Map points by",
+                                options=["City (airport)", "Country"],
+                                index=1,
+                                horizontal=True,
+                                help="Show each destination as a precise city/airport, or aggregate by country.",
+                                key="airline_dive_map_by",
+                            )
+                        else:
+                            map_point_by_dive = "City (airport)"
                         map_by_country_dive = map_point_by_dive == "Country"
                         _render_flight_map(
-                            df_airline,
-                            direction,
-                            map_by_country_dive,
-                            [dive_icao],
-                            airline_col,
+                            df_airline, direction, focus_airport, focus_lat, focus_lon,
+                            map_by_country_dive, [dive_icao], airline_col, geo_scope,
                         )
 
-        # --- Airline comparison ---
+        # ── Airline comparison ──
         st.header("Airline comparison")
         if not dive_airline_options:
             st.info("No airlines in the filtered data.")
@@ -1070,7 +1077,7 @@ def main() -> None:
                     df_a = df[df[airline_col] == code]
                     n = len(df_a)
                     share = 100 * n / total_flights if total_flights > 0 else 0
-                    n_dests = get_destination_column(df_a, direction).nunique()
+                    n_dests = get_destination_column(df_a, direction, focus_airport).nunique()
                     pax = int((~df_a["cargo"]).sum()) if "cargo" in df_a.columns else n
                     cargo_n = int(df_a["cargo"].sum()) if "cargo" in df_a.columns else 0
                     summary_rows.append({
@@ -1088,26 +1095,33 @@ def main() -> None:
                 df_cmp = df[df[airline_col].isin(cmp_codes)].copy()
                 df_cmp["Airline"] = df_cmp[airline_col].map(cmp_names)
 
-                tab_cmp_routes, tab_cmp_time, tab_cmp_share, tab_cmp_hour, tab_cmp_cargo, tab_cmp_map = st.tabs([
+                _cmp_tab_names = [
                     "Top routes",
                     "Flights over time",
                     "Share of traffic over time",
                     "Flights by hour",
-                    "Cargo vs passenger",
-                    "Interactive map",
-                ])
+                ]
+                if not is_us:
+                    _cmp_tab_names.append("Cargo vs passenger")
+                _cmp_tab_names.append("Interactive map")
+                _cmp_tabs = st.tabs(_cmp_tab_names)
+                if is_us:
+                    tab_cmp_routes, tab_cmp_time, tab_cmp_share, tab_cmp_hour, tab_cmp_map = _cmp_tabs
+                    tab_cmp_cargo = None
+                else:
+                    tab_cmp_routes, tab_cmp_time, tab_cmp_share, tab_cmp_hour, tab_cmp_cargo, tab_cmp_map = _cmp_tabs
 
                 with tab_cmp_routes:
                     all_top_dests: set[str] = set()
                     for code in cmp_codes:
                         df_a = df[df[airline_col] == code]
-                        top = get_destination_column(df_a, direction).value_counts().head(top_n).index
+                        top = get_destination_column(df_a, direction, focus_airport).value_counts().head(top_n).index
                         all_top_dests.update(top)
 
                     route_cmp_rows = []
                     for code in cmp_codes:
                         df_a = df[df[airline_col] == code]
-                        dest_counts_a = get_destination_column(df_a, direction).value_counts()
+                        dest_counts_a = get_destination_column(df_a, direction, focus_airport).value_counts()
                         for iata in sorted(all_top_dests):
                             count = dest_counts_a.get(iata, 0)
                             apt_info = get_airport(iata)
@@ -1189,7 +1203,8 @@ def main() -> None:
 
                 with tab_cmp_hour:
                     st.caption(
-                        "Departure time for flights from HKG; arrival time for flights to HKG."
+                        f"Departure time for flights from {focus_airport}; "
+                        f"arrival time for flights to {focus_airport}."
                     )
                     if "scheduled_time" in df_cmp.columns:
                         df_cmp_hour = df_cmp.dropna(subset=["scheduled_time"]).copy()
@@ -1218,93 +1233,98 @@ def main() -> None:
                     else:
                         st.caption("No scheduled_time column in data.")
 
-                with tab_cmp_cargo:
-                    if "cargo" in df_cmp.columns:
-                        cargo_cmp_rows = []
-                        for code in cmp_codes:
-                            df_a = df[df[airline_col] == code]
-                            pax = int((~df_a["cargo"]).sum()) if "cargo" in df_a.columns else 0
-                            cargo_n = int(df_a["cargo"].sum()) if "cargo" in df_a.columns else 0
-                            cargo_cmp_rows.append({"Airline": cmp_names[code], "Type": "Passenger", "Flights": pax})
-                            cargo_cmp_rows.append({"Airline": cmp_names[code], "Type": "Cargo", "Flights": cargo_n})
-                        cargo_cmp_df = pd.DataFrame(cargo_cmp_rows)
-                        if not cargo_cmp_df.empty:
-                            fig_cmp_cargo = px.bar(
-                                cargo_cmp_df,
-                                x="Flights",
-                                y="Airline",
-                                color="Type",
-                                orientation="h",
-                                barmode="group",
-                                labels={"Flights": "Number of flights"},
-                            )
-                            fig_cmp_cargo.update_layout(height=200 + len(cmp_codes) * 60)
-                            st.plotly_chart(fig_cmp_cargo, width="stretch")
+                if tab_cmp_cargo is not None:
+                    with tab_cmp_cargo:
+                        if "cargo" in df_cmp.columns:
+                            cargo_cmp_rows = []
+                            for code in cmp_codes:
+                                df_a = df[df[airline_col] == code]
+                                pax = int((~df_a["cargo"]).sum()) if "cargo" in df_a.columns else 0
+                                cargo_n = int(df_a["cargo"].sum()) if "cargo" in df_a.columns else 0
+                                cargo_cmp_rows.append({"Airline": cmp_names[code], "Type": "Passenger", "Flights": pax})
+                                cargo_cmp_rows.append({"Airline": cmp_names[code], "Type": "Cargo", "Flights": cargo_n})
+                            cargo_cmp_df = pd.DataFrame(cargo_cmp_rows)
+                            if not cargo_cmp_df.empty:
+                                fig_cmp_cargo = px.bar(
+                                    cargo_cmp_df,
+                                    x="Flights",
+                                    y="Airline",
+                                    color="Type",
+                                    orientation="h",
+                                    barmode="group",
+                                    labels={"Flights": "Number of flights"},
+                                )
+                                fig_cmp_cargo.update_layout(height=200 + len(cmp_codes) * 60)
+                                st.plotly_chart(fig_cmp_cargo, width="stretch")
 
-                        cargo_time_parts = []
-                        for code in cmp_codes:
-                            df_a = df[df[airline_col] == code]
-                            if "cargo" in df_a.columns:
-                                by_dt_cargo = (
-                                    df_a.groupby([df_a["date"].dt.date, "cargo"])
-                                    .size()
-                                    .reset_index(name="Flights")
-                                )
-                                by_dt_cargo["Type"] = by_dt_cargo["cargo"].map(
-                                    {True: "Cargo", False: "Passenger"}
-                                )
-                                by_dt_cargo["Label"] = cmp_names[code] + " - " + by_dt_cargo["Type"]
-                                cargo_time_parts.append(by_dt_cargo)
-                        if cargo_time_parts:
-                            cargo_time_df = pd.concat(cargo_time_parts, ignore_index=True)
-                            if not cargo_time_df.empty:
-                                fig_cmp_cargo_time = px.line(
-                                    cargo_time_df,
-                                    x="date",
-                                    y="Flights",
-                                    color="Label",
-                                    labels={"date": "Date", "Flights": "Number of flights"},
-                                )
-                                fig_cmp_cargo_time.update_layout(height=400)
-                                st.plotly_chart(fig_cmp_cargo_time, width="stretch")
-                    else:
-                        st.caption("No cargo column in data.")
+                            cargo_time_parts = []
+                            for code in cmp_codes:
+                                df_a = df[df[airline_col] == code]
+                                if "cargo" in df_a.columns:
+                                    by_dt_cargo = (
+                                        df_a.groupby([df_a["date"].dt.date, "cargo"])
+                                        .size()
+                                        .reset_index(name="Flights")
+                                    )
+                                    by_dt_cargo["Type"] = by_dt_cargo["cargo"].map(
+                                        {True: "Cargo", False: "Passenger"}
+                                    )
+                                    by_dt_cargo["Label"] = cmp_names[code] + " - " + by_dt_cargo["Type"]
+                                    cargo_time_parts.append(by_dt_cargo)
+                            if cargo_time_parts:
+                                cargo_time_df = pd.concat(cargo_time_parts, ignore_index=True)
+                                if not cargo_time_df.empty:
+                                    fig_cmp_cargo_time = px.line(
+                                        cargo_time_df,
+                                        x="date",
+                                        y="Flights",
+                                        color="Label",
+                                        labels={"date": "Date", "Flights": "Number of flights"},
+                                    )
+                                    fig_cmp_cargo_time.update_layout(height=400)
+                                    st.plotly_chart(fig_cmp_cargo_time, width="stretch")
+                        else:
+                            st.caption("No cargo column in data.")
 
                 with tab_cmp_map:
-                    map_point_by_cmp = st.radio(
-                        "Map points by",
-                        options=["City (airport)", "Country"],
-                        index=1,
-                        horizontal=True,
-                        help="Show each destination as a precise city/airport, or aggregate by country.",
-                        key="airline_cmp_map_by",
-                    )
+                    if show_country:
+                        map_point_by_cmp = st.radio(
+                            "Map points by",
+                            options=["City (airport)", "Country"],
+                            index=1,
+                            horizontal=True,
+                            help="Show each destination as a precise city/airport, or aggregate by country.",
+                            key="airline_cmp_map_by",
+                        )
+                    else:
+                        map_point_by_cmp = "City (airport)"
                     map_by_country_cmp = map_point_by_cmp == "Country"
                     _render_flight_map(
-                        df_cmp,
-                        direction,
-                        map_by_country_cmp,
-                        cmp_codes,
-                        airline_col,
+                        df_cmp, direction, focus_airport, focus_lat, focus_lon,
+                        map_by_country_cmp, cmp_codes, airline_col, geo_scope,
                     )
 
-    else:
-        # --- Route deep dive ---
+    # ══════════════════════════════════════════════════════════════════════
+    #  ROUTE DEEP DIVE
+    # ══════════════════════════════════════════════════════════════════════
+    elif section == "Route deep dive":
         st.header("Route deep dive")
 
-        route_by_country = st.radio(
-            "Route by",
-            options=["By city (airport)", "By country"],
-            index=0,
-            horizontal=True,
-            help="Dive into a single airport route, or aggregate all routes to a country.",
-            key="route_dive_by",
-        ) == "By country"
+        if show_country:
+            route_by_country = st.radio(
+                "Route by",
+                options=["By city (airport)", "By country"],
+                index=0,
+                horizontal=True,
+                help="Dive into a single airport route, or aggregate all routes to a country.",
+                key="route_dive_by",
+            ) == "By country"
+        else:
+            route_by_country = False
 
         route_display_options: list[str] = []
         if route_by_country:
-            # Aggregate flights by country
-            _route_dest_codes = get_destination_column(df, direction)
+            _route_dest_codes = get_destination_column(df, direction, focus_airport)
             _route_country_counts: dict[str, int] = {}
             _route_country_iatas: dict[str, set[str]] = {}
             for iata, count in _route_dest_codes.value_counts().items():
@@ -1315,7 +1335,6 @@ def main() -> None:
             for country, count in sorted(_route_country_counts.items(), key=lambda x: -x[1]):
                 route_display_options.append(f"{country} - {count:,} flights")
         else:
-            # Group bidirectional routes: HKG-TPE and TPE-HKG become one route
             route_series = df["origin"] + "-" + df["destination"]
             route_pairs = route_series.apply(lambda s: "-".join(sorted(s.split("-", 1))) if "-" in s else s)
             route_counts = route_pairs.value_counts()
@@ -1324,7 +1343,7 @@ def main() -> None:
                 parts = route_str.split("-", 1)
                 if len(parts) == 2:
                     a, b = parts[0], parts[1]
-                    other = b if a == HKG else a
+                    other = b if a == focus_airport else a
                     info = get_airport(other)
                     name = info.name if info and info.name else other
                     label = f"{other} - {name} - {count:,} flights"
@@ -1343,7 +1362,7 @@ def main() -> None:
             else:
                 route_search = st.text_input(
                     "Search routes by airport code or name",
-                    placeholder="e.g. HNL, Honolulu, TPE",
+                    placeholder="e.g. LAX, Atlanta, SFO",
                     help="Filter the route list by typing airport code (IATA) or airport name.",
                     key="route_dive_search",
                 )
@@ -1385,7 +1404,7 @@ def main() -> None:
                 if route_by_country:
                     route_label = sel_country
                 else:
-                    other = airport_b if airport_a == HKG else airport_a
+                    other = airport_b if airport_a == focus_airport else airport_a
                     other_info = get_airport(other)
                     name = other_info.name if other_info and other_info.name else other
                     route_label = f"{other} - {name}"
@@ -1399,28 +1418,27 @@ def main() -> None:
                 with m2:
                     st.metric("Share of traffic", f"{pct_route:.1f}%")
 
+                _route_tab_names: list[str] = []
                 if route_by_country:
-                    tab_route_cities, tab_route_airlines, tab_route_time, tab_route_hour, tab_route_weekday, tab_route_cargo = st.tabs([
-                        "Top cities",
-                        "Top airlines",
-                        "Flights over time",
-                        "Flights by hour",
-                        "Flights by weekday",
-                        "Cargo vs passenger",
-                    ])
+                    _route_tab_names.append("Top cities")
+                _route_tab_names += ["Top airlines", "Flights over time", "Flights by hour", "Flights by weekday"]
+                if not is_us:
+                    _route_tab_names.append("Cargo vs passenger")
+                _route_tabs = st.tabs(_route_tab_names)
+                _idx = 0
+                if route_by_country:
+                    tab_route_cities = _route_tabs[_idx]; _idx += 1
                 else:
                     tab_route_cities = None
-                    tab_route_airlines, tab_route_time, tab_route_hour, tab_route_weekday, tab_route_cargo = st.tabs([
-                        "Top airlines",
-                        "Flights over time",
-                        "Flights by hour",
-                        "Flights by weekday",
-                        "Cargo vs passenger",
-                    ])
+                tab_route_airlines = _route_tabs[_idx]; _idx += 1
+                tab_route_time = _route_tabs[_idx]; _idx += 1
+                tab_route_hour = _route_tabs[_idx]; _idx += 1
+                tab_route_weekday = _route_tabs[_idx]; _idx += 1
+                tab_route_cargo = _route_tabs[_idx] if not is_us else None
 
                 if tab_route_cities is not None:
                     with tab_route_cities:
-                        _city_dest_codes = get_destination_column(df_route, direction)
+                        _city_dest_codes = get_destination_column(df_route, direction, focus_airport)
                         _city_dest_counts = _city_dest_codes.value_counts()
                         _city_n = min(top_n, len(_city_dest_counts))
                         _total_country = len(df_route)
@@ -1468,13 +1486,13 @@ def main() -> None:
                             st.plotly_chart(fig_cities, width="stretch")
 
                             _top_city_iatas = set(_city_dest_counts.head(_city_n).index)
-                            if direction == "From HKG":
+                            if direction == "Departures":
                                 _city_route_dest = df_route["destination"]
-                            elif direction == "To HKG":
+                            elif direction == "Arrivals":
                                 _city_route_dest = df_route["origin"]
                             else:
                                 _city_route_dest = pd.Series(
-                                    np.where(df_route["origin"] == HKG, df_route["destination"], df_route["origin"]),
+                                    np.where(df_route["origin"] == focus_airport, df_route["destination"], df_route["origin"]),
                                     index=df_route.index,
                                 )
                             _by_date_city = (
@@ -1544,7 +1562,6 @@ def main() -> None:
                         fig_route_airlines.update_traces(textposition="outside")
                         st.plotly_chart(fig_route_airlines, width="stretch")
 
-                        # Share per day by airline (top N only)
                         top_airlines_route = set(airline_counts_route.head(top_n).index)
                         by_date_airline = (
                             df_route.groupby([df_route["date"].dt.date, airline_col])
@@ -1631,7 +1648,6 @@ def main() -> None:
                         )
                         st.plotly_chart(fig_route_time, width="stretch")
 
-                        # Flights over time per airline (top N only)
                         top_airlines_route = set(airline_counts_route.head(top_n).index)
                         by_date_airline_time = (
                             df_route.groupby([df_route["date"].dt.date, airline_col])
@@ -1674,7 +1690,8 @@ def main() -> None:
 
                 with tab_route_hour:
                     st.caption(
-                        "Departure time for flights from HKG; arrival time for flights to HKG."
+                        f"Departure time for flights from {focus_airport}; "
+                        f"arrival time for flights to {focus_airport}."
                     )
                     if "scheduled_time" in df_route.columns:
                         df_route_hour = df_route.dropna(subset=["scheduled_time"])
@@ -1722,37 +1739,211 @@ def main() -> None:
                     else:
                         st.caption("No date data for weekday analysis.")
 
-                with tab_route_cargo:
-                    if "cargo" in df_route.columns:
-                        cargo_by_date_route = df_route.groupby(
-                            [df_route["date"].dt.date, "cargo"]
-                        ).size().reset_index(name="Flights")
-                        cargo_by_date_route["Type"] = cargo_by_date_route["cargo"].map(
-                            {True: "Cargo", False: "Passenger"}
-                        )
-                        if not cargo_by_date_route.empty:
-                            fig_route_cargo = px.line(
-                                cargo_by_date_route,
-                                x="date",
-                                y="Flights",
-                                color="Type",
-                                labels={"date": "Date", "Flights": "Number of flights"},
-                                custom_data=["Type"],
+                if tab_route_cargo is not None:
+                    with tab_route_cargo:
+                        if "cargo" in df_route.columns:
+                            cargo_by_date_route = df_route.groupby(
+                                [df_route["date"].dt.date, "cargo"]
+                            ).size().reset_index(name="Flights")
+                            cargo_by_date_route["Type"] = cargo_by_date_route["cargo"].map(
+                                {True: "Cargo", False: "Passenger"}
                             )
-                            fig_route_cargo.update_traces(
-                                hovertemplate="%{customdata[0]}<br>%{x}<br>Flights: %{y:,}<extra></extra>",
-                            )
-                            fig_route_cargo.update_layout(height=350)
-                            st.plotly_chart(fig_route_cargo, width="stretch")
-                        cargo_passenger_r = (df_route["cargo"] == False).sum()
-                        cargo_cargo_r = (df_route["cargo"] == True).sum()
-                        cargo_route_df = pd.DataFrame([
-                            {"Type": "Passenger", "Flights": cargo_passenger_r},
-                            {"Type": "Cargo", "Flights": cargo_cargo_r},
-                        ])
-                        st.dataframe(cargo_route_df)
-                    else:
-                        st.caption("No cargo column in data.")
+                            if not cargo_by_date_route.empty:
+                                fig_route_cargo = px.line(
+                                    cargo_by_date_route,
+                                    x="date",
+                                    y="Flights",
+                                    color="Type",
+                                    labels={"date": "Date", "Flights": "Number of flights"},
+                                    custom_data=["Type"],
+                                )
+                                fig_route_cargo.update_traces(
+                                    hovertemplate="%{customdata[0]}<br>%{x}<br>Flights: %{y:,}<extra></extra>",
+                                )
+                                fig_route_cargo.update_layout(height=350)
+                                st.plotly_chart(fig_route_cargo, width="stretch")
+                            cargo_passenger_r = (df_route["cargo"] == False).sum()
+                            cargo_cargo_r = (df_route["cargo"] == True).sum()
+                            cargo_route_df = pd.DataFrame([
+                                {"Type": "Passenger", "Flights": cargo_passenger_r},
+                                {"Type": "Cargo", "Flights": cargo_cargo_r},
+                            ])
+                            st.dataframe(cargo_route_df)
+                        else:
+                            st.caption("No cargo column in data.")
+
+    # ══════════════════════════════════════════════════════════════════════
+    #  DELAY ANALYSIS (US-specific)
+    # ══════════════════════════════════════════════════════════════════════
+    elif section == "Delay analysis":
+        st.header("Delay analysis")
+        st.caption(f"Analyzing arrival delays for flights involving {focus_label}")
+
+        df_delay = df.copy()
+        df_delay["delay_min"] = df_delay["status"].apply(parse_delay_minutes)
+
+        n_total = len(df_delay)
+        df_with_delay = df_delay.dropna(subset=["delay_min"])
+        n_arrived = len(df_with_delay)
+        n_cancelled = n_total - n_arrived
+        n_on_time = int((df_with_delay["delay_min"] == 0).sum())
+        n_delayed = int((df_with_delay["delay_min"] > 0).sum())
+        avg_delay_val = df_with_delay.loc[df_with_delay["delay_min"] > 0, "delay_min"].mean()
+
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            on_time_pct = 100 * n_on_time / n_arrived if n_arrived > 0 else 0
+            st.metric("On-time (%)", f"{on_time_pct:.1f}%")
+        with c2:
+            delayed_pct = 100 * n_delayed / n_arrived if n_arrived > 0 else 0
+            st.metric("Delayed (%)", f"{delayed_pct:.1f}%")
+        with c3:
+            st.metric("Cancelled / diverted", f"{n_cancelled:,}")
+        with c4:
+            st.metric(
+                "Avg delay (when late)",
+                f"{avg_delay_val:.0f} min" if not pd.isna(avg_delay_val) else "N/A",
+            )
+
+        # ── Delay distribution ──
+        st.subheader("Delay distribution")
+        delayed_flights = df_with_delay[df_with_delay["delay_min"] > 0]
+        if not delayed_flights.empty:
+            fig_delay_hist = px.histogram(
+                delayed_flights,
+                x="delay_min",
+                nbins=50,
+                labels={"delay_min": "Delay (minutes)", "count": "Flights"},
+            )
+            fig_delay_hist.update_layout(height=350, showlegend=False)
+            st.plotly_chart(fig_delay_hist, width="stretch")
+        else:
+            st.caption("No delayed flights in the selected filters.")
+
+        # ── On-time performance by airline ──
+        st.subheader("On-time performance by airline")
+        airline_delay = (
+            df_with_delay.groupby(airline_col)["delay_min"]
+            .agg(
+                total="count",
+                on_time=lambda x: int((x == 0).sum()),
+                avg_delay=lambda x: x[x > 0].mean(),
+                delayed_15=lambda x: int((x >= 15).sum()),
+            )
+            .reset_index()
+        )
+        airline_delay.columns = [airline_col, "Total", "On-time", "Avg delay (min)", "Delayed 15+ min"]
+        airline_delay["On-time (%)"] = (100 * airline_delay["On-time"] / airline_delay["Total"]).round(1)
+        airline_delay = airline_delay.sort_values("Total", ascending=False).head(top_n)
+        airline_delay["Airline"] = airline_delay[airline_col].apply(
+            lambda c: get_airline(c).name if get_airline(c) else c
+        )
+
+        if not airline_delay.empty:
+            plot_df = airline_delay.sort_values("On-time (%)", ascending=True)
+            fig_otp = px.bar(
+                plot_df,
+                x="On-time (%)",
+                y="Airline",
+                orientation="h",
+                color="On-time (%)",
+                color_continuous_scale="RdYlGn",
+                range_color=[50, 100],
+                text=plot_df["On-time (%)"].apply(lambda x: f"{x}%"),
+                custom_data=["Total", "Avg delay (min)"],
+            )
+            fig_otp.update_traces(
+                textposition="outside",
+                hovertemplate="%{y}<br>On-time: %{x}%<br>Total flights: %{customdata[0]:,}<br>Avg delay: %{customdata[1]:.0f} min<extra></extra>",
+            )
+            fig_otp.update_layout(height=320, showlegend=False)
+            st.plotly_chart(fig_otp, width="stretch")
+
+        # ── Average delay by hour ──
+        st.subheader("Average delay by hour of day")
+        if "scheduled_time" in df_with_delay.columns:
+            df_hour_delay = df_with_delay.copy()
+            df_hour_delay["hour"] = pd.to_datetime(
+                df_hour_delay["scheduled_time"], errors="coerce"
+            ).dt.hour
+            df_hour_delay = df_hour_delay.dropna(subset=["hour"])
+            by_hour_d = (
+                df_hour_delay.groupby("hour")["delay_min"]
+                .agg(
+                    avg_delay="mean",
+                    on_time_pct=lambda x: 100 * (x == 0).sum() / len(x),
+                    total="count",
+                )
+                .reset_index()
+            )
+            by_hour_d.columns = ["Hour", "Avg delay (min)", "On-time (%)", "Total"]
+            if not by_hour_d.empty:
+                fig_hour_delay = go.Figure()
+                fig_hour_delay.add_trace(go.Bar(
+                    x=by_hour_d["Hour"],
+                    y=by_hour_d["Avg delay (min)"],
+                    name="Avg delay (min)",
+                ))
+                fig_hour_delay.add_trace(go.Scatter(
+                    x=by_hour_d["Hour"],
+                    y=by_hour_d["On-time (%)"],
+                    name="On-time (%)",
+                    yaxis="y2",
+                    line=dict(color="#ff7f0e"),
+                ))
+                fig_hour_delay.update_layout(
+                    height=350,
+                    xaxis=dict(title="Hour of day"),
+                    yaxis=dict(title="Avg delay (min)", side="left"),
+                    yaxis2=dict(
+                        title="On-time (%)",
+                        side="right",
+                        overlaying="y",
+                        range=[0, 100],
+                    ),
+                    legend=dict(x=1.1, xanchor="left"),
+                )
+                st.plotly_chart(fig_hour_delay, width="stretch")
+
+        # ── On-time performance over time ──
+        st.subheader("On-time performance over time")
+        delay_by_date = (
+            df_with_delay.groupby(df_with_delay["date"].dt.date)["delay_min"]
+            .agg(
+                on_time_pct=lambda x: 100 * (x == 0).sum() / len(x),
+                avg_delay="mean",
+                total="count",
+            )
+            .reset_index()
+        )
+        delay_by_date.columns = ["Date", "On-time (%)", "Avg delay (min)", "Total"]
+        if not delay_by_date.empty:
+            fig_delay_time = go.Figure()
+            fig_delay_time.add_trace(go.Scatter(
+                x=delay_by_date["Date"],
+                y=delay_by_date["On-time (%)"],
+                name="On-time (%)",
+                line=dict(color="#2ca02c"),
+            ))
+            fig_delay_time.add_trace(go.Scatter(
+                x=delay_by_date["Date"],
+                y=delay_by_date["Avg delay (min)"],
+                name="Avg delay (min)",
+                yaxis="y2",
+                line=dict(color="#d62728"),
+            ))
+            fig_delay_time.update_layout(
+                height=350,
+                xaxis=dict(title="Date"),
+                yaxis=dict(title="On-time (%)", side="left", range=[0, 100]),
+                yaxis2=dict(
+                    title="Avg delay (min)",
+                    side="right",
+                    overlaying="y",
+                ),
+                legend=dict(x=1.1, xanchor="left"),
+            )
+            st.plotly_chart(fig_delay_time, width="stretch")
 
 
 if __name__ == "__main__":

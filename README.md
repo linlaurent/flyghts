@@ -1,12 +1,18 @@
 # Flyghts
 
-Python package for flight traffic data analysis and auditing.
+Python package for multi-source flight traffic data analysis and auditing.
 
-## Flight Audit
+## Data Sources
 
-Query and analyze flight traffic between routes (e.g. Hong Kong ↔ Taipei).
+Flight data is organized by source under `data/`:
 
-### Installation
+| Source | Directory | Coverage | API | Auth |
+|--------|-----------|----------|-----|------|
+| **Hong Kong (HKG)** | `data/hkg/` | HKG departures & arrivals (passenger + cargo) | [HK Airport Open API](https://data.gov.hk/en-data/dataset/aahk-team1-flight-info) | None |
+| **Korea (ICN)** | `data/korea/` | Incheon departures & arrivals (passenger) | [data.go.kr B551177](https://www.data.go.kr/en/data/15095093/openapi.do) | Free API key |
+| **US Domestic** | `data/us/` | All US domestic flights (monthly bulk) | [BTS TranStats](https://www.transtats.bts.gov/) | None |
+
+## Installation
 
 Using [uv](https://docs.astral.sh/uv/) (recommended):
 
@@ -15,58 +21,89 @@ Using [uv](https://docs.astral.sh/uv/) (recommended):
 uv sync
 ```
 
-### Tests
-
-```bash
-uv run pytest tests/ -v
-```
-
 Using pip:
 
 ```bash
 pip install -e .
 ```
 
-### Dump Script
-
-Dump all flights from or to Hong Kong for a date or date range. Passenger and cargo flights are included by default. The API provides historical data for approximately the last 90 days only.
-
-Two output modes:
-- `--data-dir data/` writes one CSV per date (e.g. `data/2026-02-25.csv`). This is the preferred mode for deployment -- only changed dates are overwritten, keeping git diffs small.
-- `-o flights.csv` writes a single CSV, merging with existing data (overlapping dates are replaced).
+### Tests
 
 ```bash
-# Initial backfill: past 30 days into per-date files
-uv run python scripts/dump_hk_flights.py --data-dir data/
+uv run pytest tests/ -v
+```
 
-# Daily refresh: last 2 days only (used by GitHub Actions)
-uv run python scripts/dump_hk_flights.py --days 2 --data-dir data/
+## Dump Scripts
+
+### Hong Kong (HKG)
+
+Dump all flights from/to Hong Kong. The API provides ~90 days of history.
+
+```bash
+# Initial backfill: past 30 days
+uv run python scripts/dump_hk_flights.py --data-dir data/hkg/
+
+# Daily refresh (used by GitHub Actions)
+uv run python scripts/dump_hk_flights.py --days 2 --data-dir data/hkg/
 
 # Custom date range
-uv run python scripts/dump_hk_flights.py --start 2026-01-01 --end 2026-02-20 --data-dir data/
-
-# Single file mode (legacy)
-uv run python scripts/dump_hk_flights.py -o flights.csv
+uv run python scripts/dump_hk_flights.py --start 2026-01-01 --end 2026-02-20 --data-dir data/hkg/
 
 # Passenger only / deduplicate / debug
-uv run python scripts/dump_hk_flights.py --no-cargo --data-dir data/
-uv run python scripts/dump_hk_flights.py --deduplicate --data-dir data/
+uv run python scripts/dump_hk_flights.py --no-cargo --data-dir data/hkg/
+uv run python scripts/dump_hk_flights.py --deduplicate --data-dir data/hkg/
 uv run python scripts/dump_hk_flights.py --debug
 ```
+
+### Korea (Incheon ICN)
+
+Dump passenger flights from/to Incheon. Current-day data only -- run daily to accumulate.
+Requires `KOREA_DATA_API_KEY` env var (free registration at [data.go.kr](https://www.data.go.kr/)).
+
+```bash
+export KOREA_DATA_API_KEY="your-key-here"
+uv run python scripts/dump_korea_flights.py --data-dir data/korea/
+uv run python scripts/dump_korea_flights.py --debug
+```
+
+### US Domestic (BTS)
+
+Download US domestic on-time performance data from the Bureau of Transportation Statistics.
+No API key needed. Data is ~2 months behind current date.
+
+```bash
+# Download most recent available month
+uv run python scripts/dump_us_flights.py --latest --data-dir data/us/
+
+# Download a specific month
+uv run python scripts/dump_us_flights.py --year 2024 --month 12 --data-dir data/us/
+
+# Download an entire year
+uv run python scripts/dump_us_flights.py --year 2024 --data-dir data/us/
+```
+
+### Validate Reference Data
+
+Check flight CSVs for airline/airport codes missing from the reference data:
+
+```bash
+# Validate all sources
+uv run python scripts/validate_reference_data.py
+
+# Validate a specific source
+uv run python scripts/validate_reference_data.py --data-dir data/korea/
+uv run python scripts/validate_reference_data.py --data-dir data/us/
+```
+
+## Flight Audit
+
+Query and analyze flight traffic between routes (e.g. Hong Kong <-> Taipei).
 
 ### CLI
 
 ```bash
-# Single day
 flyghts-audit --route HKG-TPE --date 2025-02-17
-
-# Past 7 days
-flyghts-audit --route HKG-TPE --days 7
-
-# With statistics
-flyghts-audit --route HKG-TPE --date 2025-02-17 --stats
-
-# Export to CSV
+flyghts-audit --route HKG-TPE --days 7 --stats
 flyghts-audit --route HKG-TPE --days 7 --output flights.csv
 ```
 
@@ -88,26 +125,20 @@ stats = service.statistics(result.flights)
 
 ```bash
 marimo edit marimo/flight_audit.py
-# or
-marimo run marimo/flight_audit.py
 ```
 
 ### Streamlit Dashboard
 
-Interactive dashboard with top airlines, top destinations (airport/city/country), flight flow map (with multi-airline overlay), airline deep dive, airline comparison, and route deep dive. Reads from `data/` directory (per-date CSVs) or falls back to `flights.csv`.
+Interactive dashboard for HKG flight analysis. Reads from `data/hkg/`.
 
 ```bash
 uv run streamlit run streamlit/flight_dashboard.py
 ```
 
-### Deployment (Streamlit Community Cloud)
+## Deployment (Streamlit Community Cloud)
 
-1. Push the repo to GitHub (including `data/*.csv` files).
+1. Push the repo to GitHub (including `data/hkg/*.csv` files).
 2. Connect to [Streamlit Community Cloud](https://share.streamlit.io) and deploy `streamlit/flight_dashboard.py`.
-3. A GitHub Actions workflow (`.github/workflows/update_flights.yml`) runs daily at 02:00 UTC, fetches the last 2 days of flight data, and commits the updated per-date CSVs. Streamlit Cloud auto-redeploys on push.
+3. A GitHub Actions workflow runs daily at 02:00 HKT, fetches the last 2 days of HKG flight data, and commits the updated CSVs.
 
 To trigger a manual refresh, go to Actions > "Update flight data" > Run workflow.
-
-## Data Source
-
-Uses the [Hong Kong International Airport Open API](https://data.gov.hk/en-data/dataset/aahk-team1-flight-info) for historical flight data (updated to previous calendar day).

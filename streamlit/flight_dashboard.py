@@ -155,9 +155,7 @@ def build_map_points(
 
 def _get_map_geo_opts(scope: str = "world") -> dict:
     """Return geo layout options parameterized by scope."""
-    return dict(
-        scope=scope,
-        projection_type="natural earth",
+    opts = dict(
         showland=True,
         coastlinewidth=0.5,
         landcolor="rgb(243,243,243)",
@@ -165,6 +163,16 @@ def _get_map_geo_opts(scope: str = "world") -> dict:
         countrycolor="rgba(150,150,150,0.6)",
         countrywidth=0.5,
     )
+    if scope == "usa":
+        opts["scope"] = "north america"
+        opts["lataxis"] = dict(range=[17, 72])
+        opts["lonaxis"] = dict(range=[-170, -64])
+    elif scope == "world":
+        opts["scope"] = "world"
+        opts["projection_type"] = "natural earth"
+    else:
+        opts["scope"] = scope
+    return opts
 
 
 def _render_flight_map(
@@ -192,16 +200,17 @@ def _render_flight_map(
     f_label = f"{focus_airport} ({f_info.city})" if f_info and f_info.city else focus_airport
     fig_map = go.Figure()
     if not airline_codes:
-        count_max = map_df["count"].max()
+        line_lons: list[float | None] = []
+        line_lats: list[float | None] = []
         for _, row in map_df.iterrows():
-            rel = row["count"] / count_max if count_max > 0 else 1
-            width = 0.8 + 7.2 * rel
-            fig_map.add_trace(go.Scattergeo(
-                lon=[focus_lon, row["lon"]], lat=[focus_lat, row["lat"]],
-                mode="lines",
-                line=dict(width=width, color="rgba(100,150,200,0.5)"),
-                hoverinfo="skip", showlegend=False,
-            ))
+            line_lons += [focus_lon, row["lon"], None]
+            line_lats += [focus_lat, row["lat"], None]
+        fig_map.add_trace(go.Scattergeo(
+            lon=line_lons, lat=line_lats,
+            mode="lines",
+            line=dict(width=1, color="rgba(100,150,200,0.5)"),
+            hoverinfo="skip", showlegend=False,
+        ))
         fig_map.add_trace(go.Scattergeo(
             lon=map_df["lon"], lat=map_df["lat"],
             text=map_df["label"], mode="markers",
@@ -227,17 +236,18 @@ def _render_flight_map(
             if a_df.empty:
                 continue
             airline_summaries.append(f"{a_name}: {len(df_a):,} flights")
-            a_count_max = a_df["count"].max()
+            a_line_lons: list[float | None] = []
+            a_line_lats: list[float | None] = []
             for _, row in a_df.iterrows():
-                rel = row["count"] / a_count_max if a_count_max > 0 else 1
-                width = 0.8 + 5.2 * rel
-                fig_map.add_trace(go.Scattergeo(
-                    lon=[focus_lon, row["lon"]], lat=[focus_lat, row["lat"]],
-                    mode="lines",
-                    line=dict(width=width, color=color),
-                    opacity=0.4,
-                    hoverinfo="skip", showlegend=False,
-                ))
+                a_line_lons += [focus_lon, row["lon"], None]
+                a_line_lats += [focus_lat, row["lat"], None]
+            fig_map.add_trace(go.Scattergeo(
+                lon=a_line_lons, lat=a_line_lats,
+                mode="lines",
+                line=dict(width=1, color=color),
+                opacity=0.4,
+                hoverinfo="skip", showlegend=False,
+            ))
             fig_map.add_trace(go.Scattergeo(
                 lon=a_df["lon"], lat=a_df["lat"],
                 text=a_df["label"].apply(lambda lbl, n=a_name: f"{n} | {lbl}"),

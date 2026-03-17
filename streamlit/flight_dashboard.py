@@ -201,16 +201,20 @@ def _render_flight_map(
     airline_col: str,
     geo_scope: str = "world",
     use_traffic_colors: bool = False,
+    top_arcs_n: int | None = None,
 ) -> None:
     """Render interactive flight map from focus airport.
 
     When use_traffic_colors=True, spoke arcs use the cool→warm traffic-volume
     color scale regardless of airline (useful for single-airline deep dives).
+    When top_arcs_n is set, only the top N destinations by flight count are shown.
     """
     if df_map.empty:
         st.info("No flight data to display on map.")
         return
     map_dest_counts = get_destination_column(df_map, direction, focus_airport).value_counts()
+    if top_arcs_n is not None and top_arcs_n > 0:
+        map_dest_counts = map_dest_counts.head(top_arcs_n)
     map_data = build_map_points(map_dest_counts, map_by_country)
     map_df = pd.DataFrame(map_data)
     if map_df.empty:
@@ -272,6 +276,8 @@ def _render_flight_map(
             a_name = a_info.name if a_info else code
             df_a = df_map[df_map[airline_col] == code]
             a_dest_counts = get_destination_column(df_a, direction, focus_airport).value_counts()
+            if top_arcs_n is not None and top_arcs_n > 0:
+                a_dest_counts = a_dest_counts.head(top_arcs_n)
             a_points = build_map_points(a_dest_counts, map_by_country)
             a_df = pd.DataFrame(a_points)
             if a_df.empty:
@@ -888,9 +894,9 @@ def main() -> None:
             map_country_options = sorted(_country_set)
 
             if show_country:
-                col_map_by, col_map_airline, col_map_country = st.columns(3)
+                col_map_by, col_map_airline, col_map_country, col_map_arcs = st.columns(4)
             else:
-                col_map_by, col_map_airline = st.columns(2)
+                col_map_by, col_map_airline, col_map_arcs = st.columns(3)
                 col_map_country = None
 
             with col_map_by:
@@ -922,6 +928,17 @@ def main() -> None:
             else:
                 sel_map_countries = []
 
+            with col_map_arcs:
+                top_arcs_focus = st.slider(
+                    "Top route arcs to draw",
+                    min_value=10,
+                    max_value=200,
+                    value=50,
+                    step=10,
+                    help="Number of busiest route arcs shown on the map.",
+                    key="focus_map_routes",
+                )
+
             map_by_country = map_point_by == "Country"
             sel_map_codes = [map_display_to_code[d] for d in sel_map_airlines if d in map_display_to_code]
 
@@ -940,6 +957,7 @@ def main() -> None:
             _render_flight_map(
                 df_map, direction, focus_airport, focus_lat, focus_lon,
                 map_by_country, sel_map_codes, map_airline_col, geo_scope,
+                top_arcs_n=top_arcs_focus,
             )
 
     # ══════════════════════════════════════════════════════════════════════
@@ -1416,10 +1434,20 @@ def main() -> None:
                             else:
                                 map_point_by_dive = "City (airport)"
                             map_by_country_dive = map_point_by_dive == "Country"
+                            top_arcs_dive_focus = st.slider(
+                                "Top route arcs to draw",
+                                min_value=10,
+                                max_value=200,
+                                value=50,
+                                step=10,
+                                help="Number of busiest route arcs shown on the map.",
+                                key="airline_dive_focus_map_routes",
+                            )
                             _render_flight_map(
                                 df_airline, direction, focus_airport, focus_lat, focus_lon,
                                 map_by_country_dive, [dive_icao], airline_col, geo_scope,
                                 use_traffic_colors=True,
+                                top_arcs_n=top_arcs_dive_focus,
                             )
 
         # ── Airline comparison ──
@@ -1725,9 +1753,19 @@ def main() -> None:
                         else:
                             map_point_by_cmp = "City (airport)"
                         map_by_country_cmp = map_point_by_cmp == "Country"
+                        top_arcs_cmp_focus = st.slider(
+                            "Top route arcs to draw",
+                            min_value=10,
+                            max_value=200,
+                            value=50,
+                            step=10,
+                            help="Number of busiest route arcs shown on the map.",
+                            key="airline_cmp_focus_map_routes",
+                        )
                         _render_flight_map(
                             df_cmp, direction, focus_airport, focus_lat, focus_lon,
                             map_by_country_cmp, cmp_codes, airline_col, geo_scope,
+                            top_arcs_n=top_arcs_cmp_focus,
                         )
 
     # ══════════════════════════════════════════════════════════════════════

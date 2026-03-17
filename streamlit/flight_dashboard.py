@@ -200,8 +200,13 @@ def _render_flight_map(
     airline_codes: list[str],
     airline_col: str,
     geo_scope: str = "world",
+    use_traffic_colors: bool = False,
 ) -> None:
-    """Render interactive flight map from focus airport."""
+    """Render interactive flight map from focus airport.
+
+    When use_traffic_colors=True, spoke arcs use the cool→warm traffic-volume
+    color scale regardless of airline (useful for single-airline deep dives).
+    """
     if df_map.empty:
         st.info("No flight data to display on map.")
         return
@@ -213,19 +218,40 @@ def _render_flight_map(
         return
     f_info = get_airport(focus_airport)
     f_label = f"{focus_airport} ({f_info.city})" if f_info and f_info.city else focus_airport
+    _arc_widths = [1.0, 2.4, 4.4, 7.0]
+    _arc_colors = ["#7ecbff", "#2196f3", "#ff9800", "#e53935"]
+
+    def _spoke_buckets(
+        pt_df: pd.DataFrame, line_color: str | None
+    ) -> None:
+        """Draw focus→destination spokes bucketed by count into 4 width+color bands."""
+        if pt_df.empty:
+            return
+        q25, q50, q75 = (
+            pt_df["count"].quantile(0.25),
+            pt_df["count"].quantile(0.50),
+            pt_df["count"].quantile(0.75),
+        )
+        bucket_lons: list[list[float | None]] = [[] for _ in _arc_widths]
+        bucket_lats: list[list[float | None]] = [[] for _ in _arc_widths]
+        for _, row in pt_df.iterrows():
+            cnt = row["count"]
+            b = 3 if cnt > q75 else (2 if cnt > q50 else (1 if cnt > q25 else 0))
+            bucket_lons[b] += [focus_lon, row["lon"], None]
+            bucket_lats[b] += [focus_lat, row["lat"], None]
+        for b, (width, bcolor) in enumerate(zip(_arc_widths, _arc_colors)):
+            if bucket_lons[b]:
+                fig_map.add_trace(go.Scattergeo(
+                    lon=bucket_lons[b], lat=bucket_lats[b],
+                    mode="lines",
+                    line=dict(width=width, color=bcolor if line_color is None else line_color),
+                    opacity=0.5,
+                    hoverinfo="skip", showlegend=False,
+                ))
+
     fig_map = go.Figure()
     if not airline_codes:
-        line_lons: list[float | None] = []
-        line_lats: list[float | None] = []
-        for _, row in map_df.iterrows():
-            line_lons += [focus_lon, row["lon"], None]
-            line_lats += [focus_lat, row["lat"], None]
-        fig_map.add_trace(go.Scattergeo(
-            lon=line_lons, lat=line_lats,
-            mode="lines",
-            line=dict(width=1, color="rgba(100,150,200,0.5)"),
-            hoverinfo="skip", showlegend=False,
-        ))
+        _spoke_buckets(map_df, line_color=None)
         fig_map.add_trace(go.Scattergeo(
             lon=map_df["lon"], lat=map_df["lat"],
             text=map_df["label"], mode="markers",
@@ -251,18 +277,7 @@ def _render_flight_map(
             if a_df.empty:
                 continue
             airline_summaries.append(f"{a_name}: {len(df_a):,} flights")
-            a_line_lons: list[float | None] = []
-            a_line_lats: list[float | None] = []
-            for _, row in a_df.iterrows():
-                a_line_lons += [focus_lon, row["lon"], None]
-                a_line_lats += [focus_lat, row["lat"], None]
-            fig_map.add_trace(go.Scattergeo(
-                lon=a_line_lons, lat=a_line_lats,
-                mode="lines",
-                line=dict(width=1, color=color),
-                opacity=0.4,
-                hoverinfo="skip", showlegend=False,
-            ))
+            _spoke_buckets(a_df, line_color=None if use_traffic_colors else color)
             fig_map.add_trace(go.Scattergeo(
                 lon=a_df["lon"], lat=a_df["lat"],
                 text=a_df["label"].apply(lambda lbl, n=a_name: f"{n} | {lbl}"),
@@ -358,9 +373,20 @@ def _render_network_map(
         route_counts = (
             df_sub.groupby(["origin", "destination"]).size().sort_values(ascending=False).head(n)
         )
-        line_lons: list[float | None] = []
-        line_lats: list[float | None] = []
-        for (orig, dest), _cnt in route_counts.items():
+        if route_counts.empty:
+            return
+        # Bucket routes into 4 bands by quartile; each band gets a distinct width and color.
+        # Colors run cool → warm to signal route popularity (low → high traffic).
+        _widths = [1.0, 2.4, 4.4, 7.0]
+        _colors = ["#7ecbff", "#2196f3", "#ff9800", "#e53935"]  # blue → orange → red
+        q25, q50, q75 = (
+            route_counts.quantile(0.25),
+            route_counts.quantile(0.50),
+            route_counts.quantile(0.75),
+        )
+        bucket_lons: list[list[float | None]] = [[] for _ in _widths]
+        bucket_lats: list[list[float | None]] = [[] for _ in _widths]
+        for (orig, dest), cnt in route_counts.items():
             o_info = get_airport(orig)
             d_info = get_airport(dest)
             if not o_info or not d_info:
@@ -369,16 +395,18 @@ def _render_network_map(
                 continue
             if d_info.latitude == 0 and d_info.longitude == 0:
                 continue
-            line_lons += [o_info.longitude, d_info.longitude, None]
-            line_lats += [o_info.latitude, d_info.latitude, None]
-        if line_lons:
-            fig_map.add_trace(go.Scattergeo(
-                lon=line_lons, lat=line_lats,
-                mode="lines",
-                line=dict(width=0.8, color=color),
-                opacity=0.35,
-                hoverinfo="skip", showlegend=False,
-            ))
+            b = 3 if cnt > q75 else (2 if cnt > q50 else (1 if cnt > q25 else 0))
+            bucket_lons[b] += [o_info.longitude, d_info.longitude, None]
+            bucket_lats[b] += [o_info.latitude, d_info.latitude, None]
+        for b, (width, bcolor) in enumerate(zip(_widths, _colors)):
+            if bucket_lons[b]:
+                fig_map.add_trace(go.Scattergeo(
+                    lon=bucket_lons[b], lat=bucket_lats[b],
+                    mode="lines",
+                    line=dict(width=width, color=bcolor),
+                    opacity=0.5,
+                    hoverinfo="skip", showlegend=False,
+                ))
 
     if not airline_codes:
         arc_color = "rgba(100,150,200,0.6)"
@@ -1391,6 +1419,7 @@ def main() -> None:
                             _render_flight_map(
                                 df_airline, direction, focus_airport, focus_lat, focus_lon,
                                 map_by_country_dive, [dive_icao], airline_col, geo_scope,
+                                use_traffic_colors=True,
                             )
 
         # ── Airline comparison ──

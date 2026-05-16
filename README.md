@@ -121,12 +121,6 @@ result = service.query(route, date_filter)
 stats = service.statistics(result.flights)
 ```
 
-### Marimo GUI
-
-```bash
-marimo edit marimo/flight_audit.py
-```
-
 ### Streamlit Dashboard
 
 Interactive dashboard for HKG flight analysis. Reads from `data/hkg/`.

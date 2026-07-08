@@ -1119,7 +1119,7 @@ def main() -> None:
         curr_label = f"{insights.current.label} ({insights.current.observed_days} observed days)"
         st.caption(f"Previous: {prev_label} / Current: {curr_label}")
 
-        m1, m2, m3, m4, m5 = st.columns(5)
+        m1, m2, m3, m4, m5, m6 = st.columns(6)
         with m1:
             st.metric(
                 "Current flights",
@@ -1133,6 +1133,11 @@ def main() -> None:
         with m4:
             st.metric("New company-routes", f"{len(insights.new_company_routes):,}")
         with m5:
+            st.metric(
+                "Lost company-routes",
+                f"{len(insights.disappeared_company_routes):,}",
+            )
+        with m6:
             st.metric("Large drops", f"{len(insights.frequency_drops):,}")
 
         chart_cols = st.columns(2)
@@ -1177,6 +1182,7 @@ def main() -> None:
                 "New routes",
                 "New routes by company",
                 "Disappeared routes",
+                "Disappeared routes by company",
                 "Frequency drops",
                 "Frequency increases",
             ]
@@ -1207,11 +1213,17 @@ def main() -> None:
             )
         with table_tabs[4]:
             _render_insight_grid(
+                "Disappeared routes by company",
+                insights.disappeared_company_routes,
+                "No company-specific directional routes disappeared in this period.",
+            )
+        with table_tabs[5]:
+            _render_insight_grid(
                 "Frequency drops",
                 insights.frequency_drops,
                 "No routes crossed the configured drop thresholds.",
             )
-        with table_tabs[5]:
+        with table_tabs[6]:
             _render_insight_grid(
                 "Frequency increases",
                 insights.frequency_increases,

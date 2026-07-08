@@ -5,6 +5,7 @@ import pandas as pd
 from flyghts.insights import (
     DEFAULT_COMPANY_AIRLINE_COL,
     DEFAULT_MIN_ABSOLUTE_CHANGE_PER_DAY,
+    DEFAULT_MIN_PREVIOUS_FLIGHTS,
     DEFAULT_MIN_PERCENT_CHANGE,
     available_period_labels,
     compare_periods,
@@ -77,6 +78,13 @@ def test_compare_periods_finds_new_companies_routes_and_company_routes() -> None
             result.disappeared_routes["destination"],
         )
     ) == {("HKG", "SIN"), ("SIN", "HKG")}
+    assert set(
+        zip(
+            result.disappeared_company_routes["airline"],
+            result.disappeared_company_routes["origin"],
+            result.disappeared_company_routes["destination"],
+        )
+    ) == {("BBB", "HKG", "SIN"), ("BBB", "SIN", "HKG")}
 
 
 def test_frequency_drops_use_observed_day_normalization_and_thresholds() -> None:
@@ -155,6 +163,10 @@ def test_default_company_dimension_is_marketing_airline() -> None:
 
 def test_default_minimum_change_per_day_is_quarter_flight() -> None:
     assert DEFAULT_MIN_ABSOLUTE_CHANGE_PER_DAY == 0.25
+
+
+def test_default_minimum_previous_flights_is_one() -> None:
+    assert DEFAULT_MIN_PREVIOUS_FLIGHTS == 1
 
 
 def test_default_minimum_percent_change_is_five_percent() -> None:

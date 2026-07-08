@@ -12,7 +12,7 @@ PeriodKind = Literal["weekly", "monthly"]
 MARKETING_AIRLINE_COL = "airline"
 OPERATING_AIRLINE_COL = "operating_airline"
 DEFAULT_COMPANY_AIRLINE_COL = MARKETING_AIRLINE_COL
-DEFAULT_MIN_PREVIOUS_FLIGHTS = 10
+DEFAULT_MIN_PREVIOUS_FLIGHTS = 1
 DEFAULT_MIN_ABSOLUTE_CHANGE_PER_DAY = 0.25
 DEFAULT_MIN_PERCENT_CHANGE = 5.0
 
@@ -46,6 +46,7 @@ class PeriodInsightResult:
     new_routes: pd.DataFrame
     new_company_routes: pd.DataFrame
     disappeared_routes: pd.DataFrame
+    disappeared_company_routes: pd.DataFrame
     frequency_drops: pd.DataFrame
     frequency_increases: pd.DataFrame
 
@@ -117,6 +118,9 @@ def compare_periods(
         columns={airline_col: "airline"}
     )
     disappeared_routes = _lost_keys(route_comparison)
+    disappeared_company_routes = _lost_keys(company_route_comparison).rename(
+        columns={airline_col: "airline"}
+    )
 
     frequency_drops = _frequency_changes(
         route_comparison,
@@ -143,6 +147,7 @@ def compare_periods(
         new_routes=new_routes,
         new_company_routes=new_company_routes,
         disappeared_routes=disappeared_routes,
+        disappeared_company_routes=disappeared_company_routes,
         frequency_drops=frequency_drops,
         frequency_increases=frequency_increases,
     )

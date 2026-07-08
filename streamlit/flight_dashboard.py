@@ -186,7 +186,9 @@ def build_map_points(dest_counts: "pd.Series", by_country: bool) -> list[dict]:
     return points
 
 
-def _get_map_geo_opts(scope: str = "world") -> dict:
+def _get_map_geo_opts(
+    scope: str = "world", center: tuple[float, float] | None = None
+) -> dict:
     """Return geo layout options parameterized by scope."""
     opts = dict(
         showland=True,
@@ -198,13 +200,16 @@ def _get_map_geo_opts(scope: str = "world") -> dict:
     )
     if scope == "usa":
         opts["scope"] = "north america"
-        opts["lataxis"] = dict(range=[17, 72])
-        opts["lonaxis"] = dict(range=[-170, -64])
+        if center is None:
+            opts["lataxis"] = dict(range=[17, 72])
+            opts["lonaxis"] = dict(range=[-170, -64])
     elif scope == "world":
         opts["scope"] = "world"
         opts["projection_type"] = "natural earth"
     else:
         opts["scope"] = scope
+    if center is not None:
+        opts["center"] = dict(lat=center[0], lon=center[1])
     return opts
 
 
@@ -368,7 +373,7 @@ def _render_flight_map(
             showlegend=False,
         )
     )
-    fig_map.update_geos(**_get_map_geo_opts(geo_scope))
+    fig_map.update_geos(**_get_map_geo_opts(geo_scope, (focus_lat, focus_lon)))
     fig_map.update_layout(
         height=600,
         margin=dict(l=0, r=0, t=0, b=0),
@@ -1187,21 +1192,19 @@ def main() -> None:
                 map_airline_display_g.append(display)
                 map_display_to_code_g[display] = code
 
-sel_map_airlines_g = st.multiselect(
-    "Filter by airlines",
-    options=map_airline_display_g,
-    default=[],
-    help="Leave empty to show all. Select airlines to compare with distinct colors.",
-    key="overview_g_map_airlines",
-)
+            sel_map_airlines_g = st.multiselect(
+                "Filter by airlines",
+                options=map_airline_display_g,
+                default=[],
+                help="Leave empty to show all. Select airlines to compare with distinct colors.",
+                key="overview_g_map_airlines",
+            )
             sel_map_codes_g = [
                 map_display_to_code_g[d]
                 for d in sel_map_airlines_g
                 if d in map_display_to_code_g
             ]
-            _render_network_map(
-                df, map_airline_col, sel_map_codes_g, geo_scope, top_n
-            )
+            _render_network_map(df, map_airline_col, sel_map_codes_g, geo_scope, top_n)
 
         else:
             # ── Focus mode: top destinations ──
@@ -1410,7 +1413,6 @@ sel_map_airlines_g = st.multiselect(
                     )
             else:
                 sel_map_countries = []
-
 
             map_by_country = map_point_by == "Country"
             sel_map_codes = [

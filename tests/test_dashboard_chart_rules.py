@@ -75,3 +75,13 @@ def test_route_arc_count_uses_top_n_ranking_control() -> None:
     assert "Top route arcs to draw" not in source
     assert "top_routes_n=top_n" in source
     assert "top_arcs_n=top_n" in source
+
+
+def test_focus_airport_maps_center_on_focus_airport() -> None:
+    source = _dashboard_source()
+
+    assert (
+        "fig_map.update_geos(**_get_map_geo_opts(geo_scope, (focus_lat, focus_lon)))"
+        in source
+    )
+    assert 'opts["center"] = dict(lat=center[0], lon=center[1])' in source

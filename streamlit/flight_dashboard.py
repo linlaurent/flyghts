@@ -208,6 +208,18 @@ def _get_map_geo_opts(scope: str = "world") -> dict:
     return opts
 
 
+def _start_flight_count_axis_at_zero(fig: go.Figure, axis: str = "y") -> None:
+    """Force flight-count axes to include zero as their baseline."""
+    if axis == "x":
+        fig.update_xaxes(rangemode="tozero")
+        return
+    if axis == "y":
+        fig.update_yaxes(rangemode="tozero")
+        return
+    layout_axis = f"{axis[0]}axis{axis[1:]}"
+    fig.update_layout({layout_axis: {"rangemode": "tozero"}})
+
+
 def _render_flight_map(
     df_map: pd.DataFrame,
     direction: str,
@@ -650,6 +662,13 @@ def _render_insight_chart(
     fig.update_layout(
         height=360, yaxis={"categoryorder": "total ascending"}, showlegend=False
     )
+    if value_label in {
+        "Previous flights",
+        "Current flights",
+        "Number of flights",
+        "Flights",
+    }:
+        _start_flight_count_axis_at_zero(fig, "x")
     st.plotly_chart(fig, width="stretch")
 
 
@@ -999,6 +1018,7 @@ def main() -> None:
         fig_airlines.update_layout(
             height=chart_h, yaxis={"categoryorder": "total ascending"}, showlegend=False
         )
+        _start_flight_count_axis_at_zero(fig_airlines, "x")
 
         if global_mode:
             # ── Global mode: top routes + top airports ──
@@ -1079,6 +1099,7 @@ def main() -> None:
                 yaxis={"categoryorder": "total ascending"},
                 showlegend=False,
             )
+            _start_flight_count_axis_at_zero(fig_routes_ov, "x")
 
             fig_apt_ov = px.bar(
                 apt_overview_df,
@@ -1095,6 +1116,7 @@ def main() -> None:
                 yaxis={"categoryorder": "total ascending"},
                 showlegend=False,
             )
+            _start_flight_count_axis_at_zero(fig_apt_ov, "x")
 
             fig_city_g = px.bar(
                 city_df_g,
@@ -1111,6 +1133,7 @@ def main() -> None:
                 yaxis={"categoryorder": "total ascending"},
                 showlegend=False,
             )
+            _start_flight_count_axis_at_zero(fig_city_g, "x")
 
             r1c1, r1c2 = st.columns(2)
             with r1c1:
@@ -1142,6 +1165,7 @@ def main() -> None:
                     labels={"Date": "Date", "Flights": "Number of flights"},
                 )
                 fig_per_day.update_layout(height=350)
+                _start_flight_count_axis_at_zero(fig_per_day, "y")
                 st.plotly_chart(fig_per_day, width="stretch")
             else:
                 st.caption("No date data.")
@@ -1258,6 +1282,7 @@ def main() -> None:
                 yaxis={"categoryorder": "total ascending"},
                 showlegend=False,
             )
+            _start_flight_count_axis_at_zero(fig_apt, "x")
 
             fig_city = px.bar(
                 city_df,
@@ -1274,6 +1299,7 @@ def main() -> None:
                 yaxis={"categoryorder": "total ascending"},
                 showlegend=False,
             )
+            _start_flight_count_axis_at_zero(fig_city, "x")
 
             if show_country:
                 fig_country = px.bar(
@@ -1291,6 +1317,7 @@ def main() -> None:
                     yaxis={"categoryorder": "total ascending"},
                     showlegend=False,
                 )
+                _start_flight_count_axis_at_zero(fig_country, "x")
 
             r1c1, r1c2 = st.columns(2)
             with r1c1:
@@ -1326,6 +1353,7 @@ def main() -> None:
                     labels={"Date": "Date", "Flights": "Number of flights"},
                 )
                 fig_per_day.update_layout(height=350)
+                _start_flight_count_axis_at_zero(fig_per_day, "y")
                 st.plotly_chart(fig_per_day, width="stretch")
             else:
                 st.caption("No date data.")
@@ -2054,6 +2082,7 @@ def main() -> None:
                                     yaxis={"categoryorder": "total ascending"},
                                     showlegend=False,
                                 )
+                                _start_flight_count_axis_at_zero(fig_od, "x")
                                 st.plotly_chart(fig_od, width="stretch")
                                 st.dataframe(od_df, use_container_width=True)
                         else:
@@ -2128,6 +2157,7 @@ def main() -> None:
                                     yaxis={"categoryorder": "total ascending"},
                                     showlegend=False,
                                 )
+                                _start_flight_count_axis_at_zero(fig_route, "x")
                                 st.plotly_chart(fig_route, width="stretch")
 
                                 top_dests = set(dest_counts_airline.head(route_n).index)
@@ -2337,6 +2367,7 @@ def main() -> None:
                                 ),
                                 legend=dict(x=1.1, xanchor="left"),
                             )
+                            _start_flight_count_axis_at_zero(fig_time, "y")
                             st.plotly_chart(fig_time, width="stretch")
 
                             if not global_mode:
@@ -2387,6 +2418,9 @@ def main() -> None:
                                         height=350,
                                         title="Flights over time by route",
                                     )
+                                    _start_flight_count_axis_at_zero(
+                                        fig_route_count_time, "y"
+                                    )
                                     st.plotly_chart(
                                         fig_route_count_time, width="stretch"
                                     )
@@ -2424,6 +2458,7 @@ def main() -> None:
                                     },
                                 )
                                 fig_hour.update_layout(height=350)
+                                _start_flight_count_axis_at_zero(fig_hour, "y")
                                 st.plotly_chart(fig_hour, width="stretch")
                             else:
                                 st.caption("No scheduled time data for this airline.")
@@ -2469,6 +2504,7 @@ def main() -> None:
                                 hovertemplate="%{x}<br>Avg: %{y}<br>Total: %{customdata[0]:,}<br>Days: %{customdata[1]}<extra></extra>",
                             )
                             fig_wd.update_layout(height=350)
+                            _start_flight_count_axis_at_zero(fig_wd, "y")
                             st.plotly_chart(fig_wd, width="stretch")
                         else:
                             st.caption("No date data for weekday analysis.")
@@ -2502,6 +2538,7 @@ def main() -> None:
                                         hovertemplate="%{customdata[0]}<br>%{x}<br>Flights: %{y:,}<extra></extra>",
                                     )
                                     fig_cargo.update_layout(height=350)
+                                    _start_flight_count_axis_at_zero(fig_cargo, "y")
                                     st.plotly_chart(fig_cargo, width="stretch")
                                 cargo_passenger = (df_airline["cargo"] == False).sum()
                                 cargo_cargo = (df_airline["cargo"] == True).sum()
@@ -2704,6 +2741,7 @@ def main() -> None:
                                 height=400 + len(all_top_ods) * 25,
                                 yaxis={"categoryorder": "total ascending"},
                             )
+                            _start_flight_count_axis_at_zero(fig_cmp_routes, "x")
                             st.plotly_chart(fig_cmp_routes, width="stretch")
                     else:
                         all_top_dests: set[str] = set()
@@ -2753,6 +2791,7 @@ def main() -> None:
                                 height=400 + len(all_top_dests) * 25,
                                 yaxis={"categoryorder": "total ascending"},
                             )
+                            _start_flight_count_axis_at_zero(fig_cmp_routes, "x")
                             st.plotly_chart(fig_cmp_routes, width="stretch")
 
                 with tab_cmp_time:
@@ -2771,6 +2810,7 @@ def main() -> None:
                             labels={"Flights": "Number of flights"},
                         )
                         fig_cmp_time.update_layout(height=400)
+                        _start_flight_count_axis_at_zero(fig_cmp_time, "y")
                         st.plotly_chart(fig_cmp_time, width="stretch")
                     else:
                         st.caption("No date data.")
@@ -2838,6 +2878,7 @@ def main() -> None:
                                 },
                             )
                             fig_cmp_hour.update_layout(height=400)
+                            _start_flight_count_axis_at_zero(fig_cmp_hour, "y")
                             st.plotly_chart(fig_cmp_hour, width="stretch")
                         else:
                             st.caption("No scheduled time data.")
@@ -2888,6 +2929,7 @@ def main() -> None:
                                 fig_cmp_cargo.update_layout(
                                     height=200 + len(cmp_codes) * 60
                                 )
+                                _start_flight_count_axis_at_zero(fig_cmp_cargo, "x")
                                 st.plotly_chart(fig_cmp_cargo, width="stretch")
 
                             cargo_time_parts = []
@@ -2922,6 +2964,9 @@ def main() -> None:
                                         },
                                     )
                                     fig_cmp_cargo_time.update_layout(height=400)
+                                    _start_flight_count_axis_at_zero(
+                                        fig_cmp_cargo_time, "y"
+                                    )
                                     st.plotly_chart(fig_cmp_cargo_time, width="stretch")
                         else:
                             st.caption("No cargo column in data.")
@@ -3212,6 +3257,7 @@ def main() -> None:
                                 yaxis={"categoryorder": "total ascending"},
                                 showlegend=False,
                             )
+                            _start_flight_count_axis_at_zero(fig_cities, "x")
                             st.plotly_chart(fig_cities, width="stretch")
 
                             _top_city_iatas = set(_city_dest_counts.head(_city_n).index)
@@ -3257,6 +3303,7 @@ def main() -> None:
                                     height=350,
                                     title="Flights over time by city",
                                 )
+                                _start_flight_count_axis_at_zero(fig_city_time, "y")
                                 st.plotly_chart(fig_city_time, width="stretch")
 
                         st.dataframe(
@@ -3309,6 +3356,7 @@ def main() -> None:
                             yaxis={"categoryorder": "total ascending"},
                             showlegend=False,
                         )
+                        _start_flight_count_axis_at_zero(fig_route_airlines, "x")
                         fig_route_airlines.update_traces(textposition="outside")
                         st.plotly_chart(fig_route_airlines, width="stretch")
 
@@ -3412,6 +3460,7 @@ def main() -> None:
                             ),
                             legend=dict(x=1.1, xanchor="left"),
                         )
+                        _start_flight_count_axis_at_zero(fig_route_time, "y")
                         st.plotly_chart(fig_route_time, width="stretch")
 
                         top_airlines_route = set(airline_counts_route.head(top_n).index)
@@ -3454,6 +3503,7 @@ def main() -> None:
                                 height=350,
                                 title="Flights over time by airline",
                             )
+                            _start_flight_count_axis_at_zero(fig_count_day, "y")
                             st.plotly_chart(fig_count_day, width="stretch")
                     else:
                         st.caption("No date data.")
@@ -3487,6 +3537,7 @@ def main() -> None:
                                 },
                             )
                             fig_route_hour.update_layout(height=350)
+                            _start_flight_count_axis_at_zero(fig_route_hour, "y")
                             st.plotly_chart(fig_route_hour, width="stretch")
                         else:
                             st.caption("No scheduled time data for this route.")
@@ -3532,6 +3583,7 @@ def main() -> None:
                             hovertemplate="%{x}<br>Avg: %{y}<br>Total: %{customdata[0]:,}<br>Days: %{customdata[1]}<extra></extra>",
                         )
                         fig_rwd.update_layout(height=350)
+                        _start_flight_count_axis_at_zero(fig_rwd, "y")
                         st.plotly_chart(fig_rwd, width="stretch")
                     else:
                         st.caption("No date data for weekday analysis.")
@@ -3563,6 +3615,7 @@ def main() -> None:
                                     hovertemplate="%{customdata[0]}<br>%{x}<br>Flights: %{y:,}<extra></extra>",
                                 )
                                 fig_route_cargo.update_layout(height=350)
+                                _start_flight_count_axis_at_zero(fig_route_cargo, "y")
                                 st.plotly_chart(fig_route_cargo, width="stretch")
                             cargo_passenger_r = (df_route["cargo"] == False).sum()
                             cargo_cargo_r = (df_route["cargo"] == True).sum()
@@ -3625,6 +3678,7 @@ def main() -> None:
                 labels={"delay_min": "Delay (minutes)", "count": "Flights"},
             )
             fig_delay_hist.update_layout(height=350, showlegend=False)
+            _start_flight_count_axis_at_zero(fig_delay_hist, "y")
             st.plotly_chart(fig_delay_hist, width="stretch")
         else:
             st.caption("No delayed flights in the selected filters.")

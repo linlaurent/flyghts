@@ -1187,32 +1187,20 @@ def main() -> None:
                 map_airline_display_g.append(display)
                 map_display_to_code_g[display] = code
 
-            col_map_airline_g, col_map_routes_g = st.columns(2)
-            with col_map_airline_g:
-                sel_map_airlines_g = st.multiselect(
-                    "Filter by airlines",
-                    options=map_airline_display_g,
-                    default=[],
-                    help="Leave empty to show all. Select airlines to compare with distinct colors.",
-                    key="overview_g_map_airlines",
-                )
-            with col_map_routes_g:
-                top_routes_n_g = st.slider(
-                    "Top route arcs to draw",
-                    min_value=10,
-                    max_value=200,
-                    value=50,
-                    step=10,
-                    help="Number of busiest route arcs shown on the map.",
-                    key="overview_g_map_routes",
-                )
+sel_map_airlines_g = st.multiselect(
+    "Filter by airlines",
+    options=map_airline_display_g,
+    default=[],
+    help="Leave empty to show all. Select airlines to compare with distinct colors.",
+    key="overview_g_map_airlines",
+)
             sel_map_codes_g = [
                 map_display_to_code_g[d]
                 for d in sel_map_airlines_g
                 if d in map_display_to_code_g
             ]
             _render_network_map(
-                df, map_airline_col, sel_map_codes_g, geo_scope, top_routes_n_g
+                df, map_airline_col, sel_map_codes_g, geo_scope, top_n
             )
 
         else:
@@ -1389,11 +1377,9 @@ def main() -> None:
             map_country_options = sorted(_country_set)
 
             if show_country:
-                col_map_by, col_map_airline, col_map_country, col_map_arcs = st.columns(
-                    4
-                )
+                col_map_by, col_map_airline, col_map_country = st.columns(3)
             else:
-                col_map_by, col_map_airline, col_map_arcs = st.columns(3)
+                col_map_by, col_map_airline = st.columns(2)
                 col_map_country = None
 
             with col_map_by:
@@ -1425,16 +1411,6 @@ def main() -> None:
             else:
                 sel_map_countries = []
 
-            with col_map_arcs:
-                top_arcs_focus = st.slider(
-                    "Top route arcs to draw",
-                    min_value=10,
-                    max_value=200,
-                    value=50,
-                    step=10,
-                    help="Number of busiest route arcs shown on the map.",
-                    key="focus_map_routes",
-                )
 
             map_by_country = map_point_by == "Country"
             sel_map_codes = [
@@ -1471,7 +1447,7 @@ def main() -> None:
                 sel_map_codes,
                 map_airline_col,
                 geo_scope,
-                top_arcs_n=top_arcs_focus,
+                top_arcs_n=top_n,
             )
 
     # ══════════════════════════════════════════════════════════════════════
@@ -1668,14 +1644,6 @@ def main() -> None:
                     empty_message="No routes disappeared in this period.",
                     top_n=top_n,
                 )
-            route_map_top_n = st.slider(
-                "Top route arcs to draw",
-                min_value=10,
-                max_value=200,
-                value=50,
-                step=10,
-                key="insights_routes_map_routes",
-            )
             map_new_routes, map_disappeared_routes = st.columns(2)
             with map_new_routes:
                 _render_insight_route_map(
@@ -1691,7 +1659,7 @@ def main() -> None:
                     focus_lat=focus_lat,
                     focus_lon=focus_lon,
                     geo_scope=geo_scope,
-                    top_routes_n=route_map_top_n,
+                    top_routes_n=top_n,
                 )
             with map_disappeared_routes:
                 _render_insight_route_map(
@@ -1707,7 +1675,7 @@ def main() -> None:
                     focus_lat=focus_lat,
                     focus_lon=focus_lon,
                     geo_scope=geo_scope,
-                    top_routes_n=route_map_top_n,
+                    top_routes_n=top_n,
                 )
             table_new_routes, table_disappeared_routes = st.columns(2)
             with table_new_routes:
@@ -1745,14 +1713,6 @@ def main() -> None:
                     empty_message="No company-specific routes disappeared.",
                     top_n=top_n,
                 )
-            company_route_map_top_n = st.slider(
-                "Top route arcs to draw",
-                min_value=10,
-                max_value=200,
-                value=50,
-                step=10,
-                key="insights_company_routes_map_routes",
-            )
             map_new_company_routes, map_disappeared_company_routes = st.columns(2)
             with map_new_company_routes:
                 _render_insight_route_map(
@@ -1768,7 +1728,7 @@ def main() -> None:
                     focus_lat=focus_lat,
                     focus_lon=focus_lon,
                     geo_scope=geo_scope,
-                    top_routes_n=company_route_map_top_n,
+                    top_routes_n=top_n,
                 )
             with map_disappeared_company_routes:
                 _render_insight_route_map(
@@ -1784,7 +1744,7 @@ def main() -> None:
                     focus_lat=focus_lat,
                     focus_lon=focus_lon,
                     geo_scope=geo_scope,
-                    top_routes_n=company_route_map_top_n,
+                    top_routes_n=top_n,
                 )
             table_new_company_routes, table_disappeared_company_routes = st.columns(2)
             with table_new_company_routes:
@@ -1823,14 +1783,6 @@ def main() -> None:
                     empty_message="No routes crossed the increase thresholds.",
                     top_n=top_n,
                 )
-            frequency_map_top_n = st.slider(
-                "Top route arcs to draw",
-                min_value=10,
-                max_value=200,
-                value=50,
-                step=10,
-                key="insights_frequency_map_routes",
-            )
             map_frequency_drops, map_frequency_increases = st.columns(2)
             with map_frequency_drops:
                 _render_insight_route_map(
@@ -1846,7 +1798,7 @@ def main() -> None:
                     focus_lat=focus_lat,
                     focus_lon=focus_lon,
                     geo_scope=geo_scope,
-                    top_routes_n=frequency_map_top_n,
+                    top_routes_n=top_n,
                 )
             with map_frequency_increases:
                 _render_insight_route_map(
@@ -1862,7 +1814,7 @@ def main() -> None:
                     focus_lat=focus_lat,
                     focus_lon=focus_lon,
                     geo_scope=geo_scope,
-                    top_routes_n=frequency_map_top_n,
+                    top_routes_n=top_n,
                 )
             table_frequency_drops, table_frequency_increases = st.columns(2)
             with table_frequency_drops:
@@ -2557,21 +2509,12 @@ def main() -> None:
 
                     with tab_map:
                         if global_mode:
-                            top_routes_n_dive = st.slider(
-                                "Top route arcs to draw",
-                                min_value=10,
-                                max_value=200,
-                                value=50,
-                                step=10,
-                                help="Number of busiest route arcs shown on the map.",
-                                key="airline_dive_map_routes",
-                            )
                             _render_network_map(
                                 df_airline,
                                 airline_col,
                                 [dive_icao],
                                 geo_scope,
-                                top_routes_n=top_routes_n_dive,
+                                top_routes_n=top_n,
                             )
                         else:
                             if show_country:
@@ -2586,15 +2529,6 @@ def main() -> None:
                             else:
                                 map_point_by_dive = "City (airport)"
                             map_by_country_dive = map_point_by_dive == "Country"
-                            top_arcs_dive_focus = st.slider(
-                                "Top route arcs to draw",
-                                min_value=10,
-                                max_value=200,
-                                value=50,
-                                step=10,
-                                help="Number of busiest route arcs shown on the map.",
-                                key="airline_dive_focus_map_routes",
-                            )
                             _render_flight_map(
                                 df_airline,
                                 direction,
@@ -2606,7 +2540,7 @@ def main() -> None:
                                 airline_col,
                                 geo_scope,
                                 use_traffic_colors=True,
-                                top_arcs_n=top_arcs_dive_focus,
+                                top_arcs_n=top_n,
                             )
 
         # ── Airline comparison ──
@@ -2973,21 +2907,12 @@ def main() -> None:
 
                 with tab_cmp_map:
                     if global_mode:
-                        top_routes_n_cmp = st.slider(
-                            "Top route arcs to draw",
-                            min_value=10,
-                            max_value=200,
-                            value=50,
-                            step=10,
-                            help="Number of busiest route arcs shown on the map.",
-                            key="airline_cmp_map_routes",
-                        )
                         _render_network_map(
                             df_cmp,
                             airline_col,
                             cmp_codes,
                             geo_scope,
-                            top_routes_n=top_routes_n_cmp,
+                            top_routes_n=top_n,
                         )
                     else:
                         if show_country:
@@ -3002,15 +2927,6 @@ def main() -> None:
                         else:
                             map_point_by_cmp = "City (airport)"
                         map_by_country_cmp = map_point_by_cmp == "Country"
-                        top_arcs_cmp_focus = st.slider(
-                            "Top route arcs to draw",
-                            min_value=10,
-                            max_value=200,
-                            value=50,
-                            step=10,
-                            help="Number of busiest route arcs shown on the map.",
-                            key="airline_cmp_focus_map_routes",
-                        )
                         _render_flight_map(
                             df_cmp,
                             direction,
@@ -3021,7 +2937,7 @@ def main() -> None:
                             cmp_codes,
                             airline_col,
                             geo_scope,
-                            top_arcs_n=top_arcs_cmp_focus,
+                            top_arcs_n=top_n,
                         )
 
     # ══════════════════════════════════════════════════════════════════════

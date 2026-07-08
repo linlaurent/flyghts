@@ -67,3 +67,11 @@ def test_insight_flight_count_charts_use_zero_baseline_rule() -> None:
     assert '_start_flight_count_axis_at_zero(fig, "x")' in source
     assert '"Previous flights"' in source
     assert '"Current flights"' in source
+
+
+def test_route_arc_count_uses_top_n_ranking_control() -> None:
+    source = _dashboard_source()
+
+    assert "Top route arcs to draw" not in source
+    assert "top_routes_n=top_n" in source
+    assert "top_arcs_n=top_n" in source

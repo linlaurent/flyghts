@@ -25,7 +25,17 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+from st_aggrid import AgGrid, GridOptionsBuilder
 
+from flyghts.insights import (
+    DEFAULT_COMPANY_AIRLINE_COL,
+    DEFAULT_MIN_ABSOLUTE_CHANGE_PER_DAY,
+    DEFAULT_MIN_PERCENT_CHANGE,
+    DEFAULT_MIN_PREVIOUS_FLIGHTS,
+    MARKETING_AIRLINE_COL,
+    available_period_labels,
+    compare_periods,
+)
 from flyghts.reference import get_airline, get_airport
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -442,6 +452,67 @@ def _render_network_map(
     st.plotly_chart(fig_map, width="stretch")
 
 
+def _airline_label(code: str) -> str:
+    info = get_airline(code)
+    return f"{code} - {info.name}" if info and info.name else code
+
+
+def _route_label(origin: str, destination: str) -> str:
+    o_info = get_airport(origin)
+    d_info = get_airport(destination)
+    o_label = f"{origin} ({o_info.city})" if o_info and o_info.city else origin
+    d_label = f"{destination} ({d_info.city})" if d_info and d_info.city else destination
+    return f"{o_label} → {d_label}"
+
+
+def _format_insight_table(df: pd.DataFrame) -> pd.DataFrame:
+    """Add readable labels and display-friendly column names for insight tables."""
+    if df.empty:
+        return df
+
+    display = df.copy()
+    if {"origin", "destination"}.issubset(display.columns):
+        display.insert(
+            0,
+            "Route",
+            display.apply(lambda r: _route_label(r["origin"], r["destination"]), axis=1),
+        )
+    if "airline" in display.columns:
+        display.insert(0, "Airline", display["airline"].apply(_airline_label))
+
+    return display.rename(
+        columns={
+            "airline": "ICAO",
+            "origin": "Origin",
+            "destination": "Destination",
+            "previous_flights": "Previous flights",
+            "current_flights": "Current flights",
+            "previous_flights_per_day": "Previous flights/day",
+            "current_flights_per_day": "Current flights/day",
+            "absolute_change_per_day": "Change/day",
+            "percent_change": "Change (%)",
+        }
+    )
+
+
+def _render_insight_grid(title: str, df: pd.DataFrame, empty_message: str) -> None:
+    st.subheader(title)
+    if df.empty:
+        st.caption(empty_message)
+        return
+
+    display = _format_insight_table(df)
+    gb = GridOptionsBuilder.from_dataframe(display)
+    gb.configure_default_column(sortable=True, filter=True, resizable=True)
+    height = min(420, 80 + 35 * len(display))
+    AgGrid(
+        display,
+        gridOptions=gb.build(),
+        height=height,
+        use_container_width=True,
+    )
+
+
 def main() -> None:
     st.set_page_config(
         page_title="Flight Dashboard",
@@ -538,7 +609,7 @@ def main() -> None:
     with st.sidebar:
         st.markdown("---")
         st.header("Section")
-        section_options = ["Overview", "Airline deep dive", "Route deep dive"]
+        section_options = ["Overview", "Insights", "Airline deep dive", "Route deep dive"]
         if is_us:
             section_options.append("Delay analysis")
         section = st.radio(
@@ -958,6 +1029,193 @@ def main() -> None:
                 df_map, direction, focus_airport, focus_lat, focus_lon,
                 map_by_country, sel_map_codes, map_airline_col, geo_scope,
                 top_arcs_n=top_arcs_focus,
+            )
+
+    # ══════════════════════════════════════════════════════════════════════
+    #  INSIGHTS
+    # ══════════════════════════════════════════════════════════════════════
+    elif section == "Insights":
+        st.header("Periodic insights")
+        st.caption(
+            "Compare one week or month against the immediately previous period using the current filters."
+        )
+
+        if df.empty:
+            st.info("No flight data available for the selected filters.")
+            return
+
+        ctl_period, ctl_baseline = st.columns(2)
+        with ctl_period:
+            period_label = st.selectbox(
+                "Period type",
+                options=["Weekly", "Monthly"],
+                index=0,
+                key="insights_period_kind",
+            )
+            period_kind = "weekly" if period_label == "Weekly" else "monthly"
+            period_options = available_period_labels(df, period_kind)
+            if not period_options:
+                st.info("No periods available for the selected filters.")
+                return
+            current_period = st.selectbox(
+                "Current period",
+                options=period_options,
+                index=len(period_options) - 1,
+                key="insights_current_period",
+            )
+        insights_airline_col = (
+            DEFAULT_COMPANY_AIRLINE_COL
+            if DEFAULT_COMPANY_AIRLINE_COL in df.columns
+            else MARKETING_AIRLINE_COL
+        )
+        with ctl_baseline:
+            min_previous_flights = st.number_input(
+                "Minimum previous flights",
+                min_value=1,
+                max_value=10_000,
+                value=DEFAULT_MIN_PREVIOUS_FLIGHTS,
+                step=1,
+                help="Ignore frequency changes on very small baseline routes.",
+                key="insights_min_previous_flights",
+            )
+
+        ctl_abs, ctl_pct = st.columns(2)
+        with ctl_abs:
+            min_absolute_change = st.number_input(
+                "Minimum change per day",
+                min_value=0.1,
+                max_value=1000.0,
+                value=DEFAULT_MIN_ABSOLUTE_CHANGE_PER_DAY,
+                step=0.1,
+                help="Required normalized flights-per-day change.",
+                key="insights_min_absolute_change",
+            )
+        with ctl_pct:
+            min_percent_change = st.number_input(
+                "Minimum percent change",
+                min_value=1.0,
+                max_value=100.0,
+                value=DEFAULT_MIN_PERCENT_CHANGE,
+                step=1.0,
+                help="Required relative change from the previous period.",
+                key="insights_min_percent_change",
+            )
+
+        try:
+            insights = compare_periods(
+                df,
+                period_kind=period_kind,
+                current_period=current_period,
+                airline_col=insights_airline_col,
+                min_previous_flights=int(min_previous_flights),
+                min_absolute_change_per_day=float(min_absolute_change),
+                min_percent_change=float(min_percent_change),
+            )
+        except ValueError as exc:
+            st.error(str(exc))
+            return
+
+        prev_label = f"{insights.previous.label} ({insights.previous.observed_days} observed days)"
+        curr_label = f"{insights.current.label} ({insights.current.observed_days} observed days)"
+        st.caption(f"Previous: {prev_label} / Current: {curr_label}")
+
+        m1, m2, m3, m4, m5 = st.columns(5)
+        with m1:
+            st.metric(
+                "Current flights",
+                f"{insights.current_total_flights:,}",
+                delta=insights.current_total_flights - insights.previous_total_flights,
+            )
+        with m2:
+            st.metric("New companies", f"{len(insights.new_companies):,}")
+        with m3:
+            st.metric("New routes", f"{len(insights.new_routes):,}")
+        with m4:
+            st.metric("New company-routes", f"{len(insights.new_company_routes):,}")
+        with m5:
+            st.metric("Large drops", f"{len(insights.frequency_drops):,}")
+
+        chart_cols = st.columns(2)
+        with chart_cols[0]:
+            st.subheader("Largest frequency drops")
+            if insights.frequency_drops.empty:
+                st.caption("No routes crossed the drop thresholds.")
+            else:
+                drops_plot = _format_insight_table(insights.frequency_drops.head(top_n))
+                fig_drops = px.bar(
+                    drops_plot.sort_values("Change/day", ascending=True),
+                    x="Change/day",
+                    y="Route",
+                    orientation="h",
+                    color="Change (%)",
+                    color_continuous_scale="Reds_r",
+                    hover_data=["Previous flights", "Current flights", "Change (%)"],
+                )
+                fig_drops.update_layout(height=360, showlegend=False)
+                st.plotly_chart(fig_drops, width="stretch")
+        with chart_cols[1]:
+            st.subheader("Largest frequency increases")
+            if insights.frequency_increases.empty:
+                st.caption("No routes crossed the increase thresholds.")
+            else:
+                increases_plot = _format_insight_table(insights.frequency_increases.head(top_n))
+                fig_increases = px.bar(
+                    increases_plot.sort_values("Change/day", ascending=True),
+                    x="Change/day",
+                    y="Route",
+                    orientation="h",
+                    color="Change (%)",
+                    color_continuous_scale="Greens",
+                    hover_data=["Previous flights", "Current flights", "Change (%)"],
+                )
+                fig_increases.update_layout(height=360, showlegend=False)
+                st.plotly_chart(fig_increases, width="stretch")
+
+        table_tabs = st.tabs(
+            [
+                "New companies",
+                "New routes",
+                "New routes by company",
+                "Disappeared routes",
+                "Frequency drops",
+                "Frequency increases",
+            ]
+        )
+        with table_tabs[0]:
+            _render_insight_grid(
+                "New companies",
+                insights.new_companies,
+                "No companies appeared for the first time in this period.",
+            )
+        with table_tabs[1]:
+            _render_insight_grid(
+                "New routes",
+                insights.new_routes,
+                "No directional routes appeared for the first time in this period.",
+            )
+        with table_tabs[2]:
+            _render_insight_grid(
+                "New routes by company",
+                insights.new_company_routes,
+                "No company-specific directional routes appeared for the first time.",
+            )
+        with table_tabs[3]:
+            _render_insight_grid(
+                "Disappeared routes",
+                insights.disappeared_routes,
+                "No directional routes disappeared in this period.",
+            )
+        with table_tabs[4]:
+            _render_insight_grid(
+                "Frequency drops",
+                insights.frequency_drops,
+                "No routes crossed the configured drop thresholds.",
+            )
+        with table_tabs[5]:
+            _render_insight_grid(
+                "Frequency increases",
+                insights.frequency_increases,
+                "No routes crossed the configured increase thresholds.",
             )
 
     # ══════════════════════════════════════════════════════════════════════

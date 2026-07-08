@@ -35,7 +35,7 @@ class PeriodWindow:
 
 @dataclass(frozen=True)
 class PeriodInsightResult:
-    """Structured insight tables for one current period vs the previous period."""
+    """Structured insight tables for one current period vs a comparison period."""
 
     period_kind: PeriodKind
     previous: PeriodWindow
@@ -43,6 +43,7 @@ class PeriodInsightResult:
     previous_total_flights: int
     current_total_flights: int
     new_companies: pd.DataFrame
+    disappeared_companies: pd.DataFrame
     new_routes: pd.DataFrame
     new_company_routes: pd.DataFrame
     disappeared_routes: pd.DataFrame
@@ -64,15 +65,20 @@ def compare_periods(
     *,
     period_kind: PeriodKind,
     current_period: str | pd.Period | None = None,
+    comparison_period: str | pd.Period | None = None,
     airline_col: str = DEFAULT_COMPANY_AIRLINE_COL,
+    bidirectional_focus_airport: str | None = None,
     min_previous_flights: int = DEFAULT_MIN_PREVIOUS_FLIGHTS,
     min_absolute_change_per_day: float = DEFAULT_MIN_ABSOLUTE_CHANGE_PER_DAY,
     min_percent_change: float = DEFAULT_MIN_PERCENT_CHANGE,
 ) -> PeriodInsightResult:
-    """Compare the selected period against the immediately previous period.
+    """Compare the selected period against a same-frequency comparison period.
 
-    Rows are treated as directional flight legs. Frequency thresholds are applied
-    to route-level flights-per-day values so weeks and months can be compared.
+    Rows are treated as directional flight legs unless bidirectional_focus_airport
+    is provided. In that case, routes touching the focus airport are normalized to
+    focus -> counterpart so arrivals and departures are counted together.
+    Frequency thresholds are applied to route-level flights-per-day values so weeks
+    and months can be compared.
     """
     _validate_input(df, airline_col)
 
@@ -80,7 +86,13 @@ def compare_periods(
     work["date"] = pd.to_datetime(work["date"]).dt.normalize()
     work["_period"] = _period_series(work, period_kind)
     selected = _resolve_period(work["_period"], period_kind, current_period)
-    previous = selected - 1
+    previous = (
+        _resolve_period(work["_period"], period_kind, comparison_period)
+        if comparison_period is not None
+        else selected - 1
+    )
+    if bidirectional_focus_airport:
+        work = _normalize_focus_routes(work, bidirectional_focus_airport)
 
     current_df = work[work["_period"] == selected].copy()
     previous_df = work[work["_period"] == previous].copy()
@@ -111,6 +123,9 @@ def compare_periods(
     )
 
     new_companies = _new_keys(company_comparison).rename(
+        columns={airline_col: "airline"}
+    )
+    disappeared_companies = _lost_keys(company_comparison).rename(
         columns={airline_col: "airline"}
     )
     new_routes = _new_keys(route_comparison)
@@ -144,6 +159,7 @@ def compare_periods(
         previous_total_flights=len(previous_df),
         current_total_flights=len(current_df),
         new_companies=new_companies,
+        disappeared_companies=disappeared_companies,
         new_routes=new_routes,
         new_company_routes=new_company_routes,
         disappeared_routes=disappeared_routes,
@@ -194,6 +210,21 @@ def _window_for(df: pd.DataFrame, period: pd.Period) -> PeriodWindow:
         end=end,
         observed_days=observed_days,
     )
+
+
+def _normalize_focus_routes(df: pd.DataFrame, focus_airport: str) -> pd.DataFrame:
+    """Normalize routes touching a focus airport to focus -> counterpart."""
+    normalized = df.copy()
+    touches_focus = (normalized["origin"] == focus_airport) | (
+        normalized["destination"] == focus_airport
+    )
+    counterpart = normalized["destination"].where(
+        normalized["origin"] == focus_airport,
+        normalized["origin"],
+    )
+    normalized.loc[touches_focus, "origin"] = focus_airport
+    normalized.loc[touches_focus, "destination"] = counterpart[touches_focus]
+    return normalized
 
 
 def _compare_key_counts(

@@ -62,6 +62,7 @@ def test_compare_periods_finds_new_companies_routes_and_company_routes() -> None
     assert result.previous.label == "2025-01-06/2025-01-12"
     assert result.current.label == "2025-01-13/2025-01-19"
     assert set(result.new_companies["airline"]) == {"CCC"}
+    assert set(result.disappeared_companies["airline"]) == {"BBB"}
     assert set(zip(result.new_routes["origin"], result.new_routes["destination"])) == {
         ("HKG", "NRT")
     }
@@ -132,6 +133,58 @@ def test_monthly_frequency_increases_are_reported() -> None:
     assert increase["origin"] == "HKG"
     assert increase["destination"] == "TPE"
     assert increase["percent_change"] == 100.0
+
+
+def test_compare_periods_accepts_explicit_non_adjacent_comparison_period() -> None:
+    df = pd.DataFrame(
+        _rows("2025-01-06", "AAA", "HKG", "TPE", 4)
+        + _rows("2025-01-13", "AAA", "HKG", "TPE", 8)
+        + _rows("2025-01-20", "AAA", "HKG", "TPE", 12)
+    )
+
+    result = compare_periods(
+        df,
+        period_kind="weekly",
+        current_period=pd.Period("2025-01-20", freq="W-SUN"),
+        comparison_period=pd.Period("2025-01-06", freq="W-SUN"),
+        min_previous_flights=1,
+        min_absolute_change_per_day=1.0,
+        min_percent_change=50.0,
+    )
+
+    assert result.previous.label == "2025-01-06/2025-01-12"
+    assert result.current.label == "2025-01-20/2025-01-26"
+    assert result.previous_total_flights == 4
+    assert result.current_total_flights == 12
+    increase = result.frequency_increases.iloc[0]
+    assert increase["previous_flights"] == 4
+    assert increase["current_flights"] == 12
+
+
+def test_bidirectional_focus_airport_counts_arrivals_and_departures_together() -> None:
+    df = pd.DataFrame(
+        _rows("2025-01-06", "AAA", "HKG", "TPE", 2)
+        + _rows("2025-01-06", "AAA", "TPE", "HKG", 3)
+        + _rows("2025-01-13", "AAA", "HKG", "TPE", 7)
+    )
+
+    result = compare_periods(
+        df,
+        period_kind="weekly",
+        current_period=pd.Period("2025-01-13", freq="W-SUN"),
+        bidirectional_focus_airport="HKG",
+        min_previous_flights=1,
+        min_absolute_change_per_day=1.0,
+        min_percent_change=10.0,
+    )
+
+    assert result.disappeared_routes.empty
+    assert len(result.frequency_increases) == 1
+    increase = result.frequency_increases.iloc[0]
+    assert increase["origin"] == "HKG"
+    assert increase["destination"] == "TPE"
+    assert increase["previous_flights"] == 5
+    assert increase["current_flights"] == 7
 
 
 def test_default_company_dimension_is_marketing_airline() -> None:

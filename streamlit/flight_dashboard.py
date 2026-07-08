@@ -1584,10 +1584,10 @@ def main() -> None:
             st.metric("Large drops", f"{len(insights.frequency_drops):,}")
 
         insight_tabs = st.tabs(
-            ["Companies", "Routes", "Company-routes", "Frequency changes"]
+            ["Routes", "Companies", "Company-routes", "Frequency changes"]
         )
 
-        with insight_tabs[0]:
+        with insight_tabs[1]:
             chart_new_companies, chart_disappeared_companies = st.columns(2)
             with chart_new_companies:
                 _render_insight_chart(
@@ -1624,7 +1624,7 @@ def main() -> None:
                     "No companies disappeared in this period.",
                 )
 
-        with insight_tabs[1]:
+        with insight_tabs[0]:
             chart_new_routes, chart_disappeared_routes = st.columns(2)
             with chart_new_routes:
                 _render_insight_chart(

@@ -85,3 +85,45 @@ def test_focus_airport_maps_center_on_focus_airport() -> None:
         in source
     )
     assert 'opts["center"] = dict(lat=center[0], lon=center[1])' in source
+
+
+def _call_blocks(source: str, call_name: str) -> list[str]:
+    blocks: list[str] = []
+    pos = 0
+    while True:
+        start = source.find(call_name, pos)
+        if start == -1:
+            return blocks
+        paren = source.find("(", start)
+        depth = 0
+        end = None
+        for idx in range(paren, len(source)):
+            if source[idx] == "(":
+                depth += 1
+            elif source[idx] == ")":
+                depth -= 1
+                if depth == 0:
+                    end = idx
+                    break
+        assert end is not None
+        blocks.append(source[start : end + 1])
+        pos = end + 1
+
+
+def test_all_line_charts_hide_markers() -> None:
+    source = _dashboard_source()
+
+    for block in _call_blocks(source, "px.line"):
+        assert "markers=True" not in block
+
+    for block in _call_blocks(source, "go.Scatter("):
+        assert 'mode="lines+markers"' not in block
+        assert 'mode="lines"' in block
+
+
+def test_date_line_charts_complete_daily_series() -> None:
+    source = _dashboard_source()
+
+    assert "def _daily_date_range(" in source
+    assert "def _complete_daily_series(" in source
+    assert source.count("_complete_daily_series(") >= 14

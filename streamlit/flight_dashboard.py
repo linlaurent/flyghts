@@ -225,6 +225,54 @@ def _start_flight_count_axis_at_zero(fig: go.Figure, axis: str = "y") -> None:
     fig.update_layout({layout_axis: {"rangemode": "tozero"}})
 
 
+def _daily_date_range(start_date, end_date) -> pd.DatetimeIndex:
+    """Return the selected date window as a daily DatetimeIndex."""
+    return pd.date_range(
+        pd.Timestamp(start_date).normalize(),
+        pd.Timestamp(end_date).normalize(),
+        freq="D",
+    )
+
+
+def _complete_daily_series(
+    df: pd.DataFrame,
+    *,
+    date_col: str,
+    value_cols: list[str],
+    start_date,
+    end_date,
+    group_cols: list[str] | None = None,
+) -> pd.DataFrame:
+    """Fill missing dates in a time series with zero values."""
+    date_range = _daily_date_range(start_date, end_date)
+    group_cols = group_cols or []
+    if df.empty:
+        columns = [date_col, *group_cols, *value_cols]
+        return pd.DataFrame(columns=columns)
+
+    work = df.copy()
+    work[date_col] = pd.to_datetime(work[date_col]).dt.normalize()
+
+    if group_cols:
+        groups = work[group_cols].drop_duplicates()
+        full_index = pd.MultiIndex.from_frame(
+            groups.merge(pd.DataFrame({date_col: date_range}), how="cross")[
+                [*group_cols, date_col]
+            ]
+        )
+        completed = (
+            work.set_index([*group_cols, date_col]).reindex(full_index).reset_index()
+        )
+    else:
+        completed = work.set_index(date_col).reindex(date_range).reset_index()
+        completed = completed.rename(columns={"index": date_col})
+
+    for col in value_cols:
+        if col in completed.columns:
+            completed[col] = completed[col].fillna(0)
+    return completed
+
+
 def _render_flight_map(
     df_map: pd.DataFrame,
     direction: str,
@@ -1162,6 +1210,13 @@ def main() -> None:
                 df.groupby(df["date"].dt.date).size().reset_index(name="Flights")
             )
             flights_per_day.columns = ["Date", "Flights"]
+            flights_per_day = _complete_daily_series(
+                flights_per_day,
+                date_col="Date",
+                value_cols=["Flights"],
+                start_date=start_date,
+                end_date=end_date,
+            )
             if not flights_per_day.empty:
                 fig_per_day = px.line(
                     flights_per_day,
@@ -1336,6 +1391,13 @@ def main() -> None:
                 df.groupby(df["date"].dt.date).size().reset_index(name="Flights")
             )
             flights_per_day.columns = ["Date", "Flights"]
+            flights_per_day = _complete_daily_series(
+                flights_per_day,
+                date_col="Date",
+                value_cols=["Flights"],
+                start_date=start_date,
+                end_date=end_date,
+            )
             if not flights_per_day.empty:
                 fig_per_day = px.line(
                     flights_per_day,
@@ -2168,6 +2230,14 @@ def main() -> None:
                                         else iata
                                     )
                                 )
+                                by_date_dest = _complete_daily_series(
+                                    by_date_dest,
+                                    date_col="Date",
+                                    value_cols=["Flights", "Total", "Share (%)"],
+                                    start_date=start_date,
+                                    end_date=end_date,
+                                    group_cols=["route_dest", "Route"],
+                                )
                                 if not by_date_dest.empty:
                                     fig_route_share_time = px.line(
                                         by_date_dest,
@@ -2227,6 +2297,14 @@ def main() -> None:
                                         if get_airport(iata)
                                         else iata
                                     )
+                                )
+                                by_date_dest_norm = _complete_daily_series(
+                                    by_date_dest_norm,
+                                    date_col="Date",
+                                    value_cols=["Flights", "AirlineTotal", "Norm (%)"],
+                                    start_date=start_date,
+                                    end_date=end_date,
+                                    group_cols=["route_dest", "Route"],
                                 )
                                 if not by_date_dest_norm.empty:
                                     fig_route_norm = px.line(
@@ -2290,6 +2368,13 @@ def main() -> None:
                             share_df["Share"] = (
                                 100 * share_df["Flights"] / share_df["Total"]
                             ).fillna(0)
+                            share_df = _complete_daily_series(
+                                share_df,
+                                date_col="Date",
+                                value_cols=["Flights", "Total", "Share"],
+                                start_date=start_date,
+                                end_date=end_date,
+                            )
 
                             fig_time = go.Figure()
                             fig_time.add_trace(
@@ -2298,6 +2383,7 @@ def main() -> None:
                                     y=share_df["Flights"],
                                     name="Flights",
                                     line=dict(color="#1f77b4"),
+                                    mode="lines",
                                 )
                             )
                             fig_time.add_trace(
@@ -2307,6 +2393,7 @@ def main() -> None:
                                     name="Share of traffic (%)",
                                     yaxis="y2",
                                     line=dict(color="#ff7f0e"),
+                                    mode="lines",
                                 )
                             )
                             fig_time.update_layout(
@@ -2355,6 +2442,14 @@ def main() -> None:
                                         if get_airport(iata)
                                         else iata
                                     )
+                                )
+                                by_date_dest_time = _complete_daily_series(
+                                    by_date_dest_time,
+                                    date_col="Date",
+                                    value_cols=["Flights", "Total"],
+                                    start_date=start_date,
+                                    end_date=end_date,
+                                    group_cols=["route_dest", "Route"],
                                 )
                                 if not by_date_dest_time.empty:
                                     fig_route_count_time = px.line(
@@ -2475,6 +2570,14 @@ def main() -> None:
                                 )
                                 cargo_by_date["Type"] = cargo_by_date["cargo"].map(
                                     {True: "Cargo", False: "Passenger"}
+                                )
+                                cargo_by_date = _complete_daily_series(
+                                    cargo_by_date,
+                                    date_col="date",
+                                    value_cols=["Flights"],
+                                    start_date=start_date,
+                                    end_date=end_date,
+                                    group_cols=["cargo", "Type"],
                                 )
                                 if not cargo_by_date.empty:
                                     fig_cargo = px.line(
@@ -2737,6 +2840,14 @@ def main() -> None:
                         .reset_index(name="Flights")
                     )
                     by_date_cmp.columns = ["Date", "Airline", "Flights"]
+                    by_date_cmp = _complete_daily_series(
+                        by_date_cmp,
+                        date_col="Date",
+                        value_cols=["Flights"],
+                        start_date=start_date,
+                        end_date=end_date,
+                        group_cols=["Airline"],
+                    )
                     if not by_date_cmp.empty:
                         fig_cmp_time = px.line(
                             by_date_cmp,
@@ -2767,6 +2878,14 @@ def main() -> None:
                     share_cmp["Share (%)"] = (
                         100 * share_cmp["Flights"] / share_cmp["Total"]
                     ).round(1)
+                    share_cmp = _complete_daily_series(
+                        share_cmp,
+                        date_col="Date",
+                        value_cols=["Flights", "Total", "Share (%)"],
+                        start_date=start_date,
+                        end_date=end_date,
+                        group_cols=["Airline"],
+                    )
                     if not share_cmp.empty:
                         fig_cmp_share = px.line(
                             share_cmp,
@@ -2889,6 +3008,14 @@ def main() -> None:
                                     cargo_time_parts, ignore_index=True
                                 )
                                 if not cargo_time_df.empty:
+                                    cargo_time_df = _complete_daily_series(
+                                        cargo_time_df,
+                                        date_col="date",
+                                        value_cols=["Flights"],
+                                        start_date=start_date,
+                                        end_date=end_date,
+                                        group_cols=["cargo", "Type", "Label"],
+                                    )
                                     fig_cmp_cargo_time = px.line(
                                         cargo_time_df,
                                         x="date",
@@ -3210,6 +3337,14 @@ def main() -> None:
                                 )
                             )
                             if not _by_date_city.empty:
+                                _by_date_city = _complete_daily_series(
+                                    _by_date_city,
+                                    date_col="Date",
+                                    value_cols=["Flights"],
+                                    start_date=start_date,
+                                    end_date=end_date,
+                                    group_cols=["route_dest", "City"],
+                                )
                                 fig_city_time = px.line(
                                     _by_date_city,
                                     x="Date",
@@ -3303,6 +3438,14 @@ def main() -> None:
                             lambda c: get_airline(c).name if get_airline(c) else c
                         )
                         if not by_date_airline.empty:
+                            by_date_airline = _complete_daily_series(
+                                by_date_airline,
+                                date_col="Date",
+                                value_cols=["Flights", "Total", "Share (%)"],
+                                start_date=start_date,
+                                end_date=end_date,
+                                group_cols=["ICAO", "Airline"],
+                            )
                             fig_share_day = px.line(
                                 by_date_airline,
                                 x="Date",
@@ -3347,6 +3490,13 @@ def main() -> None:
                         share_route_df["Share"] = (
                             100 * share_route_df["Flights"] / share_route_df["Total"]
                         ).fillna(0)
+                        share_route_df = _complete_daily_series(
+                            share_route_df,
+                            date_col="Date",
+                            value_cols=["Flights", "Total", "Share"],
+                            start_date=start_date,
+                            end_date=end_date,
+                        )
 
                         fig_route_time = go.Figure()
                         fig_route_time.add_trace(
@@ -3355,6 +3505,7 @@ def main() -> None:
                                 y=share_route_df["Flights"],
                                 name="Flights",
                                 line=dict(color="#1f77b4"),
+                                mode="lines",
                             )
                         )
                         fig_route_time.add_trace(
@@ -3364,6 +3515,7 @@ def main() -> None:
                                 name="Share of traffic (%)",
                                 yaxis="y2",
                                 line=dict(color="#ff7f0e"),
+                                mode="lines",
                             )
                         )
                         fig_route_time.update_layout(
@@ -3405,6 +3557,14 @@ def main() -> None:
                         by_date_airline_time["Airline"] = by_date_airline_time[
                             "ICAO"
                         ].apply(lambda c: get_airline(c).name if get_airline(c) else c)
+                        by_date_airline_time = _complete_daily_series(
+                            by_date_airline_time,
+                            date_col="Date",
+                            value_cols=["Flights", "Total"],
+                            start_date=start_date,
+                            end_date=end_date,
+                            group_cols=["ICAO", "Airline"],
+                        )
                         if not by_date_airline_time.empty:
                             fig_count_day = px.line(
                                 by_date_airline_time,
@@ -3517,6 +3677,14 @@ def main() -> None:
                             cargo_by_date_route["Type"] = cargo_by_date_route[
                                 "cargo"
                             ].map({True: "Cargo", False: "Passenger"})
+                            cargo_by_date_route = _complete_daily_series(
+                                cargo_by_date_route,
+                                date_col="date",
+                                value_cols=["Flights"],
+                                start_date=start_date,
+                                end_date=end_date,
+                                group_cols=["cargo", "Type"],
+                            )
                             if not cargo_by_date_route.empty:
                                 fig_route_cargo = px.line(
                                     cargo_by_date_route,
@@ -3682,6 +3850,7 @@ def main() -> None:
                         name="On-time (%)",
                         yaxis="y2",
                         line=dict(color="#ff7f0e"),
+                        mode="lines",
                     )
                 )
                 fig_hour_delay.update_layout(
@@ -3710,6 +3879,13 @@ def main() -> None:
             .reset_index()
         )
         delay_by_date.columns = ["Date", "On-time (%)", "Avg delay (min)", "Total"]
+        delay_by_date = _complete_daily_series(
+            delay_by_date,
+            date_col="Date",
+            value_cols=["On-time (%)", "Avg delay (min)", "Total"],
+            start_date=start_date,
+            end_date=end_date,
+        )
         if not delay_by_date.empty:
             fig_delay_time = go.Figure()
             fig_delay_time.add_trace(
@@ -3718,6 +3894,7 @@ def main() -> None:
                     y=delay_by_date["On-time (%)"],
                     name="On-time (%)",
                     line=dict(color="#2ca02c"),
+                    mode="lines",
                 )
             )
             fig_delay_time.add_trace(
@@ -3727,6 +3904,7 @@ def main() -> None:
                     name="Avg delay (min)",
                     yaxis="y2",
                     line=dict(color="#d62728"),
+                    mode="lines",
                 )
             )
             fig_delay_time.update_layout(

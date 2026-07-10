@@ -12,8 +12,7 @@ Data source: https://transtats.bts.gov/PREZIP/
 Output columns: origin, destination, flight_no, airline, operating_flight_no,
 operating_airline, scheduled_time, status, date, cargo.
 
-Downloads monthly ZIPs but writes per-date CSV files (e.g. data/us/2025-11-01.csv)
-to match the HKG and Korea data layout.
+Downloads monthly ZIPs and writes per-month Parquet files (e.g. data/us/2025-11.parquet).
 
 Usage:
     uv run python scripts/dump_us_flights.py --data-dir data/us/
@@ -170,7 +169,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--data-dir", type=str, default=None,
-        help="Output directory for per-month CSV files (e.g. data/us/)",
+        help="Output directory for per-month Parquet files (e.g. data/us/)",
     )
     parser.add_argument(
         "--output", "-o", type=str, default=None,
@@ -230,13 +229,13 @@ def main() -> None:
     if args.data_dir:
         data_dir = Path(args.data_dir)
         data_dir.mkdir(parents=True, exist_ok=True)
-        combined = pd.concat([d for _, _, d in all_dfs], ignore_index=True)
         n_written = 0
-        for date_str, group in combined.groupby("date"):
-            group.to_csv(data_dir / f"{date_str}.csv", index=False)
-            n_written += len(group)
+        for year, month, df in all_dfs:
+            out = data_dir / f"{year}-{month:02d}.parquet"
+            df.to_parquet(out, index=False)
+            n_written += len(df)
         print(
-            f"Wrote {n_written} flights across {combined['date'].nunique()} days to {data_dir}/",
+            f"Wrote {n_written} flights across {len(all_dfs)} months to {data_dir}/",
             file=sys.stderr,
         )
     elif args.output:

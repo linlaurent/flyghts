@@ -110,42 +110,82 @@ def test_insight_frequency_changes_can_use_percent_metric() -> None:
     assert "frequency_value_col" in source
 
 
-def test_insight_frequency_changes_keep_drops_left_of_increases() -> None:
+def test_insight_comparisons_keep_positive_left_of_negative() -> None:
     source = _dashboard_source()
-    frequency_tab = source.split("with insight_tabs[3]:", maxsplit=1)[1].split(
+    insights_section = source.split('elif section == "Insights":', maxsplit=1)[1].split(
         "# ══════════════════════════════════════════════════════════════════════",
         maxsplit=1,
     )[0]
 
     ordered_pairs = [
         (
-            "chart_frequency_drops_left, chart_frequency_increases_right = st.columns(2)",
-            "with chart_frequency_drops_left:",
-            "with chart_frequency_increases_right:",
+            "chart_new_routes, chart_disappeared_routes = st.columns(2)",
+            "with chart_new_routes:",
+            "with chart_disappeared_routes:",
         ),
         (
-            "map_frequency_drops_left, map_frequency_increases_right = st.columns(2)",
-            "with map_frequency_drops_left:",
-            "with map_frequency_increases_right:",
+            "map_new_routes, map_disappeared_routes = st.columns(2)",
+            "with map_new_routes:",
+            "with map_disappeared_routes:",
         ),
         (
-            "table_frequency_drops_left, table_frequency_increases_right = st.columns(2)",
-            "with table_frequency_drops_left:",
-            "with table_frequency_increases_right:",
+            "table_new_routes, table_disappeared_routes = st.columns(2)",
+            "with table_new_routes:",
+            "with table_disappeared_routes:",
+        ),
+        (
+            "chart_new_companies, chart_disappeared_companies = st.columns(2)",
+            "with chart_new_companies:",
+            "with chart_disappeared_companies:",
+        ),
+        (
+            "table_new_companies, table_disappeared_companies = st.columns(2)",
+            "with table_new_companies:",
+            "with table_disappeared_companies:",
+        ),
+        (
+            "chart_new_company_routes, chart_disappeared_company_routes = st.columns(2)",
+            "with chart_new_company_routes:",
+            "with chart_disappeared_company_routes:",
+        ),
+        (
+            "map_new_company_routes, map_disappeared_company_routes = st.columns(2)",
+            "with map_new_company_routes:",
+            "with map_disappeared_company_routes:",
+        ),
+        (
+            "table_new_company_routes, table_disappeared_company_routes = st.columns(2)",
+            "with table_new_company_routes:",
+            "with table_disappeared_company_routes:",
+        ),
+        (
+            "chart_frequency_increases_left, chart_frequency_drops_right = st.columns(2)",
+            "with chart_frequency_increases_left:",
+            "with chart_frequency_drops_right:",
+        ),
+        (
+            "map_frequency_increases_left, map_frequency_drops_right = st.columns(2)",
+            "with map_frequency_increases_left:",
+            "with map_frequency_drops_right:",
+        ),
+        (
+            "table_frequency_increases_left, table_frequency_drops_right = st.columns(2)",
+            "with table_frequency_increases_left:",
+            "with table_frequency_drops_right:",
         ),
     ]
 
-    for columns_call, drops_block, increases_block in ordered_pairs:
-        assert columns_call in frequency_tab
-        assert frequency_tab.index(drops_block) < frequency_tab.index(increases_block)
+    for columns_call, left_block, right_block in ordered_pairs:
+        assert columns_call in insights_section
+        assert insights_section.index(left_block) < insights_section.index(right_block)
 
 
-def test_streamlit_dashboard_rule_documents_frequency_layout() -> None:
+def test_streamlit_dashboard_rule_documents_insight_layout() -> None:
     rule = _dashboard_rule_source()
 
     assert "globs: streamlit/**/*.py" in rule
-    assert "Frequency-change comparisons place drops on the left" in rule
-    assert "increases on the right" in rule
+    assert "new or increases on the left" in rule
+    assert "drops or disappeared on the right" in rule
 
 
 def test_focus_airport_maps_center_on_focus_airport() -> None:

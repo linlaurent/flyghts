@@ -1872,8 +1872,18 @@ def main() -> None:
                 if frequency_metric == "Change (%)"
                 else "absolute_change_per_day"
             )
-            chart_frequency_drops_left, chart_frequency_increases_right = st.columns(2)
-            with chart_frequency_drops_left:
+            chart_frequency_increases_left, chart_frequency_drops_right = st.columns(2)
+            with chart_frequency_increases_left:
+                _render_insight_chart(
+                    "Largest frequency increases",
+                    insights.frequency_increases,
+                    value_col=frequency_value_col,
+                    value_label=frequency_metric,
+                    color_scale="Greens",
+                    empty_message="No routes crossed the increase thresholds.",
+                    top_n=top_n,
+                )
+            with chart_frequency_drops_right:
                 _render_insight_chart(
                     "Largest frequency drops",
                     insights.frequency_drops,
@@ -1884,34 +1894,8 @@ def main() -> None:
                     top_n=top_n,
                     ascending=True,
                 )
-            with chart_frequency_increases_right:
-                _render_insight_chart(
-                    "Largest frequency increases",
-                    insights.frequency_increases,
-                    value_col=frequency_value_col,
-                    value_label=frequency_metric,
-                    color_scale="Greens",
-                    empty_message="No routes crossed the increase thresholds.",
-                    top_n=top_n,
-                )
-            map_frequency_drops_left, map_frequency_increases_right = st.columns(2)
-            with map_frequency_drops_left:
-                _render_insight_route_map(
-                    "Frequency drops",
-                    df,
-                    insights.frequency_drops,
-                    insights.current,
-                    airline_col=insights_airline_col,
-                    bidirectional_focus_airport=bidirectional_focus_airport,
-                    global_mode=global_mode,
-                    direction=direction,
-                    focus_airport=focus_airport,
-                    focus_lat=focus_lat,
-                    focus_lon=focus_lon,
-                    geo_scope=geo_scope,
-                    top_routes_n=top_n,
-                )
-            with map_frequency_increases_right:
+            map_frequency_increases_left, map_frequency_drops_right = st.columns(2)
+            with map_frequency_increases_left:
                 _render_insight_route_map(
                     "Frequency increases",
                     df,
@@ -1927,18 +1911,34 @@ def main() -> None:
                     geo_scope=geo_scope,
                     top_routes_n=top_n,
                 )
-            table_frequency_drops_left, table_frequency_increases_right = st.columns(2)
-            with table_frequency_drops_left:
-                _render_insight_grid(
+            with map_frequency_drops_right:
+                _render_insight_route_map(
                     "Frequency drops",
+                    df,
                     insights.frequency_drops,
-                    "No routes crossed the configured drop thresholds.",
+                    insights.current,
+                    airline_col=insights_airline_col,
+                    bidirectional_focus_airport=bidirectional_focus_airport,
+                    global_mode=global_mode,
+                    direction=direction,
+                    focus_airport=focus_airport,
+                    focus_lat=focus_lat,
+                    focus_lon=focus_lon,
+                    geo_scope=geo_scope,
+                    top_routes_n=top_n,
                 )
-            with table_frequency_increases_right:
+            table_frequency_increases_left, table_frequency_drops_right = st.columns(2)
+            with table_frequency_increases_left:
                 _render_insight_grid(
                     "Frequency increases",
                     insights.frequency_increases,
                     "No routes crossed the configured increase thresholds.",
+                )
+            with table_frequency_drops_right:
+                _render_insight_grid(
+                    "Frequency drops",
+                    insights.frequency_drops,
+                    "No routes crossed the configured drop thresholds.",
                 )
 
     # ══════════════════════════════════════════════════════════════════════

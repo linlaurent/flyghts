@@ -10,7 +10,7 @@ Flight data is organized by source under `data/`:
 |--------|-----------|----------|-----|------|
 | **Hong Kong (HKG)** | `data/hkg/` | HKG departures & arrivals (passenger + cargo) | [HK Airport Open API](https://data.gov.hk/en-data/dataset/aahk-team1-flight-info) | None |
 | **Korea (ICN)** | `data/korea/` | Incheon departures & arrivals (passenger) | [data.go.kr B551177](https://www.data.go.kr/en/data/15095093/openapi.do) | Free API key |
-| **US Domestic** | `data/us/` | All US domestic flights (monthly bulk) | [BTS TranStats](https://www.transtats.bts.gov/) | None |
+| **US Domestic** | `data/us/` | All US domestic flights (monthly Parquet) | [BTS TranStats](https://www.transtats.bts.gov/) | None |
 
 ## Installation
 
@@ -69,7 +69,8 @@ uv run python scripts/dump_korea_flights.py --debug
 ### US Domestic (BTS)
 
 Download US domestic on-time performance data from the Bureau of Transportation Statistics.
-No API key needed. Data is ~2 months behind current date.
+No API key needed. Data is ~2 months behind current date. Writes one Parquet file per month
+(e.g. `data/us/2025-01.parquet`).
 
 ```bash
 # Download most recent available month
@@ -80,11 +81,14 @@ uv run python scripts/dump_us_flights.py --year 2024 --month 12 --data-dir data/
 
 # Download an entire year
 uv run python scripts/dump_us_flights.py --year 2024 --data-dir data/us/
+
+# Migrate existing daily CSVs to monthly Parquet (one-time)
+uv run python scripts/migrate_us_csv_to_parquet.py
 ```
 
 ### Validate Reference Data
 
-Check flight CSVs for airline/airport codes missing from the reference data:
+Check flight data files for airline/airport codes missing from the reference data:
 
 ```bash
 # Validate all sources

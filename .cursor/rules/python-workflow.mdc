@@ -1,0 +1,14 @@
+---
+description: Core Python workflow for the Flyghts project
+alwaysApply: true
+---
+
+# Python Workflow
+
+- This is a Python 3.12 project using a `src/` package layout.
+- Manage dependencies and virtual environments with `uv`; prefer `uv sync`.
+- Run project commands through `uv run`, for example `uv run pytest tests/ -v` or `uv run streamlit run streamlit/flight_dashboard.py`.
+- Format Python changes with `ruff format`.
+- Keep edits surgical and aligned with the existing dataclass, pytest, pandas, and Streamlit style.
+- Do not mix unrelated generated CSV data changes into code changes unless the user asks for data updates.
+- Preserve the `flyghts-audit` CLI entry point defined in `pyproject.toml` when changing audit CLI behavior.

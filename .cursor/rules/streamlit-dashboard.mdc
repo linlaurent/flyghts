@@ -1,0 +1,16 @@
+---
+description: Streamlit dashboard conventions for charts and tables
+globs: streamlit/**/*.py
+alwaysApply: false
+---
+
+# Streamlit Dashboard
+
+- Use `streamlit-aggrid` for dataframe display when adding or changing tables.
+- Render Plotly charts with `st.plotly_chart(..., width="stretch")`.
+- Flight-count charts should start the count axis at zero using `_start_flight_count_axis_at_zero`.
+- Line charts should not show markers; keep daily date series complete with `_complete_daily_series`.
+- Keep focus-airport maps centered on the selected airport via `_get_map_geo_opts`.
+- Use the shared Top N control for route and arc counts instead of adding separate route-arc limits.
+- Frequency-change comparisons place drops on the left and increases on the right across charts, maps, and tables.
+- When dashboard chart behavior changes, update or add regression coverage in `tests/test_dashboard_chart_rules.py`.

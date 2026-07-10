@@ -705,7 +705,8 @@ def _render_insight_chart(
         st.caption(empty_message)
         return
 
-    plot_df = _format_insight_table(df.head(top_n))
+    sorted_df = df.sort_values(value_col, ascending=ascending).head(top_n)
+    plot_df = _format_insight_table(sorted_df)
     if value_label not in plot_df.columns:
         plot_df = plot_df.rename(columns={value_col: value_label})
     if {"Airline", "Route"}.issubset(plot_df.columns):
@@ -1847,30 +1848,43 @@ def main() -> None:
                 )
 
         with insight_tabs[3]:
-            chart_frequency_drops, chart_frequency_increases = st.columns(2)
-            with chart_frequency_drops:
+            frequency_metric = st.radio(
+                "Frequency change metric",
+                options=["Change/day", "Change (%)"],
+                index=0,
+                horizontal=True,
+                help="Rank frequency changes by normalized flights per day or relative percent change.",
+                key="insights_frequency_metric",
+            )
+            frequency_value_col = (
+                "percent_change"
+                if frequency_metric == "Change (%)"
+                else "absolute_change_per_day"
+            )
+            chart_frequency_drops_left, chart_frequency_increases_right = st.columns(2)
+            with chart_frequency_drops_left:
                 _render_insight_chart(
                     "Largest frequency drops",
                     insights.frequency_drops,
-                    value_col="absolute_change_per_day",
-                    value_label="Change/day",
+                    value_col=frequency_value_col,
+                    value_label=frequency_metric,
                     color_scale="Reds_r",
                     empty_message="No routes crossed the drop thresholds.",
                     top_n=top_n,
                     ascending=True,
                 )
-            with chart_frequency_increases:
+            with chart_frequency_increases_right:
                 _render_insight_chart(
                     "Largest frequency increases",
                     insights.frequency_increases,
-                    value_col="absolute_change_per_day",
-                    value_label="Change/day",
+                    value_col=frequency_value_col,
+                    value_label=frequency_metric,
                     color_scale="Greens",
                     empty_message="No routes crossed the increase thresholds.",
                     top_n=top_n,
                 )
-            map_frequency_drops, map_frequency_increases = st.columns(2)
-            with map_frequency_drops:
+            map_frequency_drops_left, map_frequency_increases_right = st.columns(2)
+            with map_frequency_drops_left:
                 _render_insight_route_map(
                     "Frequency drops",
                     df,
@@ -1886,7 +1900,7 @@ def main() -> None:
                     geo_scope=geo_scope,
                     top_routes_n=top_n,
                 )
-            with map_frequency_increases:
+            with map_frequency_increases_right:
                 _render_insight_route_map(
                     "Frequency increases",
                     df,
@@ -1902,14 +1916,14 @@ def main() -> None:
                     geo_scope=geo_scope,
                     top_routes_n=top_n,
                 )
-            table_frequency_drops, table_frequency_increases = st.columns(2)
-            with table_frequency_drops:
+            table_frequency_drops_left, table_frequency_increases_right = st.columns(2)
+            with table_frequency_drops_left:
                 _render_insight_grid(
                     "Frequency drops",
                     insights.frequency_drops,
                     "No routes crossed the configured drop thresholds.",
                 )
-            with table_frequency_increases:
+            with table_frequency_increases_right:
                 _render_insight_grid(
                     "Frequency increases",
                     insights.frequency_increases,

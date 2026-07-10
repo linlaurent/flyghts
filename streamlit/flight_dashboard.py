@@ -42,7 +42,12 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 DATASETS: dict[str, dict] = {
     "HKG": {"dir": "hkg", "scope": "world", "default_airport": "HKG", "format": "csv"},
-    "US Domestic": {"dir": "us", "scope": "usa", "default_airport": None, "format": "parquet"},
+    "US Domestic": {
+        "dir": "us",
+        "scope": "usa",
+        "default_airport": None,
+        "format": "parquet",
+    },
 }
 
 _DELAY_RE = re.compile(r"\(\+(\d+)min\)")
@@ -58,13 +63,17 @@ def load_flights(dataset_key: str) -> pd.DataFrame:
     if file_format == "parquet":
         files = sorted(data_dir.glob("*.parquet")) if data_dir.exists() else []
         if not files:
-            st.error(f"No flight data found for {dataset_key}. Run the dump script first.")
+            st.error(
+                f"No flight data found for {dataset_key}. Run the dump script first."
+            )
             st.stop()
         dfs = [pd.read_parquet(f) for f in files]
     else:
         files = sorted(data_dir.glob("*.csv")) if data_dir.exists() else []
         if not files:
-            st.error(f"No flight data found for {dataset_key}. Run the dump script first.")
+            st.error(
+                f"No flight data found for {dataset_key}. Run the dump script first."
+            )
             st.stop()
         dfs = [pd.read_csv(f) for f in files]
 
@@ -668,13 +677,26 @@ def _render_insight_grid(title: str, df: pd.DataFrame, empty_message: str) -> No
 
     display = _format_insight_table(df)
     gb = GridOptionsBuilder.from_dataframe(display)
-    gb.configure_default_column(sortable=True, filter=True, resizable=True)
+    # Prefer flex over autoSizeStrategy=fitGridWidth: the one-shot fit can lock
+    # tiny widths before the Streamlit component iframe finishes sizing.
+    gb.configure_default_column(
+        sortable=True,
+        filter=True,
+        resizable=True,
+        flex=1,
+        minWidth=100,
+    )
+    if "Airline" in display.columns:
+        gb.configure_column("Airline", flex=2, minWidth=150)
+    if "Route" in display.columns:
+        gb.configure_column("Route", flex=3, minWidth=220)
+    grid_options = gb.build()
+    grid_options.pop("autoSizeStrategy", None)
     height = min(420, 80 + 35 * len(display))
     AgGrid(
         display,
-        gridOptions=gb.build(),
+        gridOptions=grid_options,
         height=height,
-        use_container_width=True,
     )
 
 
@@ -3700,33 +3722,29 @@ def main() -> None:
                             _start_flight_count_axis_at_zero(fig_airport_airline, "x")
                             st.plotly_chart(fig_airport_airline, width="stretch")
 
-                            gb = GridOptionsBuilder.from_dataframe(
-                                _airport_counts[
-                                    [
-                                        "City",
-                                        "Airport",
-                                        "Name",
-                                        "Flights",
-                                        "Share (%)",
-                                    ]
+                            _airport_grid = _airport_counts[
+                                [
+                                    "City",
+                                    "Airport",
+                                    "Name",
+                                    "Flights",
+                                    "Share (%)",
                                 ]
-                            )
+                            ]
+                            gb = GridOptionsBuilder.from_dataframe(_airport_grid)
                             gb.configure_default_column(
-                                sortable=True, filter=True, resizable=True
+                                sortable=True,
+                                filter=True,
+                                resizable=True,
+                                flex=1,
+                                minWidth=100,
                             )
+                            grid_options = gb.build()
+                            grid_options.pop("autoSizeStrategy", None)
                             AgGrid(
-                                _airport_counts[
-                                    [
-                                        "City",
-                                        "Airport",
-                                        "Name",
-                                        "Flights",
-                                        "Share (%)",
-                                    ]
-                                ],
-                                gridOptions=gb.build(),
+                                _airport_grid,
+                                gridOptions=grid_options,
                                 height=min(420, 80 + 35 * len(_airport_counts)),
-                                use_container_width=True,
                             )
 
                 with tab_route_airlines:

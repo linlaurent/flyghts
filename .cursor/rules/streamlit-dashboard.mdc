@@ -7,6 +7,7 @@ alwaysApply: false
 # Streamlit Dashboard
 
 - Use `streamlit-aggrid` for dataframe display when adding or changing tables.
+- Size AgGrid columns with `flex`/`minWidth` and drop `autoSizeStrategy` from `GridOptionsBuilder.from_dataframe` so columns expand after the Streamlit iframe sizes (do not rely on `fitGridWidth` or removed `use_container_width`).
 - Render Plotly charts with `st.plotly_chart(..., width="stretch")`.
 - Flight-count charts should start the count axis at zero using `_start_flight_count_axis_at_zero`.
 - Line charts should not show markers; keep daily date series complete with `_complete_daily_series`.

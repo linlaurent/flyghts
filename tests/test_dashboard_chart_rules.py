@@ -238,3 +238,17 @@ def test_date_line_charts_complete_daily_series() -> None:
     assert "def _daily_date_range(" in source
     assert "def _complete_daily_series(" in source
     assert source.count("_complete_daily_series(") >= 14
+
+
+def test_aggrid_columns_expand_with_flex() -> None:
+    source = _dashboard_source()
+    rule = _dashboard_rule_source()
+
+    assert "flex=1" in source
+    assert 'grid_options.pop("autoSizeStrategy", None)' in source
+    assert "flex" in rule and "autoSizeStrategy" in rule
+    assert source.count("AgGrid(") == source.count(
+        'grid_options.pop("autoSizeStrategy", None)'
+    )
+    for block in _call_blocks(source, "AgGrid"):
+        assert "use_container_width" not in block

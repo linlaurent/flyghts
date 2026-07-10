@@ -240,6 +240,17 @@ def test_date_line_charts_complete_daily_series() -> None:
     assert source.count("_complete_daily_series(") >= 14
 
 
+def test_overview_flights_per_day_includes_top_airlines() -> None:
+    source = _dashboard_source()
+
+    assert "def _render_overview_flights_per_day(" in source
+    assert "_render_overview_flights_per_day(" in source
+    assert 'total_label = f"Total ({total_avg:.1f} avg/day)"' in source
+    assert 'f"{name} ({avg:.1f} avg/day)"' in source.split(
+        "def _render_overview_flights_per_day("
+    )[1].split("def _render_flight_map(")[0]
+
+
 def test_aggrid_columns_expand_with_flex() -> None:
     source = _dashboard_source()
     rule = _dashboard_rule_source()

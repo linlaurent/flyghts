@@ -293,6 +293,84 @@ def _complete_daily_series(
     return completed
 
 
+def _render_overview_flights_per_day(
+    df: pd.DataFrame,
+    *,
+    airline_col: str,
+    top_n: int,
+    start_date,
+    end_date,
+) -> None:
+    """Render overview daily flight totals with top-airline breakdown."""
+    st.header("Flights per day")
+    flights_per_day = (
+        df.groupby(df["date"].dt.date).size().reset_index(name="Flights")
+    )
+    flights_per_day.columns = ["Date", "Flights"]
+    flights_per_day = _complete_daily_series(
+        flights_per_day,
+        date_col="Date",
+        value_cols=["Flights"],
+        start_date=start_date,
+        end_date=end_date,
+    )
+    if flights_per_day.empty:
+        st.caption("No date data.")
+        return
+
+    total_avg = round(flights_per_day["Flights"].mean(), 1)
+    total_label = f"Total ({total_avg:.1f} avg/day)"
+    total_series = flights_per_day.assign(Airline=total_label)
+
+    top_airline_codes = set(df[airline_col].value_counts().head(top_n).index)
+    by_date_airline = (
+        df.groupby([df["date"].dt.date, airline_col]).size().reset_index(name="Flights")
+    )
+    by_date_airline.columns = ["Date", "ICAO", "Flights"]
+    by_date_airline = by_date_airline[by_date_airline["ICAO"].isin(top_airline_codes)]
+    by_date_airline["Airline"] = by_date_airline["ICAO"].apply(
+        lambda c: get_airline(c).name if get_airline(c) else c
+    )
+    by_date_airline = _complete_daily_series(
+        by_date_airline,
+        date_col="Date",
+        value_cols=["Flights"],
+        start_date=start_date,
+        end_date=end_date,
+        group_cols=["ICAO", "Airline"],
+    )
+    airline_avgs = (
+        by_date_airline.groupby("Airline")["Flights"]
+        .mean()
+        .round(1)
+        .sort_values(ascending=False)
+    )
+    airline_label_map = {
+        name: f"{name} ({avg:.1f} avg/day)" for name, avg in airline_avgs.items()
+    }
+    by_date_airline["Airline"] = by_date_airline["Airline"].map(airline_label_map)
+    combined = pd.concat(
+        [
+            total_series[["Date", "Flights", "Airline"]],
+            by_date_airline[["Date", "Flights", "Airline"]],
+        ],
+        ignore_index=True,
+    )
+    color_order = [total_label, *[airline_label_map[name] for name in airline_avgs.index]]
+
+    fig_per_day = px.line(
+        combined,
+        x="Date",
+        y="Flights",
+        color="Airline",
+        labels={"Date": "Date", "Flights": "Number of flights"},
+        category_orders={"Airline": color_order},
+    )
+    fig_per_day.update_layout(height=350)
+    _start_flight_count_axis_at_zero(fig_per_day, "y")
+    st.plotly_chart(fig_per_day, width="stretch")
+
+
 def _render_flight_map(
     df_map: pd.DataFrame,
     direction: str,
@@ -1266,31 +1344,13 @@ def main() -> None:
                 st.subheader("Top cities by total traffic")
                 st.plotly_chart(fig_city_g, width="stretch")
 
-            # ── Flights per day ──
-            st.header("Flights per day")
-            flights_per_day = (
-                df.groupby(df["date"].dt.date).size().reset_index(name="Flights")
-            )
-            flights_per_day.columns = ["Date", "Flights"]
-            flights_per_day = _complete_daily_series(
-                flights_per_day,
-                date_col="Date",
-                value_cols=["Flights"],
+            _render_overview_flights_per_day(
+                df,
+                airline_col=airline_col,
+                top_n=top_n,
                 start_date=start_date,
                 end_date=end_date,
             )
-            if not flights_per_day.empty:
-                fig_per_day = px.line(
-                    flights_per_day,
-                    x="Date",
-                    y="Flights",
-                    labels={"Date": "Date", "Flights": "Number of flights"},
-                )
-                fig_per_day.update_layout(height=350)
-                _start_flight_count_axis_at_zero(fig_per_day, "y")
-                st.plotly_chart(fig_per_day, width="stretch")
-            else:
-                st.caption("No date data.")
 
             # ── Network map ──
             st.header("US domestic network map")
@@ -1447,31 +1507,13 @@ def main() -> None:
                 st.subheader("Top destinations by city")
                 st.plotly_chart(fig_city, width="stretch")
 
-            # ── Flights per day ──
-            st.header("Flights per day")
-            flights_per_day = (
-                df.groupby(df["date"].dt.date).size().reset_index(name="Flights")
-            )
-            flights_per_day.columns = ["Date", "Flights"]
-            flights_per_day = _complete_daily_series(
-                flights_per_day,
-                date_col="Date",
-                value_cols=["Flights"],
+            _render_overview_flights_per_day(
+                df,
+                airline_col=airline_col,
+                top_n=top_n,
                 start_date=start_date,
                 end_date=end_date,
             )
-            if not flights_per_day.empty:
-                fig_per_day = px.line(
-                    flights_per_day,
-                    x="Date",
-                    y="Flights",
-                    labels={"Date": "Date", "Flights": "Number of flights"},
-                )
-                fig_per_day.update_layout(height=350)
-                _start_flight_count_axis_at_zero(fig_per_day, "y")
-                st.plotly_chart(fig_per_day, width="stretch")
-            else:
-                st.caption("No date data.")
 
             # ── Interactive Map ──
             st.header("Interactive map: flight flow by destination")

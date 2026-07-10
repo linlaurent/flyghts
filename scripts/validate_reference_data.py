@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Validate flight CSVs against reference data (airlines.json / airports.json).
+Validate flight data files against reference data (airlines.json / airports.json).
 
-Scans flight CSV files and reports airline codes and airport codes that are
-not found in the reference data, sorted by frequency. Helps identify which
-entries need to be added to _AIRLINE_OVERRIDES / _AIRPORT_OVERRIDES.
+Scans flight CSV and Parquet files and reports airline codes and airport codes
+that are not found in the reference data, sorted by frequency. Helps identify
+which entries need to be added to _AIRLINE_OVERRIDES / _AIRPORT_OVERRIDES.
 
 Usage:
     uv run python scripts/validate_reference_data.py                        # all sources
@@ -27,15 +27,18 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DATA_DIR = PROJECT_ROOT / "data"
 
 
-def _load_all_csvs(data_dir: Path) -> pd.DataFrame:
-    """Load all CSV files from a directory (recursively)."""
+def _load_all_flights(data_dir: Path) -> pd.DataFrame:
+    """Load all CSV and Parquet files from a directory (recursively)."""
     csv_files = sorted(data_dir.rglob("*.csv"))
-    if not csv_files:
-        print(f"No CSV files found in {data_dir}", file=sys.stderr)
+    parquet_files = sorted(data_dir.rglob("*.parquet"))
+    if not csv_files and not parquet_files:
+        print(f"No flight data files found in {data_dir}", file=sys.stderr)
         sys.exit(1)
     dfs = [pd.read_csv(f, dtype=str) for f in csv_files]
+    dfs.extend(pd.read_parquet(f).astype(str) for f in parquet_files)
     df = pd.concat(dfs, ignore_index=True)
-    print(f"Loaded {len(df)} rows from {len(csv_files)} files in {data_dir}", file=sys.stderr)
+    n_files = len(csv_files) + len(parquet_files)
+    print(f"Loaded {len(df)} rows from {n_files} files in {data_dir}", file=sys.stderr)
     return df
 
 
@@ -79,7 +82,7 @@ def _validate_airports(df: pd.DataFrame) -> list[tuple[str, int]]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Validate flight CSVs against reference data"
+        description="Validate flight data files against reference data"
     )
     parser.add_argument(
         "--data-dir", type=str, default=None,
@@ -88,7 +91,7 @@ def main() -> None:
     args = parser.parse_args()
 
     data_dir = Path(args.data_dir) if args.data_dir else DEFAULT_DATA_DIR
-    df = _load_all_csvs(data_dir)
+    df = _load_all_flights(data_dir)
 
     missing_airlines = _validate_airlines(df)
     missing_airports = _validate_airports(df)

@@ -2,7 +2,7 @@
 Flight Dashboard - Analyze flight data across multiple datasets.
 
 Supports HKG (Hong Kong International Airport) and US Domestic flight data.
-Reads per-date CSVs from data/{hkg,us}/ directories.
+Reads per-date CSVs from data/hkg/ and monthly Parquet files from data/us/.
 
 Features:
 - Dataset selector (HKG / US Domestic)
@@ -41,8 +41,8 @@ from flyghts.reference import get_airline, get_airport
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 DATASETS: dict[str, dict] = {
-    "HKG": {"dir": "hkg", "scope": "world", "default_airport": "HKG"},
-    "US Domestic": {"dir": "us", "scope": "usa", "default_airport": None},
+    "HKG": {"dir": "hkg", "scope": "world", "default_airport": "HKG", "format": "csv"},
+    "US Domestic": {"dir": "us", "scope": "usa", "default_airport": None, "format": "parquet"},
 }
 
 _DELAY_RE = re.compile(r"\(\+(\d+)min\)")
@@ -50,14 +50,25 @@ _DELAY_RE = re.compile(r"\(\+(\d+)min\)")
 
 @st.cache_data
 def load_flights(dataset_key: str) -> pd.DataFrame:
-    """Load flight data from per-date CSVs for the given dataset."""
-    data_dir = PROJECT_ROOT / "data" / DATASETS[dataset_key]["dir"]
-    if data_dir.exists() and any(data_dir.glob("*.csv")):
-        dfs = [pd.read_csv(f) for f in sorted(data_dir.glob("*.csv"))]
-        df = pd.concat(dfs, ignore_index=True)
+    """Load flight data for the given dataset (CSV or Parquet)."""
+    dataset = DATASETS[dataset_key]
+    data_dir = PROJECT_ROOT / "data" / dataset["dir"]
+    file_format = dataset.get("format", "csv")
+
+    if file_format == "parquet":
+        files = sorted(data_dir.glob("*.parquet")) if data_dir.exists() else []
+        if not files:
+            st.error(f"No flight data found for {dataset_key}. Run the dump script first.")
+            st.stop()
+        dfs = [pd.read_parquet(f) for f in files]
     else:
-        st.error(f"No flight data found for {dataset_key}. Run the dump script first.")
-        st.stop()
+        files = sorted(data_dir.glob("*.csv")) if data_dir.exists() else []
+        if not files:
+            st.error(f"No flight data found for {dataset_key}. Run the dump script first.")
+            st.stop()
+        dfs = [pd.read_csv(f) for f in files]
+
+    df = pd.concat(dfs, ignore_index=True)
     df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
     if "cargo" in df.columns:
 

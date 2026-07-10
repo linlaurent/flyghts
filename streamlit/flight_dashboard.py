@@ -669,14 +669,12 @@ def _format_insight_table(df: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def _render_insight_grid(title: str, df: pd.DataFrame, empty_message: str) -> None:
-    st.subheader(title)
+def _render_aggrid(df: pd.DataFrame, *, height: int | None = None) -> None:
+    """Render a dataframe with AgGrid columns that expand to fill width."""
     if df.empty:
-        st.caption(empty_message)
         return
 
-    display = _format_insight_table(df)
-    gb = GridOptionsBuilder.from_dataframe(display)
+    gb = GridOptionsBuilder.from_dataframe(df)
     # Prefer flex over autoSizeStrategy=fitGridWidth: the one-shot fit can lock
     # tiny widths before the Streamlit component iframe finishes sizing.
     gb.configure_default_column(
@@ -686,18 +684,26 @@ def _render_insight_grid(title: str, df: pd.DataFrame, empty_message: str) -> No
         flex=1,
         minWidth=100,
     )
-    if "Airline" in display.columns:
+    if "Airline" in df.columns:
         gb.configure_column("Airline", flex=2, minWidth=150)
-    if "Route" in display.columns:
+    if "Route" in df.columns:
         gb.configure_column("Route", flex=3, minWidth=220)
     grid_options = gb.build()
     grid_options.pop("autoSizeStrategy", None)
-    height = min(420, 80 + 35 * len(display))
     AgGrid(
-        display,
+        df,
         gridOptions=grid_options,
-        height=height,
+        height=height if height is not None else min(420, 80 + 35 * len(df)),
     )
+
+
+def _render_insight_grid(title: str, df: pd.DataFrame, empty_message: str) -> None:
+    st.subheader(title)
+    if df.empty:
+        st.caption(empty_message)
+        return
+
+    _render_aggrid(_format_insight_table(df))
 
 
 def _default_current_period_index(period_options: list[str]) -> int:
@@ -2169,7 +2175,7 @@ def main() -> None:
                                 )
                                 _start_flight_count_axis_at_zero(fig_od, "x")
                                 st.plotly_chart(fig_od, width="stretch")
-                                st.dataframe(od_df, use_container_width=True)
+                                _render_aggrid(od_df)
                         else:
                             route_n = min(top_n, len(dest_counts_airline))
                             total_dest_counts = get_destination_column(
@@ -2402,7 +2408,7 @@ def main() -> None:
                                     )
                                     st.plotly_chart(fig_route_norm, width="stretch")
 
-                            st.dataframe(
+                            _render_aggrid(
                                 route_df[
                                     [
                                         "Airport",
@@ -2677,7 +2683,7 @@ def main() -> None:
                                         {"Type": "Cargo", "Flights": cargo_cargo},
                                     ]
                                 )
-                                st.dataframe(cargo_df)
+                                _render_aggrid(cargo_df)
                             else:
                                 st.caption("No cargo column in data.")
 
@@ -2762,7 +2768,7 @@ def main() -> None:
                         }
                     )
                 summary_cmp_df = pd.DataFrame(summary_rows)
-                st.dataframe(summary_cmp_df, width="stretch")
+                _render_aggrid(summary_cmp_df)
 
                 df_cmp = df[df[airline_col].isin(cmp_codes)].copy()
                 df_cmp["Airline"] = df_cmp[airline_col].map(cmp_names)
@@ -3538,7 +3544,7 @@ def main() -> None:
                                 _start_flight_count_axis_at_zero(fig_city_time, "y")
                                 st.plotly_chart(fig_city_time, width="stretch")
 
-                        st.dataframe(
+                        _render_aggrid(
                             _city_df[
                                 ["Airport", "Name", "City", "Flights", "Share (%)"]
                             ]
@@ -3722,29 +3728,16 @@ def main() -> None:
                             _start_flight_count_axis_at_zero(fig_airport_airline, "x")
                             st.plotly_chart(fig_airport_airline, width="stretch")
 
-                            _airport_grid = _airport_counts[
-                                [
-                                    "City",
-                                    "Airport",
-                                    "Name",
-                                    "Flights",
-                                    "Share (%)",
+                            _render_aggrid(
+                                _airport_counts[
+                                    [
+                                        "City",
+                                        "Airport",
+                                        "Name",
+                                        "Flights",
+                                        "Share (%)",
+                                    ]
                                 ]
-                            ]
-                            gb = GridOptionsBuilder.from_dataframe(_airport_grid)
-                            gb.configure_default_column(
-                                sortable=True,
-                                filter=True,
-                                resizable=True,
-                                flex=1,
-                                minWidth=100,
-                            )
-                            grid_options = gb.build()
-                            grid_options.pop("autoSizeStrategy", None)
-                            AgGrid(
-                                _airport_grid,
-                                gridOptions=grid_options,
-                                height=min(420, 80 + 35 * len(_airport_counts)),
                             )
 
                 with tab_route_airlines:
@@ -3844,7 +3837,7 @@ def main() -> None:
                             )
                             st.plotly_chart(fig_share_day, width="stretch")
 
-                    st.dataframe(
+                    _render_aggrid(
                         airline_route_df[["Airline", "ICAO", "Flights", "Share (%)"]]
                         if not airline_route_df.empty
                         else pd.DataFrame()
@@ -4091,7 +4084,7 @@ def main() -> None:
                                     {"Type": "Cargo", "Flights": cargo_cargo_r},
                                 ]
                             )
-                            st.dataframe(cargo_route_df)
+                            _render_aggrid(cargo_route_df)
                         else:
                             st.caption("No cargo column in data.")
 

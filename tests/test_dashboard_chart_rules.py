@@ -244,11 +244,11 @@ def test_aggrid_columns_expand_with_flex() -> None:
     source = _dashboard_source()
     rule = _dashboard_rule_source()
 
+    assert "def _render_aggrid(" in source
     assert "flex=1" in source
     assert 'grid_options.pop("autoSizeStrategy", None)' in source
+    assert "_render_aggrid" in rule
     assert "flex" in rule and "autoSizeStrategy" in rule
-    assert source.count("AgGrid(") == source.count(
-        'grid_options.pop("autoSizeStrategy", None)'
-    )
-    for block in _call_blocks(source, "AgGrid"):
-        assert "use_container_width" not in block
+    assert "st.dataframe" not in source
+    assert source.count("AgGrid(") == 1
+    assert source.count("_render_aggrid(") >= 8

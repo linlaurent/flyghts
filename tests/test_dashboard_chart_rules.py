@@ -4,9 +4,7 @@ from pathlib import Path
 import re
 
 
-DASHBOARD_PATH = (
-    Path(__file__).resolve().parent.parent / "streamlit" / "flight_dashboard.py"
-)
+STREAMLIT_DIR = Path(__file__).resolve().parent.parent / "streamlit"
 DASHBOARD_RULE_PATH = (
     Path(__file__).resolve().parent.parent
     / ".cursor"
@@ -16,7 +14,12 @@ DASHBOARD_RULE_PATH = (
 
 
 def _dashboard_source() -> str:
-    return DASHBOARD_PATH.read_text()
+    parts: list[str] = []
+    for path in sorted(STREAMLIT_DIR.rglob("*.py")):
+        if path.name == "__pycache__":
+            continue
+        parts.append(path.read_text())
+    return "\n".join(parts)
 
 
 def _dashboard_rule_source() -> str:

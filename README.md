@@ -9,7 +9,6 @@ Flight data is organized by source under `data/`:
 | Source | Directory | Coverage | API | Auth |
 |--------|-----------|----------|-----|------|
 | **Hong Kong (HKG)** | `data/hkg/` | HKG departures & arrivals (passenger + cargo) | [HK Airport Open API](https://data.gov.hk/en-data/dataset/aahk-team1-flight-info) | None |
-| **Korea (ICN)** | `data/korea/` | Incheon departures & arrivals (passenger) | [data.go.kr B551177](https://www.data.go.kr/en/data/15095093/openapi.do) | Free API key |
 | **US Domestic** | `data/us/` | All US domestic flights (monthly Parquet) | [BTS TranStats](https://www.transtats.bts.gov/) | None |
 
 ## Installation
@@ -55,17 +54,6 @@ uv run python scripts/dump_hk_flights.py --deduplicate --data-dir data/hkg/
 uv run python scripts/dump_hk_flights.py --debug
 ```
 
-### Korea (Incheon ICN)
-
-Dump passenger flights from/to Incheon. Current-day data only -- run daily to accumulate.
-Requires `KOREA_DATA_API_KEY` env var (free registration at [data.go.kr](https://www.data.go.kr/)).
-
-```bash
-export KOREA_DATA_API_KEY="your-key-here"
-uv run python scripts/dump_korea_flights.py --data-dir data/korea/
-uv run python scripts/dump_korea_flights.py --debug
-```
-
 ### US Domestic (BTS)
 
 Download US domestic on-time performance data from the Bureau of Transportation Statistics.
@@ -95,7 +83,6 @@ Check flight data files for airline/airport codes missing from the reference dat
 uv run python scripts/validate_reference_data.py
 
 # Validate a specific source
-uv run python scripts/validate_reference_data.py --data-dir data/korea/
 uv run python scripts/validate_reference_data.py --data-dir data/us/
 ```
 

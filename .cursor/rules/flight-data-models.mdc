@@ -12,5 +12,5 @@ alwaysApply: false
 - Add source-specific parsing in the adapter, not in `AuditService`.
 - Keep route matching behavior in `RouteFilter` and `AuditService` explicit about directional versus bidirectional queries.
 - Preserve normalized columns used by dump scripts and dashboards: `origin`, `destination`, `flight_no`, `airline`, `operating_flight_no`, `operating_airline`, `scheduled_time`, `status`, `date`, and `cargo`.
-- HKG and Korea data use per-date CSV files (`data/hkg/`, `data/korea/`); US data uses per-month Parquet files (`data/us/YYYY-MM.parquet`).
+- HKG data uses per-date CSV files (`data/hkg/`); US data uses per-month Parquet files (`data/us/YYYY-MM.parquet`).
 - Use IATA airport codes for `origin` and `destination`; use the existing reference helpers for airline and airport lookups.

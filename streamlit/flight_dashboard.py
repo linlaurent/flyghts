@@ -899,6 +899,14 @@ def _city_pair_airport_counts(
     return pd.Series(counts).sort_values(ascending=False)
 
 
+def _multi_airport_city_keys_for_iatas(iatas: set[str]) -> list[RouteCityKey]:
+    """Return city keys that have multiple airports in the given IATA set."""
+    city_iatas: dict[RouteCityKey, set[str]] = {}
+    for iata in iatas:
+        city_iatas.setdefault(_airport_city_key(iata), set()).add(iata)
+    return [city_key for city_key, codes in city_iatas.items() if len(codes) >= 2]
+
+
 def _render_route_top_airports_tab(
     df_route: pd.DataFrame,
     airport_counts: pd.Series,
@@ -3740,12 +3748,19 @@ def main() -> None:
                 st.info("No flights for this route in the selected filters.")
             else:
                 _selected_multi_airport_city_keys: list[RouteCityKey] = []
+                _airport_compare_city_keys: list[RouteCityKey] = []
                 if route_by_country:
                     route_label = sel_region
+                    _airport_compare_city_keys = _multi_airport_city_keys_for_iatas(
+                        _route_region_airports.get(sel_region, set())
+                    )
                 elif route_by_province:
                     country = _route_region_country.get(sel_region, "")
                     route_label = (
                         f"{sel_region}, {country}" if country else sel_region
+                    )
+                    _airport_compare_city_keys = _multi_airport_city_keys_for_iatas(
+                        _route_region_airports.get(sel_region, set())
                     )
                 elif route_by_city:
                     if global_mode:
@@ -3770,6 +3785,7 @@ def main() -> None:
                         for city_key in dict.fromkeys([city_a, city_b])
                         if len(_route_city_iatas.get(city_key, set())) >= 2
                     ]
+                    _airport_compare_city_keys = _selected_multi_airport_city_keys
                 elif global_mode:
                     a_info = get_airport(airport_a)
                     b_info = get_airport(airport_b)
@@ -3794,7 +3810,7 @@ def main() -> None:
                 _route_tab_names: list[str] = []
                 if route_by_country or route_by_province or route_by_city:
                     _route_tab_names.append("Top airports")
-                if route_by_city and _selected_multi_airport_city_keys:
+                if _airport_compare_city_keys:
                     _route_tab_names.append("Airport comparison")
                 _route_tab_names += [
                     "Top airlines",
@@ -3811,7 +3827,7 @@ def main() -> None:
                     _idx += 1
                 else:
                     tab_route_top_airports = None
-                if route_by_city and _selected_multi_airport_city_keys:
+                if _airport_compare_city_keys:
                     tab_route_airport_compare = _route_tabs[_idx]
                     _idx += 1
                 else:
@@ -3832,22 +3848,13 @@ def main() -> None:
                             _top_airport_counts = _city_pair_airport_counts(
                                 df_route, city_a, city_b
                             )
-                            _pair_iatas = set(_route_city_iatas.get(city_a, set())) | set(
-                                _route_city_iatas.get(city_b, set())
-                            )
-                            _map_exclude = (
-                                {focus_airport}
-                                if focus_airport
-                                and focus_airport not in _pair_iatas
-                                else set()
-                            )
                         else:
                             _top_airport_counts = get_destination_column(
                                 df_route, direction, focus_airport
                             ).value_counts()
-                            _map_exclude = (
-                                {focus_airport} if focus_airport else set()
-                            )
+                        _map_exclude = (
+                            {focus_airport} if focus_airport else set()
+                        )
                         _render_route_top_airports_tab(
                             df_route,
                             _top_airport_counts,
@@ -3863,7 +3870,8 @@ def main() -> None:
                 if tab_route_airport_compare is not None:
                     with tab_route_airport_compare:
                         st.caption(
-                            "Compare how flights are split across airports within the selected multi-airport cities."
+                            "Compare how flights are split across airports within "
+                            "multi-airport cities."
                         )
                         _airport_compare_rows = []
                         for row in df_route.itertuples(index=False):
@@ -3871,7 +3879,7 @@ def main() -> None:
                                 (_airport_city_key(row.origin), row.origin),
                                 (_airport_city_key(row.destination), row.destination),
                             ]:
-                                if city_key not in _selected_multi_airport_city_keys:
+                                if city_key not in _airport_compare_city_keys:
                                     continue
                                 info = get_airport(airport)
                                 _airport_compare_rows.append(

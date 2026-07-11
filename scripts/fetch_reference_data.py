@@ -3,11 +3,14 @@
 Download OpenFlights airport and airline data, parse to JSON, and save
 into src/flyghts/reference/data/ for bundled package use.
 
+Province/state names are enriched from OurAirports regions.csv.
+
 Usage:
     uv run python scripts/fetch_reference_data.py
 """
 
 import csv
+import io
 import json
 from pathlib import Path
 
@@ -15,11 +18,47 @@ import requests
 
 AIRPORTS_URL = "https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat"
 AIRLINES_URL = "https://raw.githubusercontent.com/jpatokal/openflights/master/data/airlines.dat"
+OURAIRPORTS_AIRPORTS_URL = (
+    "https://davidmegginson.github.io/ourairports-data/airports.csv"
+)
+OURAIRPORTS_REGIONS_URL = (
+    "https://davidmegginson.github.io/ourairports-data/regions.csv"
+)
+
+
+def _load_ourairports_provinces() -> dict[str, str]:
+    """Build IATA -> admin region name from OurAirports airports + regions."""
+    print("Fetching OurAirports regions.csv...")
+    regions_resp = requests.get(OURAIRPORTS_REGIONS_URL, timeout=60)
+    regions_resp.raise_for_status()
+    region_names: dict[str, str] = {}
+    for row in csv.DictReader(io.StringIO(regions_resp.text)):
+        code = (row.get("code") or "").strip()
+        name = (row.get("name") or "").strip()
+        if code and name:
+            region_names[code] = name
+
+    print("Fetching OurAirports airports.csv...")
+    airports_resp = requests.get(OURAIRPORTS_AIRPORTS_URL, timeout=60)
+    airports_resp.raise_for_status()
+    iata_to_province: dict[str, str] = {}
+    for row in csv.DictReader(io.StringIO(airports_resp.text)):
+        iata = (row.get("iata_code") or "").strip()
+        iso_region = (row.get("iso_region") or "").strip()
+        if not iata or not iso_region:
+            continue
+        province = region_names.get(iso_region, "")
+        if province:
+            iata_to_province[iata] = province
+    print(f"Resolved province for {len(iata_to_province)} IATA codes")
+    return iata_to_province
 
 
 def main() -> None:
     data_dir = Path(__file__).resolve().parent.parent / "src" / "flyghts" / "reference" / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
+
+    iata_to_province = _load_ourairports_provinces()
 
     # Fetch and parse airports
     print("Fetching airports.dat...")
@@ -41,7 +80,7 @@ def main() -> None:
             continue
         # Prefer first occurrence for duplicates (often primary airport)
         if iata not in airports:
-            airports[iata] = {
+            entry: dict[str, str | float] = {
                 "iata": iata,
                 "name": row[1].strip() or "",
                 "city": row[2].strip() or "",
@@ -49,10 +88,15 @@ def main() -> None:
                 "latitude": lat,
                 "longitude": lon,
             }
+            province = iata_to_province.get(iata)
+            if province:
+                entry["province"] = province
+            airports[iata] = entry
     airports_path = data_dir / "airports.json"
     with open(airports_path, "w") as f:
         json.dump(airports, f, indent=0)
-    print(f"Wrote {len(airports)} airports to {airports_path}")
+    with_province = sum(1 for a in airports.values() if a.get("province"))
+    print(f"Wrote {len(airports)} airports ({with_province} with province) to {airports_path}")
 
     # Fetch and parse airlines
     print("Fetching airlines.dat...")

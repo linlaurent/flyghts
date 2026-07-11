@@ -17,6 +17,7 @@ class AirportInfo:
     country: str
     latitude: float
     longitude: float
+    province: str = ""
 
 
 _airports_cache: Optional[dict[str, dict]] = None
@@ -36,6 +37,7 @@ _AIRPORT_OVERRIDES: dict[str, dict] = {
         "name": "Kearney Regional Airport",
         "city": "Kearney",
         "country": "United States",
+        "province": "Nebraska",
         "latitude": 40.727,
         "longitude": -99.0068,
     },
@@ -44,6 +46,7 @@ _AIRPORT_OVERRIDES: dict[str, dict] = {
         "name": "Ezhou Huahu International Airport",
         "city": "Ezhou",
         "country": "China",
+        "province": "Hubei Province",
         "latitude": 30.3483,
         "longitude": 114.9625,
     },
@@ -60,6 +63,7 @@ _AIRPORT_OVERRIDES: dict[str, dict] = {
         "name": "Yinchuan Hedong International Airport",
         "city": "Yinchuan",
         "country": "China",
+        "province": "Ningxia Hui Autonomous Region",
         "latitude": 38.3217,
         "longitude": 106.3925,
     },
@@ -76,6 +80,7 @@ _AIRPORT_OVERRIDES: dict[str, dict] = {
         "name": "Chengdu Tianfu International Airport",
         "city": "Chengdu",
         "country": "China",
+        "province": "Sichuan Province",
         "latitude": 30.323,
         "longitude": 104.445,
     },
@@ -92,6 +97,7 @@ _AIRPORT_OVERRIDES: dict[str, dict] = {
         "name": "Williston Basin International Airport",
         "city": "Williston",
         "country": "United States",
+        "province": "North Dakota",
         "latitude": 48.2608,
         "longitude": -103.7508,
     },
@@ -127,4 +133,5 @@ def get_airport(iata: str) -> Optional[AirportInfo]:
         country=row.get("country", ""),
         latitude=float(row.get("latitude", 0)),
         longitude=float(row.get("longitude", 0)),
+        province=row.get("province", ""),
     )

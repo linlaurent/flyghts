@@ -43,6 +43,16 @@ class TestGetAirport:
         assert info1 is not None and info2 is not None
         assert info1.iata == info2.iata
 
+    def test_province_china(self) -> None:
+        info = get_airport("CAN")
+        assert info is not None
+        assert info.province == "Guangdong Province"
+
+    def test_province_us(self) -> None:
+        info = get_airport("ATL")
+        assert info is not None
+        assert info.province == "Georgia"
+
 
 class TestGetAirline:
     """Tests for get_airline."""

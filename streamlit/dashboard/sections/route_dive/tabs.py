@@ -1,4 +1,4 @@
-"""Dashboard section: Route deep dive."""
+"""Route deep dive tab bodies."""
 
 import numpy as np
 import pandas as pd
@@ -8,252 +8,48 @@ import streamlit as st
 
 from flyghts.reference import get_airline, get_airport
 
-from ..context import DashboardContext
-
-from ..charts import _complete_daily_series, _start_flight_count_axis_at_zero
-from ..components import _render_aggrid
-from ..data import get_destination_column
-from ..formatting import (
+from ...charts import _complete_daily_series, _start_flight_count_axis_at_zero
+from ...components import _render_aggrid
+from ...context import DashboardContext
+from ...formatting import (
     RouteCityKey,
     _airport_city_key,
-    _build_region_route_selection,
     _city_key_display,
     _city_key_label,
     _city_pair_airport_counts,
     _multi_airport_city_keys_for_iatas,
     _route_label,
 )
-from ..maps import (
+from ...maps import (
     _render_flight_map,
     _render_region_airport_map,
     _render_route_top_airports_tab,
 )
+from ...tab_charts import (
+    render_cargo_tab,
+    render_primary_flights_over_time,
+    render_scheduled_hour,
+    render_secondary_grouped_over_time,
+    render_weekday_average,
+)
 
 
-def render_route_dive(ctx: DashboardContext) -> None:
-    st.header("Route deep dive")
-
-    route_mode_options = ["By airport", "By city", "By province"]
-    if ctx.show_country:
-        route_mode_options.append("By country")
-    route_mode = st.radio(
-        "Route by",
-        options=route_mode_options,
-        index=0,
-        horizontal=True,
-        help="Dive into a single airport route, group airports by city or province/state, or aggregate all routes to a country.",
-        key="route_dive_by",
-    )
-    route_by_city = route_mode == "By city"
-    route_by_country = route_mode == "By country"
-    route_by_province = route_mode == "By province"
-    route_multi_airport_only = False
-    if route_by_city or route_by_province or route_by_country:
-        _route_group_label = {
-            "By city": "cities",
-            "By province": "provinces",
-            "By country": "countries",
-        }[route_mode]
-        route_multi_airport_only = st.checkbox(
-            f"Only {_route_group_label} with multiple airports",
-            value=True,
-            help=(
-                f"Show only {_route_group_label} that have multiple airports "
-                "in the filtered data."
-            ),
-            key=f"route_dive_multi_airport_only_{route_mode}",
-        )
-
-    route_display_options: list[str] = []
-    route_str_to_airports: dict[str, tuple[str, str]] = {}
-    route_str_to_city_keys: dict[str, tuple[RouteCityKey, RouteCityKey]] = {}
-    route_str_to_region: dict[str, str] = {}
-    _route_region_airports: dict[str, set[str]] = {}
-    _route_region_country: dict[str, str] = {}
-    if route_by_country:
-        (
-            route_display_options,
-            route_str_to_region,
-            _route_region_airports,
-            _route_region_country,
-        ) = _build_region_route_selection(
-            ctx.df,
-            ctx.direction,
-            ctx.focus_airport,
-            "country",
-            multi_airport_only=route_multi_airport_only,
-        )
-    elif route_by_province:
-        (
-            route_display_options,
-            route_str_to_region,
-            _route_region_airports,
-            _route_region_country,
-        ) = _build_region_route_selection(
-            ctx.df,
-            ctx.direction,
-            ctx.focus_airport,
-            "province",
-            multi_airport_only=route_multi_airport_only,
-        )
-    elif route_by_city:
-        _route_city_counts: dict[tuple[RouteCityKey, RouteCityKey], int] = {}
-        _route_city_iatas: dict[RouteCityKey, set[str]] = {}
-        for origin, destination in ctx.df[["origin", "destination"]].itertuples(
-            index=False
-        ):
-            origin_key = _airport_city_key(origin)
-            destination_key = _airport_city_key(destination)
-            _route_city_iatas.setdefault(origin_key, set()).add(origin)
-            _route_city_iatas.setdefault(destination_key, set()).add(destination)
-            city_pair = tuple(sorted((origin_key, destination_key)))
-            _route_city_counts[city_pair] = _route_city_counts.get(city_pair, 0) + 1
-        focus_city_key = _airport_city_key(ctx.focus_airport) if ctx.focus_airport else None
-        for (city_a, city_b), count in sorted(
-            _route_city_counts.items(), key=lambda x: -x[1]
-        ):
-            if route_multi_airport_only:
-                if focus_city_key and not ctx.global_mode:
-                    if city_a == focus_city_key or city_b == focus_city_key:
-                        other_city = city_b if city_a == focus_city_key else city_a
-                        if len(_route_city_iatas.get(other_city, set())) < 2:
-                            continue
-                    elif (
-                        len(_route_city_iatas.get(city_a, set())) < 2
-                        and len(_route_city_iatas.get(city_b, set())) < 2
-                    ):
-                        continue
-                elif (
-                    len(_route_city_iatas.get(city_a, set())) < 2
-                    and len(_route_city_iatas.get(city_b, set())) < 2
-                ):
-                    continue
-            if ctx.global_mode or not focus_city_key:
-                label = (
-                    f"{_city_key_display(city_a, _route_city_iatas.get(city_a))}"
-                    f" ↔ {_city_key_display(city_b, _route_city_iatas.get(city_b))}"
-                    f" — {count:,} flights"
-                )
-            elif city_a == focus_city_key or city_b == focus_city_key:
-                other_city = city_b if city_a == focus_city_key else city_a
-                label = (
-                    f"{_city_key_display(other_city, _route_city_iatas.get(other_city))}"
-                    f" - {count:,} flights"
-                )
-            else:
-                label = (
-                    f"{_city_key_display(city_a, _route_city_iatas.get(city_a))}"
-                    f" ↔ {_city_key_display(city_b, _route_city_iatas.get(city_b))}"
-                    f" — {count:,} flights"
-                )
-            route_display_options.append(label)
-            route_str_to_city_keys[label] = (city_a, city_b)
-    else:
-        route_series = ctx.df["origin"] + "-" + ctx.df["destination"]
-        route_pairs = route_series.apply(
-            lambda s: "-".join(sorted(s.split("-", 1))) if "-" in s else s
-        )
-        route_counts = route_pairs.value_counts()
-        for route_str, count in route_counts.items():
-            parts = route_str.split("-", 1)
-            if len(parts) == 2:
-                a, b = parts[0], parts[1]
-                if ctx.global_mode:
-                    a_info = get_airport(a)
-                    b_info = get_airport(b)
-                    a_city = a_info.city if a_info and a_info.city else a
-                    b_city = b_info.city if b_info and b_info.city else b
-                    label = f"{a} ({a_city}) ↔ {b} ({b_city}) — {count:,} flights"
-                else:
-                    other = b if a == ctx.focus_airport else a
-                    info = get_airport(other)
-                    name = info.name if info and info.name else other
-                    label = f"{other} - {name} - {count:,} flights"
-                route_display_options.append(label)
-                route_str_to_airports[label] = (a, b)
-
-    col_search_r, col_select_r = st.columns(2)
-    with col_search_r:
-        if route_by_country:
-            route_search = st.text_input(
-                "Search routes by country name",
-                placeholder="e.g. Japan, United States",
-                help="Filter the route list by typing a country name.",
-                key="route_dive_search",
-            )
-        elif route_by_province:
-            route_search = st.text_input(
-                "Search routes by province or state name",
-                placeholder="e.g. Guangdong Province, Georgia, California",
-                help="Filter the route list by typing a province, state, or region name.",
-                key="route_dive_search",
-            )
-        elif route_by_city:
-            route_search = st.text_input(
-                "Search routes by city, country, or airport code",
-                placeholder="e.g. New York, Los Angeles, JFK",
-                help="Filter the route list by typing a city, country, or airport code.",
-                key="route_dive_search",
-            )
-        else:
-            route_search = st.text_input(
-                "Search routes by airport code or name",
-                placeholder="e.g. LAX, Atlanta, SFO",
-                help="Filter the route list by typing airport code (IATA) or airport name.",
-                key="route_dive_search",
-            )
-    search_lower = route_search.strip().lower()
-    if search_lower:
-        filtered_routes = [
-            r for r in route_display_options if search_lower in r.lower()
-        ]
-    else:
-        filtered_routes = route_display_options
-
-    if not filtered_routes:
-        st.info(
-            "No routes match your search."
-            if search_lower
-            else "No routes in the filtered data."
-        )
-    else:
-        with col_select_r:
-            sel_route_display = st.selectbox(
-                "Select route",
-                options=filtered_routes,
-                index=0,
-                help="Explore statistics for a route (both directions grouped).",
-            )
-
-        if route_by_country or route_by_province:
-            sel_region = route_str_to_region.get(sel_route_display, "")
-            region_iatas = _route_region_airports.get(sel_region, set())
-            df_route = ctx.df[
-                ctx.df["origin"].isin(region_iatas)
-                | ctx.df["destination"].isin(region_iatas)
-            ]
-        elif route_by_city:
-            city_a, city_b = route_str_to_city_keys.get(
-                sel_route_display, (("", ""), ("", ""))
-            )
-            _origin_city_keys = ctx.df["origin"].apply(_airport_city_key)
-            _destination_city_keys = ctx.df["destination"].apply(_airport_city_key)
-            mask_city_pair = (
-                (_origin_city_keys == city_a) & (_destination_city_keys == city_b)
-            ) | ((_origin_city_keys == city_b) & (_destination_city_keys == city_a))
-            df_route = ctx.df[mask_city_pair]
-        else:
-            airport_a, airport_b = route_str_to_airports.get(
-                sel_route_display, ("", "")
-            )
-            mask_both = (
-                (ctx.df["origin"] == airport_a) & (ctx.df["destination"] == airport_b)
-            ) | ((ctx.df["origin"] == airport_b) & (ctx.df["destination"] == airport_a))
-            df_route = ctx.df[mask_both]
-
-        if df_route.empty:
-            st.info("No flights for this route in the selected filters.")
-        else:
+def render_route_tabs(
+    ctx: DashboardContext,
+    *,
+    df_route: pd.DataFrame,
+    route_by_country: bool,
+    route_by_province: bool,
+    route_by_city: bool,
+    sel_region: str,
+    city_a: RouteCityKey | None,
+    city_b: RouteCityKey | None,
+    airport_a: str,
+    airport_b: str,
+    _route_region_airports: dict[str, set[str]],
+    _route_region_country: dict[str, str],
+    _route_city_iatas: dict[RouteCityKey, set[str]],
+) -> None:
             _selected_multi_airport_city_keys: list[RouteCityKey] = []
             _airport_compare_city_keys: list[RouteCityKey] = []
             _airport_compare_province_iatas: set[str] = set()
@@ -710,246 +506,30 @@ def render_route_dive(ctx: DashboardContext) -> None:
                 )
 
             with tab_route_time:
-                by_date_route = (
-                    df_route.groupby(df_route["date"].dt.date)
-                    .size()
-                    .reset_index(name="Flights")
-                )
-                by_date_route.columns = ["Date", "Flights"]
-                if not by_date_route.empty:
-                    total_by_date = (
-                        ctx.df.groupby(ctx.df["date"].dt.date)
-                        .size()
-                        .reset_index(name="Total")
-                    )
-                    total_by_date.columns = ["Date", "Total"]
-                    share_route_df = by_date_route.merge(
-                        total_by_date, on="Date", how="left"
-                    )
-                    share_route_df["Share"] = (
-                        100 * share_route_df["Flights"] / share_route_df["Total"]
-                    ).fillna(0)
-                    share_route_df = _complete_daily_series(
-                        share_route_df,
-                        date_col="Date",
-                        value_cols=["Flights", "Total", "Share"],
-                        start_date=ctx.start_date,
-                        end_date=ctx.end_date,
-                    )
-
-                    fig_route_time = go.Figure()
-                    fig_route_time.add_trace(
-                        go.Scatter(
-                            x=share_route_df["Date"],
-                            y=share_route_df["Flights"],
-                            name="Flights",
-                            line=dict(color="#1f77b4"),
-                            mode="lines",
-                        )
-                    )
-                    fig_route_time.add_trace(
-                        go.Scatter(
-                            x=share_route_df["Date"],
-                            y=share_route_df["Share"],
-                            name="Share of traffic (%)",
-                            yaxis="y2",
-                            line=dict(color="#ff7f0e"),
-                            mode="lines",
-                        )
-                    )
-                    fig_route_time.update_layout(
-                        height=350,
-                        xaxis=dict(title="Date"),
-                        yaxis=dict(title="Number of flights", side="left"),
-                        yaxis2=dict(
-                            title="Share of traffic (%)",
-                            side="right",
-                            overlaying="y",
-                            range=[0, 100],
-                        ),
-                        legend=dict(x=1.1, xanchor="left"),
-                    )
-                    _start_flight_count_axis_at_zero(fig_route_time, "y")
-                    st.plotly_chart(fig_route_time, width="stretch")
-
+                if render_primary_flights_over_time(df_route, ctx):
                     top_airlines_route = set(airline_counts_route.head(ctx.top_n).index)
-                    by_date_airline_time = (
-                        df_route.groupby([df_route["date"].dt.date, ctx.airline_col])
-                        .size()
-                        .reset_index(name="Flights")
-                    )
-                    by_date_airline_time.columns = ["Date", "ICAO", "Flights"]
-                    by_date_airline_time = by_date_airline_time[
-                        by_date_airline_time["ICAO"].isin(top_airlines_route)
-                    ]
                     total_per_date_route = (
-                        df_route.groupby(df_route["date"].dt.date)
-                        .size()
-                        .rename("Total")
+                        df_route.groupby(df_route["date"].dt.date).size().rename("Total")
                     )
-                    by_date_airline_time = by_date_airline_time.merge(
-                        total_per_date_route,
-                        left_on="Date",
-                        right_index=True,
-                        how="left",
+                    render_secondary_grouped_over_time(
+                        df_route,
+                        ctx,
+                        group_values=df_route[ctx.airline_col],
+                        top_groups=top_airlines_route,
+                        group_key_col="ICAO",
+                        label_fn=lambda c: get_airline(c).name if get_airline(c) else c,
+                        color_col="Airline",
+                        title="Flights over time by airline",
+                        totals=total_per_date_route,
+                        totals_merge="date",
                     )
-                    by_date_airline_time["Airline"] = by_date_airline_time[
-                        "ICAO"
-                    ].apply(lambda c: get_airline(c).name if get_airline(c) else c)
-                    by_date_airline_time = _complete_daily_series(
-                        by_date_airline_time,
-                        date_col="Date",
-                        value_cols=["Flights", "Total"],
-                        start_date=ctx.start_date,
-                        end_date=ctx.end_date,
-                        group_cols=["ICAO", "Airline"],
-                    )
-                    if not by_date_airline_time.empty:
-                        fig_count_day = px.line(
-                            by_date_airline_time,
-                            x="Date",
-                            y="Flights",
-                            color="Airline",
-                            labels={"Flights": "Number of flights"},
-                            custom_data=["Total", "Airline"],
-                        )
-                        fig_count_day.update_traces(
-                            hovertemplate="%{customdata[1]}<br>%{x}<br>Flights: %{y:,}<br>Total (denom): %{customdata[0]:,}<extra></extra>",
-                        )
-                        fig_count_day.update_layout(
-                            height=350,
-                            title="Flights over time by airline",
-                        )
-                        _start_flight_count_axis_at_zero(fig_count_day, "y")
-                        st.plotly_chart(fig_count_day, width="stretch")
-                else:
-                    st.caption("No date data.")
 
             with tab_route_hour:
-                if not ctx.global_mode:
-                    st.caption(
-                        f"Departure time for flights from {ctx.focus_airport}; "
-                        f"arrival time for flights to {ctx.focus_airport}."
-                    )
-                if "scheduled_time" in df_route.columns:
-                    df_route_hour = df_route.dropna(subset=["scheduled_time"])
-                    df_route_hour = df_route_hour.copy()
-                    df_route_hour["hour"] = pd.to_datetime(
-                        df_route_hour["scheduled_time"], errors="coerce"
-                    ).dt.hour
-                    df_route_hour = df_route_hour.dropna(subset=["hour"])
-                    by_hour_route = (
-                        df_route_hour.groupby("hour")
-                        .size()
-                        .reset_index(name="Flights")
-                    )
-                    if not by_hour_route.empty:
-                        fig_route_hour = px.bar(
-                            by_hour_route,
-                            x="hour",
-                            y="Flights",
-                            labels={
-                                "hour": "Hour of day",
-                                "Flights": "Number of flights",
-                            },
-                        )
-                        fig_route_hour.update_layout(height=350)
-                        _start_flight_count_axis_at_zero(fig_route_hour, "y")
-                        st.plotly_chart(fig_route_hour, width="stretch")
-                    else:
-                        st.caption("No scheduled time data for this route.")
-                else:
-                    st.caption("No scheduled_time column in data.")
+                render_scheduled_hour(df_route, ctx)
 
             with tab_route_weekday:
-                _rwd_order = [
-                    "Monday",
-                    "Tuesday",
-                    "Wednesday",
-                    "Thursday",
-                    "Friday",
-                    "Saturday",
-                    "Sunday",
-                ]
-                _rwd = df_route.copy()
-                _rwd["weekday"] = _rwd["date"].dt.day_name()
-                _rwd_total = _rwd.groupby("weekday").size().rename("Total")
-                _rwd_dates = (
-                    _rwd.groupby("weekday")["date"]
-                    .apply(lambda s: s.dt.date.nunique())
-                    .rename("Days")
-                )
-                _rwd_df = pd.concat([_rwd_total, _rwd_dates], axis=1).reset_index()
-                _rwd_df["Avg"] = (_rwd_df["Total"] / _rwd_df["Days"]).round(1)
-                _rwd_df["weekday"] = pd.Categorical(
-                    _rwd_df["weekday"], categories=_rwd_order, ordered=True
-                )
-                _rwd_df = _rwd_df.sort_values("weekday")
-                if not _rwd_df.empty:
-                    fig_rwd = px.bar(
-                        _rwd_df,
-                        x="weekday",
-                        y="Avg",
-                        labels={
-                            "weekday": "Day of week",
-                            "Avg": "Avg flights per day",
-                        },
-                        custom_data=["Total", "Days"],
-                    )
-                    fig_rwd.update_traces(
-                        hovertemplate="%{x}<br>Avg: %{y}<br>Total: %{customdata[0]:,}<br>Days: %{customdata[1]}<extra></extra>",
-                    )
-                    fig_rwd.update_layout(height=350)
-                    _start_flight_count_axis_at_zero(fig_rwd, "y")
-                    st.plotly_chart(fig_rwd, width="stretch")
-                else:
-                    st.caption("No date data for weekday analysis.")
+                render_weekday_average(df_route)
 
             if tab_route_cargo is not None:
                 with tab_route_cargo:
-                    if "cargo" in df_route.columns:
-                        cargo_by_date_route = (
-                            df_route.groupby([df_route["date"].dt.date, "cargo"])
-                            .size()
-                            .reset_index(name="Flights")
-                        )
-                        cargo_by_date_route["Type"] = cargo_by_date_route[
-                            "cargo"
-                        ].map({True: "Cargo", False: "Passenger"})
-                        cargo_by_date_route = _complete_daily_series(
-                            cargo_by_date_route,
-                            date_col="date",
-                            value_cols=["Flights"],
-                            start_date=ctx.start_date,
-                            end_date=ctx.end_date,
-                            group_cols=["cargo", "Type"],
-                        )
-                        if not cargo_by_date_route.empty:
-                            fig_route_cargo = px.line(
-                                cargo_by_date_route,
-                                x="date",
-                                y="Flights",
-                                color="Type",
-                                labels={
-                                    "date": "Date",
-                                    "Flights": "Number of flights",
-                                },
-                                custom_data=["Type"],
-                            )
-                            fig_route_cargo.update_traces(
-                                hovertemplate="%{customdata[0]}<br>%{x}<br>Flights: %{y:,}<extra></extra>",
-                            )
-                            fig_route_cargo.update_layout(height=350)
-                            _start_flight_count_axis_at_zero(fig_route_cargo, "y")
-                            st.plotly_chart(fig_route_cargo, width="stretch")
-                        cargo_passenger_r = (df_route["cargo"] == False).sum()
-                        cargo_cargo_r = (df_route["cargo"] == True).sum()
-                        cargo_route_df = pd.DataFrame(
-                            [
-                                {"Type": "Passenger", "Flights": cargo_passenger_r},
-                                {"Type": "Cargo", "Flights": cargo_cargo_r},
-                            ]
-                        )
-                        _render_aggrid(cargo_route_df)
-                    else:
-                        st.caption("No cargo column in data.")
+                    render_cargo_tab(df_route, ctx)

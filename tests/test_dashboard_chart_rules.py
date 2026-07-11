@@ -90,10 +90,16 @@ def test_route_arc_count_uses_top_n_ranking_control() -> None:
 def test_route_deep_dive_supports_city_mode() -> None:
     source = _dashboard_source()
 
-    assert 'route_mode_options = ["By airport", "By city"]' in source
-    assert 'route_by_city = route_mode == "By city"' in source
+    assert '"By province"' in source
+    assert 'route_mode_options = ["By airport", "By city", "By province"]' in source
+    assert "route_by_province" in source
+    assert "route_str_to_province" in source
+    assert "route_by_city = route_mode == \"By city\"" in source
     assert "route_str_to_city_keys" in source
     assert "Search routes by city, country, or airport code" in source
+    assert "Search routes by province or state name" in source
+    assert "_top_city_route_df" in source
+    assert "use_traffic_colors=True,\n                                    top_arcs_n=_city_n," in source
     assert "Only cities with multiple airports" in source
     assert "route_dive_multi_airport_only" in source
     assert "Airport comparison" in source

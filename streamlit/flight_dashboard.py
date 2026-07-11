@@ -703,6 +703,15 @@ def _airport_city_key(iata: str) -> RouteCityKey:
     return (iata, "")
 
 
+def _airport_province(iata: str) -> str:
+    info = get_airport(iata)
+    if info and info.province:
+        return info.province
+    if info and info.country:
+        return info.country
+    return iata
+
+
 def _city_key_label(city_key: RouteCityKey) -> str:
     city, country = city_key
     return f"{city}, {country}" if country else city
@@ -3192,7 +3201,7 @@ def main() -> None:
     elif section == "Route deep dive":
         st.header("Route deep dive")
 
-        route_mode_options = ["By airport", "By city"]
+        route_mode_options = ["By airport", "By city", "By province"]
         if show_country:
             route_mode_options.append("By country")
         route_mode = st.radio(
@@ -3200,11 +3209,12 @@ def main() -> None:
             options=route_mode_options,
             index=0,
             horizontal=True,
-            help="Dive into a single airport route, group airports by city, or aggregate all routes to a country.",
+            help="Dive into a single airport route, group airports by city or province/state, or aggregate all routes to a country.",
             key="route_dive_by",
         )
         route_by_city = route_mode == "By city"
         route_by_country = route_mode == "By country"
+        route_by_province = route_mode == "By province"
         route_multi_airport_only = False
         if route_by_city:
             route_multi_airport_only = st.checkbox(
@@ -3218,6 +3228,7 @@ def main() -> None:
         route_str_to_airports: dict[str, tuple[str, str]] = {}
         route_str_to_city_keys: dict[str, tuple[RouteCityKey, RouteCityKey]] = {}
         route_str_to_country: dict[str, str] = {}
+        route_str_to_province: dict[str, str] = {}
         if route_by_country:
             _route_dest_codes = get_destination_column(df, direction, focus_airport)
             _route_country_counts: dict[str, int] = {}
@@ -3235,6 +3246,22 @@ def main() -> None:
                 label = f"{country} - {count:,} flights"
                 route_display_options.append(label)
                 route_str_to_country[label] = country
+        elif route_by_province:
+            _route_dest_codes = get_destination_column(df, direction, focus_airport)
+            _route_province_counts: dict[str, int] = {}
+            _route_province_iatas: dict[str, set[str]] = {}
+            for iata, count in _route_dest_codes.value_counts().items():
+                province = _airport_province(iata)
+                _route_province_counts[province] = (
+                    _route_province_counts.get(province, 0) + count
+                )
+                _route_province_iatas.setdefault(province, set()).add(iata)
+            for province, count in sorted(
+                _route_province_counts.items(), key=lambda x: -x[1]
+            ):
+                label = f"{province} - {count:,} flights"
+                route_display_options.append(label)
+                route_str_to_province[label] = province
         elif route_by_city:
             _route_city_counts: dict[tuple[RouteCityKey, RouteCityKey], int] = {}
             _route_city_iatas: dict[RouteCityKey, set[str]] = {}
@@ -3320,6 +3347,13 @@ def main() -> None:
                     help="Filter the route list by typing a country name.",
                     key="route_dive_search",
                 )
+            elif route_by_province:
+                route_search = st.text_input(
+                    "Search routes by province or state name",
+                    placeholder="e.g. Guangdong Province, Georgia, California",
+                    help="Filter the route list by typing a province, state, or region name.",
+                    key="route_dive_search",
+                )
             elif route_by_city:
                 route_search = st.text_input(
                     "Search routes by city, country, or airport code",
@@ -3364,6 +3398,13 @@ def main() -> None:
                     "destination"
                 ].isin(country_iatas)
                 df_route = df[mask_country]
+            elif route_by_province:
+                sel_province = route_str_to_province.get(sel_route_display, "")
+                province_iatas = _route_province_iatas.get(sel_province, set())
+                mask_province = df["origin"].isin(province_iatas) | df[
+                    "destination"
+                ].isin(province_iatas)
+                df_route = df[mask_province]
             elif route_by_city:
                 city_a, city_b = route_str_to_city_keys.get(
                     sel_route_display, (("", ""), ("", ""))
@@ -3388,6 +3429,8 @@ def main() -> None:
             else:
                 if route_by_country:
                     route_label = sel_country
+                elif route_by_province:
+                    route_label = sel_province
                 elif route_by_city:
                     if global_mode:
                         route_label = (
@@ -3433,7 +3476,7 @@ def main() -> None:
                     st.metric("Share of traffic", f"{pct_route:.1f}%")
 
                 _route_tab_names: list[str] = []
-                if route_by_country:
+                if route_by_country or route_by_province:
                     _route_tab_names.append("Top cities")
                 if route_by_city and _selected_multi_airport_city_keys:
                     _route_tab_names.append("Airport comparison")
@@ -3447,7 +3490,7 @@ def main() -> None:
                     _route_tab_names.append("Cargo vs passenger")
                 _route_tabs = st.tabs(_route_tab_names)
                 _idx = 0
-                if route_by_country:
+                if route_by_country or route_by_province:
                     tab_route_cities = _route_tabs[_idx]
                     _idx += 1
                 else:
@@ -3533,6 +3576,32 @@ def main() -> None:
                             st.plotly_chart(fig_cities, width="stretch")
 
                             _top_city_iatas = set(_city_dest_counts.head(_city_n).index)
+                            if focus_airport:
+                                _render_flight_map(
+                                    df_route,
+                                    direction,
+                                    focus_airport,
+                                    focus_lat,
+                                    focus_lon,
+                                    False,
+                                    [],
+                                    airline_col,
+                                    geo_scope,
+                                    use_traffic_colors=True,
+                                    top_arcs_n=_city_n,
+                                )
+                            else:
+                                _top_city_route_df = df_route[
+                                    df_route["origin"].isin(_top_city_iatas)
+                                    | df_route["destination"].isin(_top_city_iatas)
+                                ]
+                                _render_network_map(
+                                    _top_city_route_df,
+                                    airline_col,
+                                    [],
+                                    geo_scope,
+                                    top_routes_n=_city_n,
+                                )
                             if global_mode or direction == "Departures":
                                 _city_route_dest = df_route["destination"]
                             elif direction == "Arrivals":

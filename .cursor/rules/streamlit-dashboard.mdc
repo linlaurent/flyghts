@@ -1,5 +1,5 @@
 ---
-description: Streamlit dashboard conventions for charts and tables
+description: Streamlit dashboard architecture, charts, and tables
 globs: streamlit/**/*.py
 alwaysApply: false
 ---
@@ -15,3 +15,13 @@ alwaysApply: false
 - Use the shared Top N control for route and arc counts instead of adding separate route-arc limits.
 - Insight comparisons place new or increases on the left and drops or disappeared on the right across charts, maps, and tables.
 - When dashboard chart behavior changes, update or add regression coverage in `tests/test_dashboard_chart_rules.py`.
+
+# Dashboard layout
+
+- `flight_dashboard.py` is entry only: `set_page_config`, `build_dashboard_context`, `dispatch_section`.
+- Sidebar widgets live in `dashboard/sidebar.py`; section renderers take `DashboardContext` and use `ctx.field` directly (no unpacking).
+- New sections go in `dashboard/sections/` and register in `dispatch_section`.
+- Shared tab/chart logic goes in `dashboard/tab_charts.py` (or similar), not duplicated across sections.
+- Section files over ~400 lines become a package: `__init__.py` for dispatch, one module per tab or mode.
+- After structural changes, run `uv run pytest tests/test_dashboard_imports.py tests/test_dashboard_chart_rules.py -v`.
+- Then **launch** the dashboard (`uv run streamlit run streamlit/flight_dashboard.py`) and smoke-test via the browser at the **Local URL** that process prints — do not reuse an existing localhost URL (another app may be on that port).

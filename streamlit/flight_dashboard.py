@@ -3749,6 +3749,7 @@ def main() -> None:
             else:
                 _selected_multi_airport_city_keys: list[RouteCityKey] = []
                 _airport_compare_city_keys: list[RouteCityKey] = []
+                _airport_compare_province_iatas: set[str] = set()
                 if route_by_country:
                     route_label = sel_region
                     _airport_compare_city_keys = _multi_airport_city_keys_for_iatas(
@@ -3759,8 +3760,8 @@ def main() -> None:
                     route_label = (
                         f"{sel_region}, {country}" if country else sel_region
                     )
-                    _airport_compare_city_keys = _multi_airport_city_keys_for_iatas(
-                        _route_region_airports.get(sel_region, set())
+                    _airport_compare_province_iatas = _route_region_airports.get(
+                        sel_region, set()
                     )
                 elif route_by_city:
                     if global_mode:
@@ -3807,10 +3808,14 @@ def main() -> None:
                 with m2:
                     st.metric("Share of traffic", f"{pct_route:.1f}%")
 
+                _show_airport_compare = bool(_airport_compare_city_keys) or (
+                    route_by_province and len(_airport_compare_province_iatas) >= 2
+                )
+
                 _route_tab_names: list[str] = []
                 if route_by_country or route_by_province or route_by_city:
                     _route_tab_names.append("Top airports")
-                if _airport_compare_city_keys:
+                if _show_airport_compare:
                     _route_tab_names.append("Airport comparison")
                 _route_tab_names += [
                     "Top airlines",
@@ -3827,7 +3832,7 @@ def main() -> None:
                     _idx += 1
                 else:
                     tab_route_top_airports = None
-                if _airport_compare_city_keys:
+                if _show_airport_compare:
                     tab_route_airport_compare = _route_tabs[_idx]
                     _idx += 1
                 else:
@@ -3869,23 +3874,42 @@ def main() -> None:
 
                 if tab_route_airport_compare is not None:
                     with tab_route_airport_compare:
-                        st.caption(
-                            "Compare how flights are split across airports within "
-                            "multi-airport cities."
-                        )
+                        if route_by_province:
+                            _compare_caption = (
+                                "Compare how flights are split across airports "
+                                "within this province."
+                            )
+                            _compare_empty = (
+                                "No airport traffic is available for this province."
+                            )
+                            _share_scope = "province"
+                        else:
+                            _compare_caption = (
+                                "Compare how flights are split across airports within "
+                                "multi-airport cities."
+                            )
+                            _compare_empty = (
+                                "No multi-airport city traffic is available for this route."
+                            )
+                            _share_scope = "city"
+                        st.caption(_compare_caption)
                         _airport_compare_rows = []
                         for row in df_route.itertuples(index=False):
-                            for city_key, airport in [
-                                (_airport_city_key(row.origin), row.origin),
-                                (_airport_city_key(row.destination), row.destination),
-                            ]:
-                                if city_key not in _airport_compare_city_keys:
-                                    continue
+                            for airport in (row.origin, row.destination):
+                                if route_by_province:
+                                    if airport not in _airport_compare_province_iatas:
+                                        continue
+                                    group_label = sel_region
+                                else:
+                                    city_key = _airport_city_key(airport)
+                                    if city_key not in _airport_compare_city_keys:
+                                        continue
+                                    group_label = _city_key_label(city_key)
                                 info = get_airport(airport)
                                 _airport_compare_rows.append(
                                     {
                                         "Date": row.date.date(),
-                                        "City": _city_key_label(city_key),
+                                        "Group": group_label,
                                         "Airport": airport,
                                         "Name": info.name if info else airport,
                                         "Airline": getattr(row, airline_col),
@@ -3893,24 +3917,22 @@ def main() -> None:
                                 )
                         _airport_compare_df = pd.DataFrame(_airport_compare_rows)
                         if _airport_compare_df.empty:
-                            st.caption(
-                                "No multi-airport city traffic is available for this route."
-                            )
+                            st.caption(_compare_empty)
                         else:
                             _airport_counts = (
                                 _airport_compare_df.groupby(
-                                    ["City", "Airport", "Name"], as_index=False
+                                    ["Group", "Airport", "Name"], as_index=False
                                 )
                                 .size()
                                 .rename(columns={"size": "Flights"})
                             )
-                            _airport_counts["City total"] = _airport_counts.groupby(
-                                "City"
+                            _airport_counts["Group total"] = _airport_counts.groupby(
+                                "Group"
                             )["Flights"].transform("sum")
                             _airport_counts["Share (%)"] = (
                                 100
                                 * _airport_counts["Flights"]
-                                / _airport_counts["City total"]
+                                / _airport_counts["Group total"]
                             ).round(1)
                             _airport_counts["Share label"] = _airport_counts[
                                 "Share (%)"
@@ -3924,14 +3946,19 @@ def main() -> None:
                                 _airport_counts.sort_values("Flights"),
                                 x="Flights",
                                 y="Label",
-                                color="City",
+                                color="Group",
                                 orientation="h",
                                 labels={"Flights": "Number of flights"},
                                 text="Share label",
-                                custom_data=["City", "Share (%)"],
+                                custom_data=["Group", "Share (%)"],
+                            )
+                            _share_hover = (
+                                "Province share"
+                                if _share_scope == "province"
+                                else "City share"
                             )
                             fig_airport_compare.update_traces(
-                                hovertemplate="%{customdata[0]}<br>%{y}<br>Flights: %{x:,}<br>City share: %{customdata[1]}%<extra></extra>",
+                                hovertemplate=f"%{{customdata[0]}}<br>%{{y}}<br>Flights: %{{x:,}}<br>{_share_hover}: %{{customdata[1]}}%<extra></extra>",
                                 textposition="outside",
                             )
                             fig_airport_compare.update_layout(
@@ -3943,13 +3970,13 @@ def main() -> None:
 
                             _airport_daily = (
                                 _airport_compare_df.groupby(
-                                    ["Date", "City", "Airport"], as_index=False
+                                    ["Date", "Group", "Airport"], as_index=False
                                 )
                                 .size()
                                 .rename(columns={"size": "Flights"})
                             )
                             _airport_daily["Airport label"] = (
-                                _airport_daily["City"]
+                                _airport_daily["Group"]
                                 + " | "
                                 + _airport_daily["Airport"]
                             )
@@ -3959,7 +3986,7 @@ def main() -> None:
                                 value_cols=["Flights"],
                                 start_date=start_date,
                                 end_date=end_date,
-                                group_cols=["City", "Airport", "Airport label"],
+                                group_cols=["Group", "Airport", "Airport label"],
                             )
                             fig_airport_daily = px.line(
                                 _airport_daily,
@@ -3976,41 +4003,54 @@ def main() -> None:
                             st.plotly_chart(fig_airport_daily, width="stretch")
 
                             _airport_daily_share = _airport_daily.copy()
-                            _airport_daily_share["City total"] = (
-                                _airport_daily_share.groupby(["Date", "City"])[
+                            _airport_daily_share["Group total"] = (
+                                _airport_daily_share.groupby(["Date", "Group"])[
                                     "Flights"
                                 ].transform("sum")
                             )
                             _airport_daily_share["Share (%)"] = np.where(
-                                _airport_daily_share["City total"] > 0,
+                                _airport_daily_share["Group total"] > 0,
                                 100
                                 * _airport_daily_share["Flights"]
-                                / _airport_daily_share["City total"],
+                                / _airport_daily_share["Group total"],
                                 0,
                             ).round(1)
+                            _share_y_label = (
+                                "Share of province flights (%)"
+                                if _share_scope == "province"
+                                else "Share of city flights (%)"
+                            )
+                            _share_chart_title = (
+                                "Share of province flights per day by airport"
+                                if _share_scope == "province"
+                                else "Share of city flights per day by airport"
+                            )
+                            _share_total_label = (
+                                "Province total"
+                                if _share_scope == "province"
+                                else "City total"
+                            )
                             fig_airport_daily_share = px.line(
                                 _airport_daily_share,
                                 x="Date",
                                 y="Share (%)",
                                 color="Airport label",
-                                labels={"Share (%)": "Share of city flights (%)"},
-                                custom_data=["Flights", "City total"],
+                                labels={"Share (%)": _share_y_label},
+                                custom_data=["Flights", "Group total"],
                             )
                             fig_airport_daily_share.update_traces(
-                                hovertemplate="%{fullData.name}<br>%{x}<br>Flights: %{customdata[0]:,}<br>City total: %{customdata[1]:,}<br>Share: %{y}%<extra></extra>",
+                                hovertemplate=f"%{{fullData.name}}<br>%{{x}}<br>Flights: %{{customdata[0]:,}}<br>{_share_total_label}: %{{customdata[1]:,}}<br>Share: %{{y}}%<extra></extra>",
                             )
                             fig_airport_daily_share.update_layout(
                                 height=350,
-                                title="Share of city flights per day by airport",
-                                yaxis=dict(
-                                    title="Share of city flights (%)", range=[0, 100]
-                                ),
+                                title=_share_chart_title,
+                                yaxis=dict(title=_share_y_label, range=[0, 100]),
                             )
                             st.plotly_chart(fig_airport_daily_share, width="stretch")
 
                             _airport_airline = (
                                 _airport_compare_df.groupby(
-                                    ["City", "Airport", "Airline"], as_index=False
+                                    ["Group", "Airport", "Airline"], as_index=False
                                 )
                                 .size()
                                 .rename(columns={"size": "Flights"})
@@ -4021,7 +4061,7 @@ def main() -> None:
                                 lambda c: get_airline(c).name if get_airline(c) else c
                             )
                             _airport_airline["Airport label"] = (
-                                _airport_airline["City"]
+                                _airport_airline["Group"]
                                 + " | "
                                 + _airport_airline["Airport"]
                             )
@@ -4044,10 +4084,13 @@ def main() -> None:
                             _start_flight_count_axis_at_zero(fig_airport_airline, "x")
                             st.plotly_chart(fig_airport_airline, width="stretch")
 
+                            _compare_table = _airport_counts.rename(
+                                columns={"Group": "Province" if route_by_province else "City"}
+                            )
                             _render_aggrid(
-                                _airport_counts[
+                                _compare_table[
                                     [
-                                        "City",
+                                        "Province" if route_by_province else "City",
                                         "Airport",
                                         "Name",
                                         "Flights",

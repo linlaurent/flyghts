@@ -111,7 +111,10 @@ def test_route_deep_dive_supports_grouped_modes() -> None:
     assert "_render_region_airport_map(" in source
     assert "_multi_airport_city_keys_for_iatas(" in source
     assert "_airport_compare_city_keys" in source
-    assert "if _airport_compare_city_keys:" in source
+    assert "_airport_compare_province_iatas" in source
+    assert "_show_airport_compare" in source
+    assert "if _show_airport_compare:" in source
+    assert "within this province." in source
     assert "Airport comparison" in source
     assert "Top airline contributions by airport" in source
     assert "Share of city flights per day by airport" in source

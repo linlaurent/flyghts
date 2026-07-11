@@ -18,6 +18,7 @@ Run with: uv run streamlit run streamlit/flight_dashboard.py
 """
 
 import re
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Literal
 
@@ -207,31 +208,74 @@ def build_map_points(dest_counts: "pd.Series", by_country: bool) -> list[dict]:
     return points
 
 
-def _get_map_geo_opts(
+def _get_map_layout_opts(
     scope: str = "world", center: tuple[float, float] | None = None
 ) -> dict:
-    """Return geo layout options parameterized by scope."""
-    opts = dict(
-        showland=True,
-        coastlinewidth=0.5,
-        landcolor="rgb(243,243,243)",
-        showcountries=True,
-        countrycolor="rgba(150,150,150,0.6)",
-        countrywidth=0.5,
-    )
-    if scope == "usa":
-        opts["scope"] = "north america"
-        if center is None:
-            opts["lataxis"] = dict(range=[17, 72])
-            opts["lonaxis"] = dict(range=[-170, -64])
-    elif scope == "world":
-        opts["scope"] = "world"
-        opts["projection_type"] = "natural earth"
-    else:
-        opts["scope"] = scope
+    """Return OpenStreetMap layout options parameterized by scope."""
+    opts: dict = {"style": "open-street-map"}
     if center is not None:
-        opts["center"] = dict(lat=center[0], lon=center[1])
+        opts["center"] = {"lat": center[0], "lon": center[1]}
+        opts["zoom"] = 3 if scope == "usa" else 2
+    elif scope == "usa":
+        opts["center"] = {"lat": 39.5, "lon": -98}
+        opts["zoom"] = 3
+    else:
+        opts["center"] = {"lat": 20, "lon": 0}
+        opts["zoom"] = 1
     return opts
+
+
+def _map_center_zoom_from_coords(
+    lats: Sequence[float],
+    lons: Sequence[float],
+    *,
+    map_height_px: int = 600,
+    map_width_px: float = 900,
+    margin: float = 1.35,
+) -> dict[str, object]:
+    """Return center and zoom that initially frame coordinates without locking pan/zoom."""
+    lat_min = float(min(lats))
+    lat_max = float(max(lats))
+    lon_min = float(min(lons))
+    lon_max = float(max(lons))
+    center = {
+        "lat": (lat_min + lat_max) / 2,
+        "lon": (lon_min + lon_max) / 2,
+    }
+    lat_span = max(lat_max - lat_min, 0.25) * margin
+    lon_span = max(lon_max - lon_min, 0.25) * margin
+    aspect = map_width_px / map_height_px
+    lon_zoom_range = np.array(
+        [
+            0.0007,
+            0.0014,
+            0.003,
+            0.006,
+            0.012,
+            0.024,
+            0.048,
+            0.096,
+            0.192,
+            0.3712,
+            0.768,
+            1.536,
+            3.072,
+            6.144,
+            11.8784,
+            23.7568,
+            47.5136,
+            98.304,
+            190.0544,
+            360.0,
+        ]
+    )
+    zoom_levels = np.arange(20, 0, -1, dtype=float)
+    width_deg = lon_span * aspect
+    lon_zoom = float(np.interp(width_deg, lon_zoom_range, zoom_levels))
+    lat_zoom = float(np.interp(lat_span, lon_zoom_range, zoom_levels))
+    zoom = round(min(lon_zoom, lat_zoom), 2)
+    zoom = max(0.5, min(zoom, 15))
+    return {"center": center, "zoom": zoom}
 
 
 def _start_flight_count_axis_at_zero(fig: go.Figure, axis: str = "y") -> None:
@@ -410,6 +454,8 @@ def _render_flight_map(
     )
     _arc_widths = [1.0, 2.4, 4.4, 7.0]
     _arc_colors = ["#7ecbff", "#2196f3", "#ff9800", "#e53935"]
+    map_lats = [focus_lat]
+    map_lons = [focus_lon]
 
     def _spoke_buckets(pt_df: pd.DataFrame, line_color: str | None) -> None:
         """Draw focus→destination spokes bucketed by count into 4 width+color bands."""
@@ -430,7 +476,7 @@ def _render_flight_map(
         for b, (width, bcolor) in enumerate(zip(_arc_widths, _arc_colors)):
             if bucket_lons[b]:
                 fig_map.add_trace(
-                    go.Scattergeo(
+                    go.Scattermap(
                         lon=bucket_lons[b],
                         lat=bucket_lats[b],
                         mode="lines",
@@ -446,9 +492,11 @@ def _render_flight_map(
 
     fig_map = go.Figure()
     if not airline_codes:
+        map_lats.extend(map_df["lat"])
+        map_lons.extend(map_df["lon"])
         _spoke_buckets(map_df, line_color=None)
         fig_map.add_trace(
-            go.Scattergeo(
+            go.Scattermap(
                 lon=map_df["lon"],
                 lat=map_df["lat"],
                 text=map_df["label"],
@@ -482,10 +530,12 @@ def _render_flight_map(
             a_df = pd.DataFrame(a_points)
             if a_df.empty:
                 continue
+            map_lats.extend(a_df["lat"])
+            map_lons.extend(a_df["lon"])
             airline_summaries.append(f"{a_name}: {len(df_a):,} flights")
             _spoke_buckets(a_df, line_color=None if use_traffic_colors else color)
             fig_map.add_trace(
-                go.Scattergeo(
+                go.Scattermap(
                     lon=a_df["lon"],
                     lat=a_df["lat"],
                     text=a_df["label"].apply(lambda lbl, n=a_name: f"{n} | {lbl}"),
@@ -508,7 +558,7 @@ def _render_flight_map(
             return
         show_legend = bool(airline_codes)
     fig_map.add_trace(
-        go.Scattergeo(
+        go.Scattermap(
             lon=[focus_lon],
             lat=[focus_lat],
             text=[f_label],
@@ -520,8 +570,11 @@ def _render_flight_map(
             showlegend=False,
         )
     )
-    fig_map.update_geos(**_get_map_geo_opts(geo_scope, (focus_lat, focus_lon)))
+    map_opts = _get_map_layout_opts(geo_scope)
+    map_opts.update(_map_center_zoom_from_coords(map_lats, map_lons))
+    map_opts["uirevision"] = f"focus-map-{focus_airport}"
     fig_map.update_layout(
+        map=map_opts,
         height=600,
         margin=dict(l=0, r=0, t=0, b=0),
         showlegend=show_legend,
@@ -591,7 +644,7 @@ def _render_network_map(
                 colorbar=dict(title="Flights"),
             )
         fig_map.add_trace(
-            go.Scattergeo(
+            go.Scattermap(
                 lon=pt_df["lon"],
                 lat=pt_df["lat"],
                 text=pt_df["label"],
@@ -638,7 +691,7 @@ def _render_network_map(
         for b, (width, bcolor) in enumerate(zip(_widths, _colors)):
             if bucket_lons[b]:
                 fig_map.add_trace(
-                    go.Scattergeo(
+                    go.Scattermap(
                         lon=bucket_lons[b],
                         lat=bucket_lats[b],
                         mode="lines",
@@ -670,8 +723,8 @@ def _render_network_map(
             st.caption(" / ".join(summaries))
         show_legend = True
 
-    fig_map.update_geos(**_get_map_geo_opts(geo_scope))
     fig_map.update_layout(
+        map={**_get_map_layout_opts(geo_scope), "uirevision": "network-map"},
         height=600,
         margin=dict(l=0, r=0, t=0, b=0),
         showlegend=show_legend,
@@ -741,7 +794,7 @@ def _render_region_airport_map(
         for b, (width, bcolor) in enumerate(zip(_arc_widths, _arc_colors)):
             if bucket_lons[b]:
                 fig_map.add_trace(
-                    go.Scattergeo(
+                    go.Scattermap(
                         lon=bucket_lons[b],
                         lat=bucket_lats[b],
                         mode="lines",
@@ -753,7 +806,7 @@ def _render_region_airport_map(
                 )
 
     fig_map.add_trace(
-        go.Scattergeo(
+        go.Scattermap(
             lon=map_df["lon"],
             lat=map_df["lat"],
             text=map_df["label"],
@@ -770,22 +823,11 @@ def _render_region_airport_map(
         )
     )
 
-    total = map_df["count"].sum()
-    center_lat = (map_df["lat"] * map_df["count"]).sum() / total
-    center_lon = (map_df["lon"] * map_df["count"]).sum() / total
-    geo_opts = _get_map_geo_opts(geo_scope, (center_lat, center_lon))
-    lat_span = map_df["lat"].max() - map_df["lat"].min()
-    lon_span = map_df["lon"].max() - map_df["lon"].min()
-    lat_pad = max(1.5, lat_span * 0.25 + 0.5)
-    lon_pad = max(1.5, lon_span * 0.25 + 0.5)
-    geo_opts["lataxis"] = dict(
-        range=[map_df["lat"].min() - lat_pad, map_df["lat"].max() + lat_pad]
-    )
-    geo_opts["lonaxis"] = dict(
-        range=[map_df["lon"].min() - lon_pad, map_df["lon"].max() + lon_pad]
-    )
-    fig_map.update_geos(**geo_opts)
+    map_opts = _get_map_layout_opts(geo_scope)
+    map_opts.update(_map_center_zoom_from_coords(map_df["lat"], map_df["lon"]))
+    map_opts["uirevision"] = "region-airport-map"
     fig_map.update_layout(
+        map=map_opts,
         height=600,
         margin=dict(l=0, r=0, t=0, b=0),
         showlegend=False,

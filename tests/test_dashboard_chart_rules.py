@@ -207,14 +207,25 @@ def test_streamlit_dashboard_rule_documents_insight_layout() -> None:
     assert "drops or disappeared on the right" in rule
 
 
-def test_focus_airport_maps_center_on_focus_airport() -> None:
+def test_focus_airport_maps_fit_focus_and_destinations() -> None:
+    source = _dashboard_source()
+    flight_map_section = source.split("def _render_flight_map(")[1].split(
+        "def _render_network_map("
+    )[0]
+
+    assert "def _map_center_zoom_from_coords(" in source
+    assert "map_lats = [focus_lat]" in flight_map_section
+    assert "_map_center_zoom_from_coords(map_lats, map_lons)" in flight_map_section
+    assert '"bounds"' not in flight_map_section
+
+
+def test_dashboard_maps_use_open_street_map_scattermap() -> None:
     source = _dashboard_source()
 
-    assert (
-        "fig_map.update_geos(**_get_map_geo_opts(geo_scope, (focus_lat, focus_lon)))"
-        in source
-    )
-    assert 'opts["center"] = dict(lat=center[0], lon=center[1])' in source
+    assert "go.Scattermap" in source
+    assert '"open-street-map"' in source
+    assert "go.Scattergeo" not in source
+    assert "update_geos" not in source
 
 
 def _call_blocks(source: str, call_name: str) -> list[str]:

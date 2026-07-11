@@ -11,7 +11,7 @@ alwaysApply: false
 - Render Plotly charts with `st.plotly_chart(..., width="stretch")`.
 - Flight-count charts should start the count axis at zero using `_start_flight_count_axis_at_zero`.
 - Line charts should not show markers; keep daily date series complete with `_complete_daily_series`.
-- Keep focus-airport maps centered on the selected airport via `_get_map_geo_opts`.
+- Keep focus-airport maps fitted to the focus airport and destinations via `_map_center_zoom_from_coords` (use center/zoom, not bounds, so users can zoom out).
 - Use the shared Top N control for route and arc counts instead of adding separate route-arc limits.
 - Insight comparisons place new or increases on the left and drops or disappeared on the right across charts, maps, and tables.
 - When dashboard chart behavior changes, update or add regression coverage in `tests/test_dashboard_chart_rules.py`.

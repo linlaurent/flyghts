@@ -18,9 +18,14 @@ Run with: uv run streamlit run streamlit/flight_dashboard.py
 """
 
 import re
+import sys
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Literal
+
+_PROJECT_SRC = Path(__file__).resolve().parent.parent / "src"
+if _PROJECT_SRC.is_dir() and str(_PROJECT_SRC) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_SRC))
 
 import numpy as np
 import pandas as pd
@@ -862,10 +867,12 @@ def _airport_city_key(iata: str) -> RouteCityKey:
 
 def _airport_province(iata: str) -> str:
     info = get_airport(iata)
-    if info and info.province:
-        return info.province
-    if info and info.country:
-        return info.country
+    if info:
+        province = getattr(info, "province", "")
+        if province:
+            return province
+        if info.country:
+            return info.country
     return iata
 
 

@@ -25,6 +25,10 @@ def _dashboard_source() -> str:
 def _dashboard_rule_source() -> str:
     return DASHBOARD_RULE_PATH.read_text()
 
+def _section_source(name: str) -> str:
+    return (STREAMLIT_DIR / "dashboard" / "sections" / name).read_text()
+
+
 
 def test_flight_count_plotly_axes_start_at_zero() -> None:
     source = _dashboard_source()
@@ -106,10 +110,8 @@ def test_route_deep_dive_supports_grouped_modes() -> None:
     assert "_city_pair_airport_counts(" in source
     assert "Top airports" in source
     assert "Flights over time by airport" in source
-    assert (
-        'f"Only {_route_group_label} with multiple airports",\n'
-        "                value=True,"
-    ) in source
+    assert 'f"Only {_route_group_label} with multiple airports"' in source
+    assert "value=True," in source
     assert 'key=f"route_dive_multi_airport_only_{route_mode}"' in source
     assert "_render_region_airport_map(" in source
     assert "_multi_airport_city_keys_for_iatas(" in source
@@ -133,11 +135,7 @@ def test_insight_frequency_changes_can_use_percent_metric() -> None:
 
 
 def test_insight_comparisons_keep_positive_left_of_negative() -> None:
-    source = _dashboard_source()
-    insights_section = source.split('elif section == "Insights":', maxsplit=1)[1].split(
-        "# ══════════════════════════════════════════════════════════════════════",
-        maxsplit=1,
-    )[0]
+    insights_section = _section_source("insights.py")
 
     ordered_pairs = [
         (

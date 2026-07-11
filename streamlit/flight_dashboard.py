@@ -3330,12 +3330,20 @@ def main() -> None:
         route_by_country = route_mode == "By country"
         route_by_province = route_mode == "By province"
         route_multi_airport_only = False
+        route_multi_province_airport_only = False
         if route_by_city:
             route_multi_airport_only = st.checkbox(
                 "Only cities with multiple airports",
                 value=False,
                 help="Show only city routes where the displayed city has multiple airports in the filtered data.",
                 key="route_dive_multi_airport_only",
+            )
+        elif route_by_province:
+            route_multi_province_airport_only = st.checkbox(
+                "Only provinces with multiple airports",
+                value=True,
+                help="Show only provinces that have multiple airports in the filtered data.",
+                key="route_dive_multi_province_airport_only",
             )
 
         route_display_options: list[str] = []
@@ -3364,6 +3372,14 @@ def main() -> None:
             _route_dest_codes = get_destination_column(df, direction, focus_airport)
             _route_province_counts: dict[str, int] = {}
             _route_province_iatas: dict[str, set[str]] = {}
+            _route_province_airports: dict[str, set[str]] = {}
+            _route_province_country: dict[str, str] = {}
+            for iata in pd.concat([df["origin"], df["destination"]]).dropna().unique():
+                province = _airport_province(iata)
+                _route_province_airports.setdefault(province, set()).add(iata)
+                info = get_airport(iata)
+                if info and info.country:
+                    _route_province_country.setdefault(province, info.country)
             for iata, count in _route_dest_codes.value_counts().items():
                 province = _airport_province(iata)
                 _route_province_counts[province] = (
@@ -3373,7 +3389,15 @@ def main() -> None:
             for province, count in sorted(
                 _route_province_counts.items(), key=lambda x: -x[1]
             ):
-                label = f"{province} - {count:,} flights"
+                if route_multi_province_airport_only and len(
+                    _route_province_airports.get(province, set())
+                ) < 2:
+                    continue
+                country = _route_province_country.get(province, "")
+                province_name = (
+                    f"{province}, {country}" if country else province
+                )
+                label = f"{province_name} - {count:,} flights"
                 route_display_options.append(label)
                 route_str_to_province[label] = province
         elif route_by_city:
@@ -3544,7 +3568,10 @@ def main() -> None:
                 if route_by_country:
                     route_label = sel_country
                 elif route_by_province:
-                    route_label = sel_province
+                    country = _route_province_country.get(sel_province, "")
+                    route_label = (
+                        f"{sel_province}, {country}" if country else sel_province
+                    )
                 elif route_by_city:
                     if global_mode:
                         route_label = (

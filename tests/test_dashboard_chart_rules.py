@@ -102,6 +102,15 @@ def test_route_deep_dive_supports_city_mode() -> None:
     assert "use_traffic_colors=True,\n                                    top_arcs_n=_city_n," in source
     assert "Only cities with multiple airports" in source
     assert "route_dive_multi_airport_only" in source
+    assert "Only provinces with multiple airports" in source
+    assert 'key="route_dive_multi_province_airport_only"' in source
+    assert (
+        'route_multi_province_airport_only = st.checkbox(\n'
+        '                "Only provinces with multiple airports",\n'
+        "                value=True,"
+    ) in source
+    assert "_route_province_country" in source
+    assert "province_name = (" in source
     assert "_render_region_airport_map(" in source
     assert "Airport comparison" in source
     assert "Top airline contributions by airport" in source

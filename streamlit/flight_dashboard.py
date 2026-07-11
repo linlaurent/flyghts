@@ -678,6 +678,120 @@ def _render_network_map(
     st.plotly_chart(fig_map, width="stretch")
 
 
+def _render_region_airport_map(
+    dest_counts: "pd.Series",
+    df_map: pd.DataFrame,
+    geo_scope: str,
+    *,
+    exclude_iatas: set[str] | None = None,
+    top_routes_n: int | None = None,
+) -> None:
+    """Render airport map centered on a region, without a hub focus airport."""
+    exclude_iatas = exclude_iatas or set()
+    filtered = dest_counts[~dest_counts.index.isin(exclude_iatas)]
+    if top_routes_n is not None and top_routes_n > 0:
+        filtered = filtered.head(top_routes_n)
+    if filtered.empty:
+        st.info("No airports with valid coordinates to display on map.")
+        return
+
+    map_data = build_map_points(filtered, by_country=False)
+    map_df = pd.DataFrame(map_data)
+    if map_df.empty:
+        st.info("No airports with valid coordinates in the reference data.")
+        return
+
+    shown_iatas = set(filtered.index)
+    route_df = df_map[
+        df_map["origin"].isin(shown_iatas) & df_map["destination"].isin(shown_iatas)
+    ]
+
+    _arc_widths = [1.0, 2.4, 4.4, 7.0]
+    _arc_colors = ["#7ecbff", "#2196f3", "#ff9800", "#e53935"]
+    fig_map = go.Figure()
+
+    if not route_df.empty:
+        route_counts = (
+            route_df.groupby(["origin", "destination"])
+            .size()
+            .sort_values(ascending=False)
+        )
+        if top_routes_n is not None and top_routes_n > 0:
+            route_counts = route_counts.head(top_routes_n)
+        q25, q50, q75 = (
+            route_counts.quantile(0.25),
+            route_counts.quantile(0.50),
+            route_counts.quantile(0.75),
+        )
+        bucket_lons: list[list[float | None]] = [[] for _ in _arc_widths]
+        bucket_lats: list[list[float | None]] = [[] for _ in _arc_widths]
+        for (orig, dest), cnt in route_counts.items():
+            o_info = get_airport(orig)
+            d_info = get_airport(dest)
+            if not o_info or not d_info:
+                continue
+            if o_info.latitude == 0 and o_info.longitude == 0:
+                continue
+            if d_info.latitude == 0 and d_info.longitude == 0:
+                continue
+            b = 3 if cnt > q75 else (2 if cnt > q50 else (1 if cnt > q25 else 0))
+            bucket_lons[b] += [o_info.longitude, d_info.longitude, None]
+            bucket_lats[b] += [o_info.latitude, d_info.latitude, None]
+        for b, (width, bcolor) in enumerate(zip(_arc_widths, _arc_colors)):
+            if bucket_lons[b]:
+                fig_map.add_trace(
+                    go.Scattergeo(
+                        lon=bucket_lons[b],
+                        lat=bucket_lats[b],
+                        mode="lines",
+                        line=dict(width=width, color=bcolor),
+                        opacity=0.5,
+                        hoverinfo="skip",
+                        showlegend=False,
+                    )
+                )
+
+    fig_map.add_trace(
+        go.Scattergeo(
+            lon=map_df["lon"],
+            lat=map_df["lat"],
+            text=map_df["label"],
+            mode="markers",
+            marker=dict(
+                size=map_df["count"].clip(upper=2000) ** 0.5 + 3,
+                color=map_df["count"],
+                colorscale="Viridis",
+                showscale=True,
+                colorbar=dict(title="Flights"),
+            ),
+            hoverinfo="text",
+            showlegend=False,
+        )
+    )
+
+    total = map_df["count"].sum()
+    center_lat = (map_df["lat"] * map_df["count"]).sum() / total
+    center_lon = (map_df["lon"] * map_df["count"]).sum() / total
+    geo_opts = _get_map_geo_opts(geo_scope, (center_lat, center_lon))
+    lat_span = map_df["lat"].max() - map_df["lat"].min()
+    lon_span = map_df["lon"].max() - map_df["lon"].min()
+    lat_pad = max(1.5, lat_span * 0.25 + 0.5)
+    lon_pad = max(1.5, lon_span * 0.25 + 0.5)
+    geo_opts["lataxis"] = dict(
+        range=[map_df["lat"].min() - lat_pad, map_df["lat"].max() + lat_pad]
+    )
+    geo_opts["lonaxis"] = dict(
+        range=[map_df["lon"].min() - lon_pad, map_df["lon"].max() + lon_pad]
+    )
+    fig_map.update_geos(**geo_opts)
+    fig_map.update_layout(
+        height=600,
+        margin=dict(l=0, r=0, t=0, b=0),
+        showlegend=False,
+    )
+    st.plotly_chart(fig_map, width="stretch")
+
+
 def _airline_label(code: str) -> str:
     info = get_airline(code)
     return f"{code} - {info.name}" if info and info.name else code
@@ -3576,7 +3690,16 @@ def main() -> None:
                             st.plotly_chart(fig_cities, width="stretch")
 
                             _top_city_iatas = set(_city_dest_counts.head(_city_n).index)
-                            if focus_airport:
+                            if route_by_province:
+                                _map_exclude = {focus_airport} if focus_airport else set()
+                                _render_region_airport_map(
+                                    _city_dest_counts,
+                                    df_route,
+                                    geo_scope,
+                                    exclude_iatas=_map_exclude,
+                                    top_routes_n=_city_n,
+                                )
+                            elif focus_airport:
                                 _render_flight_map(
                                     df_route,
                                     direction,

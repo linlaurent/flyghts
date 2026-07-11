@@ -102,6 +102,7 @@ def test_route_deep_dive_supports_city_mode() -> None:
     assert "use_traffic_colors=True,\n                                    top_arcs_n=_city_n," in source
     assert "Only cities with multiple airports" in source
     assert "route_dive_multi_airport_only" in source
+    assert "_render_region_airport_map(" in source
     assert "Airport comparison" in source
     assert "Top airline contributions by airport" in source
     assert "Share of city flights per day by airport" in source

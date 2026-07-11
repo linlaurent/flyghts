@@ -16,35 +16,13 @@ from ..data import parse_delay_minutes
 
 
 def render_delay_analysis(ctx: DashboardContext) -> None:
-    dataset_key = ctx.dataset_key
-    geo_scope = ctx.geo_scope
-    is_us = ctx.is_us
-    show_country = ctx.show_country
-    df_all = ctx.df_all
-    df = ctx.df
-    focus_airport = ctx.focus_airport
-    focus_lat = ctx.focus_lat
-    focus_lon = ctx.focus_lon
-    focus_label = ctx.focus_label
-    global_mode = ctx.global_mode
-    direction = ctx.direction
-    start_date = ctx.start_date
-    end_date = ctx.end_date
-    top_n = ctx.top_n
-    airline_col = ctx.airline_col
-    total_flights = ctx.total_flights
-    cargo_filter = ctx.cargo_filter
-    operating_only = ctx.operating_only
-    has_cargo = ctx.has_cargo
-    has_operating = ctx.has_operating
-
     st.header("Delay analysis")
-    if global_mode:
+    if ctx.global_mode:
         st.caption("Analyzing arrival delays for all US domestic flights")
     else:
-        st.caption(f"Analyzing arrival delays for flights involving {focus_label}")
+        st.caption(f"Analyzing arrival delays for flights involving {ctx.focus_label}")
 
-    df_delay = df.copy()
+    df_delay = ctx.df.copy()
     df_delay["delay_min"] = df_delay["status"].apply(parse_delay_minutes)
 
     n_total = len(df_delay)
@@ -91,7 +69,7 @@ def render_delay_analysis(ctx: DashboardContext) -> None:
     # ── On-time performance by airline ──
     st.subheader("On-time performance by airline")
     airline_delay = (
-        df_with_delay.groupby(airline_col)["delay_min"]
+        df_with_delay.groupby(ctx.airline_col)["delay_min"]
         .agg(
             total="count",
             on_time=lambda x: int((x == 0).sum()),
@@ -101,7 +79,7 @@ def render_delay_analysis(ctx: DashboardContext) -> None:
         .reset_index()
     )
     airline_delay.columns = [
-        airline_col,
+        ctx.airline_col,
         "Total",
         "On-time",
         "Avg delay (min)",
@@ -110,8 +88,8 @@ def render_delay_analysis(ctx: DashboardContext) -> None:
     airline_delay["On-time (%)"] = (
         100 * airline_delay["On-time"] / airline_delay["Total"]
     ).round(1)
-    airline_delay = airline_delay.sort_values("Total", ascending=False).head(top_n)
-    airline_delay["Airline"] = airline_delay[airline_col].apply(
+    airline_delay = airline_delay.sort_values("Total", ascending=False).head(ctx.top_n)
+    airline_delay["Airline"] = airline_delay[ctx.airline_col].apply(
         lambda c: get_airline(c).name if get_airline(c) else c
     )
 
@@ -202,8 +180,8 @@ def render_delay_analysis(ctx: DashboardContext) -> None:
         delay_by_date,
         date_col="Date",
         value_cols=["On-time (%)", "Avg delay (min)", "Total"],
-        start_date=start_date,
-        end_date=end_date,
+        start_date=ctx.start_date,
+        end_date=ctx.end_date,
     )
     if not delay_by_date.empty:
         fig_delay_time = go.Figure()

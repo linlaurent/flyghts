@@ -90,8 +90,8 @@ def test_route_arc_count_uses_top_n_ranking_control() -> None:
     source = _dashboard_source()
 
     assert "Top route arcs to draw" not in source
-    assert "top_routes_n=top_n" in source
-    assert "top_arcs_n=top_n" in source
+    assert "top_routes_n=ctx.top_n" in source
+    assert "top_arcs_n=ctx.top_n" in source
 
 
 def test_route_deep_dive_supports_grouped_modes() -> None:

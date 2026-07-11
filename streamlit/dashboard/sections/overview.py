@@ -17,35 +17,13 @@ from ..maps import _render_flight_map, _render_network_map
 
 
 def render_overview(ctx: DashboardContext) -> None:
-    dataset_key = ctx.dataset_key
-    geo_scope = ctx.geo_scope
-    is_us = ctx.is_us
-    show_country = ctx.show_country
-    df_all = ctx.df_all
-    df = ctx.df
-    focus_airport = ctx.focus_airport
-    focus_lat = ctx.focus_lat
-    focus_lon = ctx.focus_lon
-    focus_label = ctx.focus_label
-    global_mode = ctx.global_mode
-    direction = ctx.direction
-    start_date = ctx.start_date
-    end_date = ctx.end_date
-    top_n = ctx.top_n
-    airline_col = ctx.airline_col
-    total_flights = ctx.total_flights
-    cargo_filter = ctx.cargo_filter
-    operating_only = ctx.operating_only
-    has_cargo = ctx.has_cargo
-    has_operating = ctx.has_operating
-
     chart_h = 320
-    airline_counts = df[airline_col].value_counts()
-    top_airlines = airline_counts.head(top_n)
+    airline_counts = ctx.df[ctx.airline_col].value_counts()
+    top_airlines = airline_counts.head(ctx.top_n)
     airline_rows = []
     for icao, count in top_airlines.items():
         info = get_airline(icao)
-        share = 100 * count / total_flights if total_flights > 0 else 0
+        share = 100 * count / ctx.total_flights if ctx.total_flights > 0 else 0
         airline_rows.append(
             {
                 "Airline": info.name if info else icao,
@@ -71,20 +49,20 @@ def render_overview(ctx: DashboardContext) -> None:
     )
     _start_flight_count_axis_at_zero(fig_airlines, "x")
 
-    if global_mode:
+    if ctx.global_mode:
         # ── Global mode: top routes + top airports ──
         route_counts_all = (
-            df.groupby(["origin", "destination"])
+            ctx.df.groupby(["origin", "destination"])
             .size()
             .sort_values(ascending=False)
         )
         route_rows: list[dict] = []
-        for (orig, dest), cnt in route_counts_all.head(top_n).items():
+        for (orig, dest), cnt in route_counts_all.head(ctx.top_n).items():
             o_info = get_airport(orig)
             d_info = get_airport(dest)
             o_label = f"{orig} ({o_info.city})" if o_info and o_info.city else orig
             d_label = f"{dest} ({d_info.city})" if d_info and d_info.city else dest
-            share = 100 * cnt / total_flights if total_flights > 0 else 0
+            share = 100 * cnt / ctx.total_flights if ctx.total_flights > 0 else 0
             route_rows.append(
                 {
                     "Route": f"{o_label} → {d_label}",
@@ -99,8 +77,8 @@ def render_overview(ctx: DashboardContext) -> None:
         apt_traffic = (
             pd.concat(
                 [
-                    df["origin"].value_counts(),
-                    df["destination"].value_counts(),
+                    ctx.df["origin"].value_counts(),
+                    ctx.df["destination"].value_counts(),
                 ]
             )
             .groupby(level=0)
@@ -108,9 +86,9 @@ def render_overview(ctx: DashboardContext) -> None:
             .sort_values(ascending=False)
         )
         apt_rows: list[dict] = []
-        for iata, cnt in apt_traffic.head(top_n).items():
+        for iata, cnt in apt_traffic.head(ctx.top_n).items():
             info = get_airport(iata)
-            share = 100 * cnt / total_flights if total_flights > 0 else 0
+            share = 100 * cnt / ctx.total_flights if ctx.total_flights > 0 else 0
             label = f"{iata} - {info.name}" if info and info.name else iata
             apt_rows.append(
                 {"Label": label, "Flights": cnt, "Share (%)": round(share, 1)}
@@ -124,14 +102,14 @@ def render_overview(ctx: DashboardContext) -> None:
             info = get_airport(iata)
             city = info.city if info and info.city else iata
             city_counts_g[city] = city_counts_g.get(city, 0) + cnt
-        city_sorted_g = sorted(city_counts_g.items(), key=lambda x: -x[1])[:top_n]
+        city_sorted_g = sorted(city_counts_g.items(), key=lambda x: -x[1])[:ctx.top_n]
         city_df_g = pd.DataFrame(
             [{"City": c, "Flights": n} for c, n in city_sorted_g],
             columns=["City", "Flights"],
         )
         city_df_g["Share (%)"] = (
-            (100 * city_df_g["Flights"] / total_flights).round(1)
-            if total_flights
+            (100 * city_df_g["Flights"] / ctx.total_flights).round(1)
+            if ctx.total_flights
             else 0.0
         )
 
@@ -203,19 +181,19 @@ def render_overview(ctx: DashboardContext) -> None:
             st.plotly_chart(fig_city_g, width="stretch")
 
         _render_overview_flights_per_day(
-            df,
-            airline_col=airline_col,
-            top_n=top_n,
-            start_date=start_date,
-            end_date=end_date,
+            ctx.df,
+            airline_col=ctx.airline_col,
+            top_n=ctx.top_n,
+            start_date=ctx.start_date,
+            end_date=ctx.end_date,
         )
 
         # ── Network map ──
         st.header("US domestic network map")
         map_airline_col = (
-            "operating_airline" if (operating_only and has_operating) else "airline"
+            "operating_airline" if (ctx.operating_only and ctx.has_operating) else "airline"
         )
-        map_airlines_g = sorted(df[map_airline_col].dropna().unique().tolist())
+        map_airlines_g = sorted(ctx.df[map_airline_col].dropna().unique().tolist())
         map_airline_display_g: list[str] = []
         map_display_to_code_g: dict[str, str] = {}
         for code in map_airlines_g:
@@ -239,17 +217,17 @@ def render_overview(ctx: DashboardContext) -> None:
             for d in sel_map_airlines_g
             if d in map_display_to_code_g
         ]
-        _render_network_map(df, map_airline_col, sel_map_codes_g, geo_scope, top_n)
+        _render_network_map(ctx.df, map_airline_col, sel_map_codes_g, ctx.geo_scope, ctx.top_n)
 
     else:
         # ── Focus mode: top destinations ──
-        dest_codes = get_destination_column(df, direction, focus_airport)
+        dest_codes = get_destination_column(ctx.df, ctx.direction, ctx.focus_airport)
         dest_counts = dest_codes.value_counts()
 
         airport_rows = []
-        for iata, count in dest_counts.head(top_n).items():
+        for iata, count in dest_counts.head(ctx.top_n).items():
             info = get_airport(iata)
-            share = 100 * count / total_flights if total_flights > 0 else 0
+            share = 100 * count / ctx.total_flights if ctx.total_flights > 0 else 0
             label = f"{iata} - {info.name}" if info and info.name else iata
             airport_rows.append(
                 {"Label": label, "Flights": count, "Share (%)": round(share, 1)}
@@ -263,33 +241,33 @@ def render_overview(ctx: DashboardContext) -> None:
             info = get_airport(iata)
             city = info.city if info and info.city else iata
             city_counts[city] = city_counts.get(city, 0) + count
-        city_sorted = sorted(city_counts.items(), key=lambda x: -x[1])[:top_n]
+        city_sorted = sorted(city_counts.items(), key=lambda x: -x[1])[:ctx.top_n]
         city_df = pd.DataFrame(
             [{"City": c, "Flights": n} for c, n in city_sorted],
             columns=["City", "Flights"],
         )
         city_df["Share (%)"] = (
-            (100 * city_df["Flights"] / total_flights).round(1)
-            if total_flights
+            (100 * city_df["Flights"] / ctx.total_flights).round(1)
+            if ctx.total_flights
             else 0.0
         )
 
-        if show_country:
+        if ctx.show_country:
             country_counts: dict[str, int] = {}
             for iata, count in dest_counts.items():
                 info = get_airport(iata)
                 country = info.country if info and info.country else iata
                 country_counts[country] = country_counts.get(country, 0) + count
             country_sorted = sorted(country_counts.items(), key=lambda x: -x[1])[
-                :top_n
+                :ctx.top_n
             ]
             country_df = pd.DataFrame(
                 [{"Country": c, "Flights": n} for c, n in country_sorted],
                 columns=["Country", "Flights"],
             )
             country_df["Share (%)"] = (
-                (100 * country_df["Flights"] / total_flights).round(1)
-                if total_flights
+                (100 * country_df["Flights"] / ctx.total_flights).round(1)
+                if ctx.total_flights
                 else 0.0
             )
 
@@ -327,7 +305,7 @@ def render_overview(ctx: DashboardContext) -> None:
         )
         _start_flight_count_axis_at_zero(fig_city, "x")
 
-        if show_country:
+        if ctx.show_country:
             fig_country = px.bar(
                 country_df,
                 x="Flights",
@@ -353,7 +331,7 @@ def render_overview(ctx: DashboardContext) -> None:
             st.subheader("Top destinations by airport")
             st.plotly_chart(fig_apt, width="stretch")
 
-        if show_country:
+        if ctx.show_country:
             r2c1, r2c2 = st.columns(2)
             with r2c1:
                 st.subheader("Top destinations by city")
@@ -366,20 +344,20 @@ def render_overview(ctx: DashboardContext) -> None:
             st.plotly_chart(fig_city, width="stretch")
 
         _render_overview_flights_per_day(
-            df,
-            airline_col=airline_col,
-            top_n=top_n,
-            start_date=start_date,
-            end_date=end_date,
+            ctx.df,
+            airline_col=ctx.airline_col,
+            top_n=ctx.top_n,
+            start_date=ctx.start_date,
+            end_date=ctx.end_date,
         )
 
         # ── Interactive Map ──
         st.header("Interactive map: flight flow by destination")
 
         map_airline_col = (
-            "operating_airline" if (operating_only and has_operating) else "airline"
+            "operating_airline" if (ctx.operating_only and ctx.has_operating) else "airline"
         )
-        map_airlines = sorted(df[map_airline_col].dropna().unique().tolist())
+        map_airlines = sorted(ctx.df[map_airline_col].dropna().unique().tolist())
         map_airline_display: list[str] = []
         map_display_to_code: dict[str, str] = {}
         for code in map_airlines:
@@ -392,7 +370,7 @@ def render_overview(ctx: DashboardContext) -> None:
             map_display_to_code[display] = code
 
         _dest_codes_for_countries = get_destination_column(
-            df, direction, focus_airport
+            ctx.df, ctx.direction, ctx.focus_airport
         )
         _country_set: set[str] = set()
         _iata_to_country: dict[str, str] = {}
@@ -403,7 +381,7 @@ def render_overview(ctx: DashboardContext) -> None:
                 _iata_to_country[_iata] = _info.country
         map_country_options = sorted(_country_set)
 
-        if show_country:
+        if ctx.show_country:
             col_map_by, col_map_airline, col_map_country = st.columns(3)
         else:
             col_map_by, col_map_airline = st.columns(2)
@@ -411,7 +389,7 @@ def render_overview(ctx: DashboardContext) -> None:
 
         with col_map_by:
             map_point_opts = ["City (airport)"]
-            if show_country:
+            if ctx.show_country:
                 map_point_opts.append("Country")
             map_point_by = st.radio(
                 "Map points by",
@@ -451,27 +429,27 @@ def render_overview(ctx: DashboardContext) -> None:
                 for iata, c in _iata_to_country.items()
                 if c in sel_map_countries
             }
-            if direction == "Departures":
-                _country_mask = df["destination"].isin(_allowed_iatas)
-            elif direction == "Arrivals":
-                _country_mask = df["origin"].isin(_allowed_iatas)
+            if ctx.direction == "Departures":
+                _country_mask = ctx.df["destination"].isin(_allowed_iatas)
+            elif ctx.direction == "Arrivals":
+                _country_mask = ctx.df["origin"].isin(_allowed_iatas)
             else:
-                _country_mask = df["destination"].isin(_allowed_iatas) | df[
+                _country_mask = ctx.df["destination"].isin(_allowed_iatas) | ctx.df[
                     "origin"
                 ].isin(_allowed_iatas)
-            df_map = df[_country_mask]
+            df_map = ctx.df[_country_mask]
         else:
-            df_map = df
+            df_map = ctx.df
 
         _render_flight_map(
             df_map,
-            direction,
-            focus_airport,
-            focus_lat,
-            focus_lon,
+            ctx.direction,
+            ctx.focus_airport,
+            ctx.focus_lat,
+            ctx.focus_lon,
             map_by_country,
             sel_map_codes,
             map_airline_col,
-            geo_scope,
-            top_arcs_n=top_n,
+            ctx.geo_scope,
+            top_arcs_n=ctx.top_n,
         )

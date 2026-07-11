@@ -17,30 +17,8 @@ from ..maps import _render_flight_map, _render_network_map
 
 
 def render_airline_dive(ctx: DashboardContext) -> None:
-    dataset_key = ctx.dataset_key
-    geo_scope = ctx.geo_scope
-    is_us = ctx.is_us
-    show_country = ctx.show_country
-    df_all = ctx.df_all
-    df = ctx.df
-    focus_airport = ctx.focus_airport
-    focus_lat = ctx.focus_lat
-    focus_lon = ctx.focus_lon
-    focus_label = ctx.focus_label
-    global_mode = ctx.global_mode
-    direction = ctx.direction
-    start_date = ctx.start_date
-    end_date = ctx.end_date
-    top_n = ctx.top_n
-    airline_col = ctx.airline_col
-    total_flights = ctx.total_flights
-    cargo_filter = ctx.cargo_filter
-    operating_only = ctx.operating_only
-    has_cargo = ctx.has_cargo
-    has_operating = ctx.has_operating
-
     st.header("Airline deep dive")
-    dive_airlines = sorted(df[airline_col].dropna().unique().tolist())
+    dive_airlines = sorted(ctx.df[ctx.airline_col].dropna().unique().tolist())
     dive_airline_options: list[str] = []
     dive_display_to_code: dict[str, str] = {}
     for code in dive_airlines:
@@ -75,7 +53,7 @@ def render_airline_dive(ctx: DashboardContext) -> None:
             st.info("No airlines match your search.")
         else:
             default_dive_idx = 0
-            if not is_us:
+            if not ctx.is_us:
                 for i, opt in enumerate(filtered_airlines):
                     if (
                         opt.startswith("CPA -")
@@ -98,7 +76,7 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                 else ""
             )
             df_airline = (
-                df[df[airline_col] == dive_icao] if dive_icao else pd.DataFrame()
+                ctx.df[ctx.df[ctx.airline_col] == dive_icao] if dive_icao else pd.DataFrame()
             )
 
             if df_airline.empty:
@@ -112,7 +90,7 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                 st.subheader(f"{dive_name}")
 
                 n_airline = len(df_airline)
-                pct = 100 * n_airline / total_flights if total_flights > 0 else 0
+                pct = 100 * n_airline / ctx.total_flights if ctx.total_flights > 0 else 0
                 m1, m2 = st.columns(2)
                 with m1:
                     st.metric("Total flights", f"{n_airline:,}")
@@ -120,19 +98,19 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                     st.metric("Share of traffic", f"{pct:.1f}%")
 
                 dest_codes_airline = get_destination_column(
-                    df_airline, direction, focus_airport
+                    df_airline, ctx.direction, ctx.focus_airport
                 )
                 dest_counts_airline = dest_codes_airline.value_counts()
-                if global_mode:
+                if ctx.global_mode:
                     route_dest_airline = df_airline["destination"]
-                elif direction == "Departures":
+                elif ctx.direction == "Departures":
                     route_dest_airline = df_airline["destination"]
-                elif direction == "Arrivals":
+                elif ctx.direction == "Arrivals":
                     route_dest_airline = df_airline["origin"]
                 else:
                     route_dest_airline = pd.Series(
                         np.where(
-                            df_airline["origin"] == focus_airport,
+                            df_airline["origin"] == ctx.focus_airport,
                             df_airline["destination"],
                             df_airline["origin"],
                         ),
@@ -145,11 +123,11 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                     "Flights by hour",
                     "Flights by weekday",
                 ]
-                if not is_us:
+                if not ctx.is_us:
                     _dive_tab_names.append("Cargo vs passenger")
                 _dive_tab_names.append("Interactive map")
                 _dive_tabs = st.tabs(_dive_tab_names)
-                if is_us:
+                if ctx.is_us:
                     tab_routes, tab_time, tab_hour, tab_weekday, tab_map = (
                         _dive_tabs
                     )
@@ -165,17 +143,17 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                     ) = _dive_tabs
 
                 with tab_routes:
-                    if global_mode:
+                    if ctx.global_mode:
                         # Show top O-D pairs for this airline
                         od_counts_airline = (
                             df_airline.groupby(["origin", "destination"])
                             .size()
                             .sort_values(ascending=False)
                         )
-                        od_total_counts = df.groupby(
+                        od_total_counts = ctx.df.groupby(
                             ["origin", "destination"]
                         ).size()
-                        od_n = min(top_n, len(od_counts_airline))
+                        od_n = min(ctx.top_n, len(od_counts_airline))
                         od_rows: list[dict] = []
                         for (orig, dest), cnt in od_counts_airline.head(
                             od_n
@@ -243,9 +221,9 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                             st.plotly_chart(fig_od, width="stretch")
                             _render_aggrid(od_df)
                     else:
-                        route_n = min(top_n, len(dest_counts_airline))
+                        route_n = min(ctx.top_n, len(dest_counts_airline))
                         total_dest_counts = get_destination_column(
-                            df, direction, focus_airport
+                            ctx.df, ctx.direction, ctx.focus_airport
                         ).value_counts()
                         route_rows_d: list[dict] = []
                         for iata, count in dest_counts_airline.head(
@@ -328,22 +306,22 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                             by_date_dest = by_date_dest[
                                 by_date_dest["route_dest"].isin(top_dests)
                             ]
-                            if direction == "Departures":
-                                dest_col_df = df["destination"]
-                            elif direction == "Arrivals":
-                                dest_col_df = df["origin"]
+                            if ctx.direction == "Departures":
+                                dest_col_df = ctx.df["destination"]
+                            elif ctx.direction == "Arrivals":
+                                dest_col_df = ctx.df["origin"]
                             else:
                                 dest_col_df = pd.Series(
                                     np.where(
-                                        df["origin"] == focus_airport,
-                                        df["destination"],
-                                        df["origin"],
+                                        ctx.df["origin"] == ctx.focus_airport,
+                                        ctx.df["destination"],
+                                        ctx.df["origin"],
                                     ),
-                                    index=df.index,
+                                    index=ctx.df.index,
                                 )
                             total_by_date_dest = (
-                                df.assign(route_dest=dest_col_df)
-                                .groupby([df["date"].dt.date, "route_dest"])
+                                ctx.df.assign(route_dest=dest_col_df)
+                                .groupby([ctx.df["date"].dt.date, "route_dest"])
                                 .size()
                                 .reset_index(name="Total")
                             )
@@ -375,8 +353,8 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                                 by_date_dest,
                                 date_col="Date",
                                 value_cols=["Flights", "Total", "Share (%)"],
-                                start_date=start_date,
-                                end_date=end_date,
+                                start_date=ctx.start_date,
+                                end_date=ctx.end_date,
                                 group_cols=["route_dest", "Route"],
                             )
                             if not by_date_dest.empty:
@@ -443,8 +421,8 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                                 by_date_dest_norm,
                                 date_col="Date",
                                 value_cols=["Flights", "AirlineTotal", "Norm (%)"],
-                                start_date=start_date,
-                                end_date=end_date,
+                                start_date=ctx.start_date,
+                                end_date=ctx.end_date,
                                 group_cols=["route_dest", "Route"],
                             )
                             if not by_date_dest_norm.empty:
@@ -498,7 +476,7 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                     by_date.columns = ["Date", "Flights"]
                     if not by_date.empty:
                         total_by_date = (
-                            df.groupby(df["date"].dt.date)
+                            ctx.df.groupby(ctx.df["date"].dt.date)
                             .size()
                             .reset_index(name="Total")
                         )
@@ -513,8 +491,8 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                             share_df,
                             date_col="Date",
                             value_cols=["Flights", "Total", "Share"],
-                            start_date=start_date,
-                            end_date=end_date,
+                            start_date=ctx.start_date,
+                            end_date=ctx.end_date,
                         )
 
                         fig_time = go.Figure()
@@ -552,9 +530,9 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                         _start_flight_count_axis_at_zero(fig_time, "y")
                         st.plotly_chart(fig_time, width="stretch")
 
-                        if not global_mode:
+                        if not ctx.global_mode:
                             top_dests_time = set(
-                                dest_counts_airline.head(top_n).index
+                                dest_counts_airline.head(ctx.top_n).index
                             )
                             by_date_dest_time = (
                                 df_airline.assign(route_dest=route_dest_airline)
@@ -588,8 +566,8 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                                 by_date_dest_time,
                                 date_col="Date",
                                 value_cols=["Flights", "Total"],
-                                start_date=start_date,
-                                end_date=end_date,
+                                start_date=ctx.start_date,
+                                end_date=ctx.end_date,
                                 group_cols=["route_dest", "Route"],
                             )
                             if not by_date_dest_time.empty:
@@ -618,10 +596,10 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                         st.caption("No date data.")
 
                 with tab_hour:
-                    if not global_mode:
+                    if not ctx.global_mode:
                         st.caption(
-                            f"Departure time for flights from {focus_airport}; "
-                            f"arrival time for flights to {focus_airport}."
+                            f"Departure time for flights from {ctx.focus_airport}; "
+                            f"arrival time for flights to {ctx.focus_airport}."
                         )
                     if "scheduled_time" in df_airline.columns:
                         df_airline_hour = df_airline.dropna(
@@ -716,8 +694,8 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                                 cargo_by_date,
                                 date_col="date",
                                 value_cols=["Flights"],
-                                start_date=start_date,
-                                end_date=end_date,
+                                start_date=ctx.start_date,
+                                end_date=ctx.end_date,
                                 group_cols=["cargo", "Type"],
                             )
                             if not cargo_by_date.empty:
@@ -754,16 +732,16 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                             st.caption("No cargo column in data.")
 
                 with tab_map:
-                    if global_mode:
+                    if ctx.global_mode:
                         _render_network_map(
                             df_airline,
-                            airline_col,
+                            ctx.airline_col,
                             [dive_icao],
-                            geo_scope,
-                            top_routes_n=top_n,
+                            ctx.geo_scope,
+                            top_routes_n=ctx.top_n,
                         )
                     else:
-                        if show_country:
+                        if ctx.show_country:
                             map_point_by_dive = st.radio(
                                 "Map points by",
                                 options=["City (airport)", "Country"],
@@ -777,16 +755,16 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                         map_by_country_dive = map_point_by_dive == "Country"
                         _render_flight_map(
                             df_airline,
-                            direction,
-                            focus_airport,
-                            focus_lat,
-                            focus_lon,
+                            ctx.direction,
+                            ctx.focus_airport,
+                            ctx.focus_lat,
+                            ctx.focus_lon,
                             map_by_country_dive,
                             [dive_icao],
-                            airline_col,
-                            geo_scope,
+                            ctx.airline_col,
+                            ctx.geo_scope,
                             use_traffic_colors=True,
-                            top_arcs_n=top_n,
+                            top_arcs_n=ctx.top_n,
                         )
 
     # ── Airline comparison ──
@@ -814,11 +792,11 @@ def render_airline_dive(ctx: DashboardContext) -> None:
 
             summary_rows = []
             for code in cmp_codes:
-                df_a = df[df[airline_col] == code]
+                df_a = ctx.df[ctx.df[ctx.airline_col] == code]
                 n = len(df_a)
-                share = 100 * n / total_flights if total_flights > 0 else 0
+                share = 100 * n / ctx.total_flights if ctx.total_flights > 0 else 0
                 n_dests = get_destination_column(
-                    df_a, direction, focus_airport
+                    df_a, ctx.direction, ctx.focus_airport
                 ).nunique()
                 pax = int((~df_a["cargo"]).sum()) if "cargo" in df_a.columns else n
                 cargo_n = int(df_a["cargo"].sum()) if "cargo" in df_a.columns else 0
@@ -836,8 +814,8 @@ def render_airline_dive(ctx: DashboardContext) -> None:
             summary_cmp_df = pd.DataFrame(summary_rows)
             _render_aggrid(summary_cmp_df)
 
-            df_cmp = df[df[airline_col].isin(cmp_codes)].copy()
-            df_cmp["Airline"] = df_cmp[airline_col].map(cmp_names)
+            df_cmp = ctx.df[ctx.df[ctx.airline_col].isin(cmp_codes)].copy()
+            df_cmp["Airline"] = df_cmp[ctx.airline_col].map(cmp_names)
 
             _cmp_tab_names = [
                 "Top routes",
@@ -845,11 +823,11 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                 "Share of traffic over time",
                 "Flights by hour",
             ]
-            if not is_us:
+            if not ctx.is_us:
                 _cmp_tab_names.append("Cargo vs passenger")
             _cmp_tab_names.append("Interactive map")
             _cmp_tabs = st.tabs(_cmp_tab_names)
-            if is_us:
+            if ctx.is_us:
                 (
                     tab_cmp_routes,
                     tab_cmp_time,
@@ -869,21 +847,21 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                 ) = _cmp_tabs
 
             with tab_cmp_routes:
-                if global_mode:
+                if ctx.global_mode:
                     all_top_ods: set[tuple[str, str]] = set()
                     for code in cmp_codes:
-                        df_a = df[df[airline_col] == code]
+                        df_a = ctx.df[ctx.df[ctx.airline_col] == code]
                         top_ods = (
                             df_a.groupby(["origin", "destination"])
                             .size()
                             .sort_values(ascending=False)
-                            .head(top_n)
+                            .head(ctx.top_n)
                             .index
                         )
                         all_top_ods.update(top_ods)
                     cmp_od_rows: list[dict] = []
                     for code in cmp_codes:
-                        df_a = df[df[airline_col] == code]
+                        df_a = ctx.df[ctx.df[ctx.airline_col] == code]
                         od_counts_a = df_a.groupby(["origin", "destination"]).size()
                         for orig, dest in sorted(all_top_ods):
                             cnt = od_counts_a.get((orig, dest), 0)
@@ -926,20 +904,20 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                 else:
                     all_top_dests: set[str] = set()
                     for code in cmp_codes:
-                        df_a = df[df[airline_col] == code]
+                        df_a = ctx.df[ctx.df[ctx.airline_col] == code]
                         top = (
-                            get_destination_column(df_a, direction, focus_airport)
+                            get_destination_column(df_a, ctx.direction, ctx.focus_airport)
                             .value_counts()
-                            .head(top_n)
+                            .head(ctx.top_n)
                             .index
                         )
                         all_top_dests.update(top)
 
                     route_cmp_rows: list[dict] = []
                     for code in cmp_codes:
-                        df_a = df[df[airline_col] == code]
+                        df_a = ctx.df[ctx.df[ctx.airline_col] == code]
                         dest_counts_a = get_destination_column(
-                            df_a, direction, focus_airport
+                            df_a, ctx.direction, ctx.focus_airport
                         ).value_counts()
                         for iata in sorted(all_top_dests):
                             count = dest_counts_a.get(iata, 0)
@@ -985,8 +963,8 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                     by_date_cmp,
                     date_col="Date",
                     value_cols=["Flights"],
-                    start_date=start_date,
-                    end_date=end_date,
+                    start_date=ctx.start_date,
+                    end_date=ctx.end_date,
                     group_cols=["Airline"],
                 )
                 if not by_date_cmp.empty:
@@ -1005,7 +983,7 @@ def render_airline_dive(ctx: DashboardContext) -> None:
 
             with tab_cmp_share:
                 total_by_date_cmp = (
-                    df.groupby(df["date"].dt.date).size().rename("Total")
+                    ctx.df.groupby(ctx.df["date"].dt.date).size().rename("Total")
                 )
                 share_cmp = (
                     df_cmp.groupby([df_cmp["date"].dt.date, "Airline"])
@@ -1023,8 +1001,8 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                     share_cmp,
                     date_col="Date",
                     value_cols=["Flights", "Total", "Share (%)"],
-                    start_date=start_date,
-                    end_date=end_date,
+                    start_date=ctx.start_date,
+                    end_date=ctx.end_date,
                     group_cols=["Airline"],
                 )
                 if not share_cmp.empty:
@@ -1045,10 +1023,10 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                     st.caption("No date data.")
 
             with tab_cmp_hour:
-                if not global_mode:
+                if not ctx.global_mode:
                     st.caption(
-                        f"Departure time for flights from {focus_airport}; "
-                        f"arrival time for flights to {focus_airport}."
+                        f"Departure time for flights from {ctx.focus_airport}; "
+                        f"arrival time for flights to {ctx.focus_airport}."
                     )
                 if "scheduled_time" in df_cmp.columns:
                     df_cmp_hour = df_cmp.dropna(subset=["scheduled_time"]).copy()
@@ -1086,7 +1064,7 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                     if "cargo" in df_cmp.columns:
                         cargo_cmp_rows = []
                         for code in cmp_codes:
-                            df_a = df[df[airline_col] == code]
+                            df_a = ctx.df[ctx.df[ctx.airline_col] == code]
                             pax = (
                                 int((~df_a["cargo"]).sum())
                                 if "cargo" in df_a.columns
@@ -1130,7 +1108,7 @@ def render_airline_dive(ctx: DashboardContext) -> None:
 
                         cargo_time_parts = []
                         for code in cmp_codes:
-                            df_a = df[df[airline_col] == code]
+                            df_a = ctx.df[ctx.df[ctx.airline_col] == code]
                             if "cargo" in df_a.columns:
                                 by_dt_cargo = (
                                     df_a.groupby([df_a["date"].dt.date, "cargo"])
@@ -1153,8 +1131,8 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                                     cargo_time_df,
                                     date_col="date",
                                     value_cols=["Flights"],
-                                    start_date=start_date,
-                                    end_date=end_date,
+                                    start_date=ctx.start_date,
+                                    end_date=ctx.end_date,
                                     group_cols=["cargo", "Type", "Label"],
                                 )
                                 fig_cmp_cargo_time = px.line(
@@ -1176,16 +1154,16 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                         st.caption("No cargo column in data.")
 
             with tab_cmp_map:
-                if global_mode:
+                if ctx.global_mode:
                     _render_network_map(
                         df_cmp,
-                        airline_col,
+                        ctx.airline_col,
                         cmp_codes,
-                        geo_scope,
-                        top_routes_n=top_n,
+                        ctx.geo_scope,
+                        top_routes_n=ctx.top_n,
                     )
                 else:
-                    if show_country:
+                    if ctx.show_country:
                         map_point_by_cmp = st.radio(
                             "Map points by",
                             options=["City (airport)", "Country"],
@@ -1199,13 +1177,13 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                     map_by_country_cmp = map_point_by_cmp == "Country"
                     _render_flight_map(
                         df_cmp,
-                        direction,
-                        focus_airport,
-                        focus_lat,
-                        focus_lon,
+                        ctx.direction,
+                        ctx.focus_airport,
+                        ctx.focus_lat,
+                        ctx.focus_lon,
                         map_by_country_cmp,
                         cmp_codes,
-                        airline_col,
-                        geo_scope,
-                        top_arcs_n=top_n,
+                        ctx.airline_col,
+                        ctx.geo_scope,
+                        top_arcs_n=ctx.top_n,
                     )

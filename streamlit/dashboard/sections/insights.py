@@ -30,32 +30,10 @@ from ..insight_ui import (
 
 
 def render_insights(ctx: DashboardContext) -> None:
-    dataset_key = ctx.dataset_key
-    geo_scope = ctx.geo_scope
-    is_us = ctx.is_us
-    show_country = ctx.show_country
-    df_all = ctx.df_all
-    df = ctx.df
-    focus_airport = ctx.focus_airport
-    focus_lat = ctx.focus_lat
-    focus_lon = ctx.focus_lon
-    focus_label = ctx.focus_label
-    global_mode = ctx.global_mode
-    direction = ctx.direction
-    start_date = ctx.start_date
-    end_date = ctx.end_date
-    top_n = ctx.top_n
-    airline_col = ctx.airline_col
-    total_flights = ctx.total_flights
-    cargo_filter = ctx.cargo_filter
-    operating_only = ctx.operating_only
-    has_cargo = ctx.has_cargo
-    has_operating = ctx.has_operating
-
     st.header("Periodic insights")
     st.caption("Compare any two weeks or months using the current filters.")
 
-    if df.empty:
+    if ctx.df.empty:
         st.info("No flight data available for the selected filters.")
         return
 
@@ -68,7 +46,7 @@ def render_insights(ctx: DashboardContext) -> None:
             key="insights_period_kind",
         )
         period_kind = "weekly" if period_label == "Weekly" else "monthly"
-        period_options = available_period_labels(df, period_kind)
+        period_options = available_period_labels(ctx.df, period_kind)
         if len(period_options) < 2:
             st.info("At least two periods are required for insights.")
             return
@@ -93,16 +71,16 @@ def render_insights(ctx: DashboardContext) -> None:
         )
 
     insights_airline_col = (
-        airline_col
-        if airline_col in df.columns
+        ctx.airline_col
+        if ctx.airline_col in ctx.df.columns
         else (
             DEFAULT_COMPANY_AIRLINE_COL
-            if DEFAULT_COMPANY_AIRLINE_COL in df.columns
+            if DEFAULT_COMPANY_AIRLINE_COL in ctx.df.columns
             else MARKETING_AIRLINE_COL
         )
     )
     bidirectional_focus_airport = (
-        focus_airport if direction == "Both" and focus_airport else None
+        ctx.focus_airport if ctx.direction == "Both" and ctx.focus_airport else None
     )
 
     ctl_baseline, ctl_abs, ctl_pct = st.columns(3)
@@ -139,7 +117,7 @@ def render_insights(ctx: DashboardContext) -> None:
 
     try:
         insights = compare_periods(
-            df,
+            ctx.df,
             period_kind=period_kind,
             current_period=current_period,
             comparison_period=comparison_period,
@@ -193,7 +171,7 @@ def render_insights(ctx: DashboardContext) -> None:
                 value_label="Current flights",
                 color_scale="Blues",
                 empty_message="No companies appeared for the first time in this period.",
-                top_n=top_n,
+                top_n=ctx.top_n,
             )
         with chart_disappeared_companies:
             _render_insight_chart(
@@ -203,7 +181,7 @@ def render_insights(ctx: DashboardContext) -> None:
                 value_label="Previous flights",
                 color_scale="Oranges",
                 empty_message="No companies disappeared in this period.",
-                top_n=top_n,
+                top_n=ctx.top_n,
             )
         st.caption("Company-only insights do not have route maps.")
         table_new_companies, table_disappeared_companies = st.columns(2)
@@ -230,7 +208,7 @@ def render_insights(ctx: DashboardContext) -> None:
                 value_label="Current flights",
                 color_scale="Greens",
                 empty_message="No routes appeared for the first time in this period.",
-                top_n=top_n,
+                top_n=ctx.top_n,
             )
         with chart_disappeared_routes:
             _render_insight_chart(
@@ -240,40 +218,40 @@ def render_insights(ctx: DashboardContext) -> None:
                 value_label="Previous flights",
                 color_scale="Oranges",
                 empty_message="No routes disappeared in this period.",
-                top_n=top_n,
+                top_n=ctx.top_n,
             )
         map_new_routes, map_disappeared_routes = st.columns(2)
         with map_new_routes:
             _render_insight_route_map(
                 "New routes",
-                df,
+                ctx.df,
                 insights.new_routes,
                 insights.current,
                 airline_col=insights_airline_col,
                 bidirectional_focus_airport=bidirectional_focus_airport,
-                global_mode=global_mode,
-                direction=direction,
-                focus_airport=focus_airport,
-                focus_lat=focus_lat,
-                focus_lon=focus_lon,
-                geo_scope=geo_scope,
-                top_routes_n=top_n,
+                global_mode=ctx.global_mode,
+                direction=ctx.direction,
+                focus_airport=ctx.focus_airport,
+                focus_lat=ctx.focus_lat,
+                focus_lon=ctx.focus_lon,
+                geo_scope=ctx.geo_scope,
+                top_routes_n=ctx.top_n,
             )
         with map_disappeared_routes:
             _render_insight_route_map(
                 "Disappeared routes",
-                df,
+                ctx.df,
                 insights.disappeared_routes,
                 insights.previous,
                 airline_col=insights_airline_col,
                 bidirectional_focus_airport=bidirectional_focus_airport,
-                global_mode=global_mode,
-                direction=direction,
-                focus_airport=focus_airport,
-                focus_lat=focus_lat,
-                focus_lon=focus_lon,
-                geo_scope=geo_scope,
-                top_routes_n=top_n,
+                global_mode=ctx.global_mode,
+                direction=ctx.direction,
+                focus_airport=ctx.focus_airport,
+                focus_lat=ctx.focus_lat,
+                focus_lon=ctx.focus_lon,
+                geo_scope=ctx.geo_scope,
+                top_routes_n=ctx.top_n,
             )
         table_new_routes, table_disappeared_routes = st.columns(2)
         with table_new_routes:
@@ -299,7 +277,7 @@ def render_insights(ctx: DashboardContext) -> None:
                 value_label="Current flights",
                 color_scale="Greens",
                 empty_message="No company-specific routes appeared for the first time.",
-                top_n=top_n,
+                top_n=ctx.top_n,
             )
         with chart_disappeared_company_routes:
             _render_insight_chart(
@@ -309,40 +287,40 @@ def render_insights(ctx: DashboardContext) -> None:
                 value_label="Previous flights",
                 color_scale="Oranges",
                 empty_message="No company-specific routes disappeared.",
-                top_n=top_n,
+                top_n=ctx.top_n,
             )
         map_new_company_routes, map_disappeared_company_routes = st.columns(2)
         with map_new_company_routes:
             _render_insight_route_map(
                 "New routes by company",
-                df,
+                ctx.df,
                 insights.new_company_routes,
                 insights.current,
                 airline_col=insights_airline_col,
                 bidirectional_focus_airport=bidirectional_focus_airport,
-                global_mode=global_mode,
-                direction=direction,
-                focus_airport=focus_airport,
-                focus_lat=focus_lat,
-                focus_lon=focus_lon,
-                geo_scope=geo_scope,
-                top_routes_n=top_n,
+                global_mode=ctx.global_mode,
+                direction=ctx.direction,
+                focus_airport=ctx.focus_airport,
+                focus_lat=ctx.focus_lat,
+                focus_lon=ctx.focus_lon,
+                geo_scope=ctx.geo_scope,
+                top_routes_n=ctx.top_n,
             )
         with map_disappeared_company_routes:
             _render_insight_route_map(
                 "Disappeared routes by company",
-                df,
+                ctx.df,
                 insights.disappeared_company_routes,
                 insights.previous,
                 airline_col=insights_airline_col,
                 bidirectional_focus_airport=bidirectional_focus_airport,
-                global_mode=global_mode,
-                direction=direction,
-                focus_airport=focus_airport,
-                focus_lat=focus_lat,
-                focus_lon=focus_lon,
-                geo_scope=geo_scope,
-                top_routes_n=top_n,
+                global_mode=ctx.global_mode,
+                direction=ctx.direction,
+                focus_airport=ctx.focus_airport,
+                focus_lat=ctx.focus_lat,
+                focus_lon=ctx.focus_lon,
+                geo_scope=ctx.geo_scope,
+                top_routes_n=ctx.top_n,
             )
         table_new_company_routes, table_disappeared_company_routes = st.columns(2)
         with table_new_company_routes:
@@ -381,7 +359,7 @@ def render_insights(ctx: DashboardContext) -> None:
                 value_label=frequency_metric,
                 color_scale="Greens",
                 empty_message="No routes crossed the increase thresholds.",
-                top_n=top_n,
+                top_n=ctx.top_n,
             )
         with chart_frequency_drops_right:
             _render_insight_chart(
@@ -391,41 +369,41 @@ def render_insights(ctx: DashboardContext) -> None:
                 value_label=frequency_metric,
                 color_scale="Reds_r",
                 empty_message="No routes crossed the drop thresholds.",
-                top_n=top_n,
+                top_n=ctx.top_n,
                 ascending=True,
             )
         map_frequency_increases_left, map_frequency_drops_right = st.columns(2)
         with map_frequency_increases_left:
             _render_insight_route_map(
                 "Frequency increases",
-                df,
+                ctx.df,
                 insights.frequency_increases,
                 insights.current,
                 airline_col=insights_airline_col,
                 bidirectional_focus_airport=bidirectional_focus_airport,
-                global_mode=global_mode,
-                direction=direction,
-                focus_airport=focus_airport,
-                focus_lat=focus_lat,
-                focus_lon=focus_lon,
-                geo_scope=geo_scope,
-                top_routes_n=top_n,
+                global_mode=ctx.global_mode,
+                direction=ctx.direction,
+                focus_airport=ctx.focus_airport,
+                focus_lat=ctx.focus_lat,
+                focus_lon=ctx.focus_lon,
+                geo_scope=ctx.geo_scope,
+                top_routes_n=ctx.top_n,
             )
         with map_frequency_drops_right:
             _render_insight_route_map(
                 "Frequency drops",
-                df,
+                ctx.df,
                 insights.frequency_drops,
                 insights.current,
                 airline_col=insights_airline_col,
                 bidirectional_focus_airport=bidirectional_focus_airport,
-                global_mode=global_mode,
-                direction=direction,
-                focus_airport=focus_airport,
-                focus_lat=focus_lat,
-                focus_lon=focus_lon,
-                geo_scope=geo_scope,
-                top_routes_n=top_n,
+                global_mode=ctx.global_mode,
+                direction=ctx.direction,
+                focus_airport=ctx.focus_airport,
+                focus_lat=ctx.focus_lat,
+                focus_lon=ctx.focus_lon,
+                geo_scope=ctx.geo_scope,
+                top_routes_n=ctx.top_n,
             )
         table_frequency_increases_left, table_frequency_drops_right = st.columns(2)
         with table_frequency_increases_left:

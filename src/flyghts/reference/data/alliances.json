@@ -1,0 +1,1345 @@
+{
+"source": "OpenTravelData optd_airline_alliance_membership.csv",
+"license": "CC-BY-4.0",
+"note": "Current membership only (empty to_date in OPTD). OPTD can lag official alliance lists.",
+"by_iata": {
+"AA": {
+"iata": "AA",
+"name": "American Airlines",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "AAL"
+},
+"MQ": {
+"iata": "MQ",
+"name": "Envoy Air",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "EGF"
+},
+"AX": {
+"iata": "AX",
+"name": "Trans States Airlines",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "LOF"
+},
+"US": {
+"iata": "US",
+"name": "US Airways",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "USA"
+},
+"BA": {
+"iata": "BA",
+"name": "British Airways",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "BAW"
+},
+"CJ": {
+"iata": "CJ",
+"name": "BA CityFlyer",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "CBF"
+},
+"MN": {
+"iata": "MN",
+"name": "Comair",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "CAW"
+},
+"LV": {
+"iata": "LV",
+"name": "OpenSkies",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "LBC"
+},
+"EZ": {
+"iata": "EZ",
+"name": "Sun Air of Scandinavia",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "EIA"
+},
+"CX": {
+"iata": "CX",
+"name": "Cathay Pacific",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "CPA"
+},
+"KA": {
+"iata": "KA",
+"name": "Cathay Dragon",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "HDA"
+},
+"AY": {
+"iata": "AY",
+"name": "Finnair",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "FIN"
+},
+"IB": {
+"iata": "IB",
+"name": "Iberia",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "IBE"
+},
+"YW": {
+"iata": "YW",
+"name": "Air Nostrum",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "ANE"
+},
+"I2": {
+"iata": "I2",
+"name": "Iberia Express",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "IBS"
+},
+"JL": {
+"iata": "JL",
+"name": "Japan Airlines",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "JAL"
+},
+"NU": {
+"iata": "NU",
+"name": "Japan Transocean Air",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "JTA"
+},
+"LA": {
+"iata": "LA",
+"name": "LATAM Chile",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "LAN"
+},
+"4M": {
+"iata": "4M",
+"name": "LATAM Argentina",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "DSM"
+},
+"4C": {
+"iata": "4C",
+"name": "LATAM Colombia",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "ARE"
+},
+"XL": {
+"iata": "XL",
+"name": "LATAM Ecuador",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "LNE"
+},
+"LU": {
+"iata": "LU",
+"name": "LAN Express",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "LXP"
+},
+"LP": {
+"iata": "LP",
+"name": "LATAM Per\u00fa",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "LPE"
+},
+"JJ": {
+"iata": "JJ",
+"name": "LATAM Brasil",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "TAM"
+},
+"QF": {
+"iata": "QF",
+"name": "Qantas",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "QFA"
+},
+"NC": {
+"iata": "NC",
+"name": "Cobham Aviation Services Australia",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "NJS"
+},
+"RJ": {
+"iata": "RJ",
+"name": "Royal Jordanian",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "RJA"
+},
+"S7": {
+"iata": "S7",
+"name": "S7 Airlines",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "SBI"
+},
+"GH": {
+"iata": "GH",
+"name": "Globus",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "GLP"
+},
+"QR": {
+"iata": "QR",
+"name": "Qatar Airways",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "QTR"
+},
+"UL": {
+"iata": "UL",
+"name": "SriLankan Airlines",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "ALK"
+},
+"MH": {
+"iata": "MH",
+"name": "Malaysia Airlines",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "MAS"
+},
+"AT": {
+"iata": "AT",
+"name": "Royal Air Maroc",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "RAM"
+},
+"FN": {
+"iata": "FN",
+"name": "Royal Air Maroc Express",
+"alliance": "oneworld",
+"alliance_type": "affiliate"
+},
+"AS": {
+"iata": "AS",
+"name": "Alaska Airlines",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "ASA"
+},
+"QX": {
+"iata": "QX",
+"name": "Horizon Air",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "QXE"
+},
+"SU": {
+"iata": "SU",
+"name": "Aeroflot",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "AFL"
+},
+"D9": {
+"iata": "D9",
+"name": "Donavia",
+"alliance": "skyteam",
+"alliance_type": "affiliate",
+"icao": "DNV"
+},
+"AR": {
+"iata": "AR",
+"name": "Aerol\u00edneas Argentinas",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "ARG"
+},
+"AU": {
+"iata": "AU",
+"name": "Austral L\u00edneas A\u00e9reas",
+"alliance": "skyteam",
+"alliance_type": "affiliate",
+"icao": "AUT"
+},
+"AM": {
+"iata": "AM",
+"name": "AeroMexico",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "AMX"
+},
+"5D": {
+"iata": "5D",
+"name": "Aerom\u00e9xico Connect",
+"alliance": "skyteam",
+"alliance_type": "affiliate",
+"icao": "SLI"
+},
+"UX": {
+"iata": "UX",
+"name": "Air Europa",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "AEA"
+},
+"AF": {
+"iata": "AF",
+"name": "Air France",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "AFR"
+},
+"A5": {
+"iata": "A5",
+"name": "HOP!",
+"alliance": "skyteam",
+"alliance_type": "affiliate",
+"icao": "RLA"
+},
+"WX": {
+"iata": "WX",
+"name": "CityJet",
+"alliance": "skyteam",
+"alliance_type": "affiliate",
+"icao": "BCY"
+},
+"AZ": {
+"iata": "AZ",
+"name": "ITA Airways",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "AZA"
+},
+"CT": {
+"iata": "CT",
+"name": "Alitalia CityLiner",
+"alliance": "skyteam",
+"alliance_type": "affiliate",
+"icao": "CAT"
+},
+"CI": {
+"iata": "CI",
+"name": "China Airlines",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "CAL"
+},
+"AE": {
+"iata": "AE",
+"name": "Mandarin Airlines",
+"alliance": "skyteam",
+"alliance_type": "affiliate",
+"icao": "MDA"
+},
+"MU": {
+"iata": "MU",
+"name": "China Eastern Airlines",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "CES"
+},
+"FM": {
+"iata": "FM",
+"name": "Shanghai Airlines",
+"alliance": "skyteam",
+"alliance_type": "affiliate",
+"icao": "CSH"
+},
+"OK": {
+"iata": "OK",
+"name": "Czech Airlines",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "CSA"
+},
+"DL": {
+"iata": "DL",
+"name": "Delta Air Lines",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "DAL"
+},
+"KQ": {
+"iata": "KQ",
+"name": "Kenya Airways",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "KQA"
+},
+"KL": {
+"iata": "KL",
+"name": "KLM",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "KLM"
+},
+"KE": {
+"iata": "KE",
+"name": "Korean Air",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "KAL"
+},
+"ME": {
+"iata": "ME",
+"name": "Middle East Airlines",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "MEA"
+},
+"SV": {
+"iata": "SV",
+"name": "Saudia",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "SVA"
+},
+"RO": {
+"iata": "RO",
+"name": "TAROM",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "ROT"
+},
+"VN": {
+"iata": "VN",
+"name": "Vietnam Airlines",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "HVN"
+},
+"MF": {
+"iata": "MF",
+"name": "XiamenAir",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "CXA"
+},
+"GA": {
+"iata": "GA",
+"name": "Garuda Indonesia",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "GIA"
+},
+"VS": {
+"iata": "VS",
+"name": "Virgin Atlantic",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "VIR"
+},
+"A3": {
+"iata": "A3",
+"name": "Aegean Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "AEE"
+},
+"OA": {
+"iata": "OA",
+"name": "Olympic Air",
+"alliance": "star_alliance",
+"alliance_type": "affiliate",
+"icao": "OAL"
+},
+"AC": {
+"iata": "AC",
+"name": "Air Canada",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "ACA"
+},
+"AI": {
+"iata": "AI",
+"name": "Air India",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "AIC"
+},
+"IX": {
+"iata": "IX",
+"name": "Air India Express",
+"alliance": "star_alliance",
+"alliance_type": "affiliate",
+"icao": "AXB"
+},
+"9I": {
+"iata": "9I",
+"name": "Air India Regional",
+"alliance": "star_alliance",
+"alliance_type": "affiliate",
+"icao": "TKY"
+},
+"AV": {
+"iata": "AV",
+"name": "Avianca",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "AVA"
+},
+"BR": {
+"iata": "BR",
+"name": "EVA Air",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "EVA"
+},
+"CA": {
+"iata": "CA",
+"name": "Air China",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "CCA"
+},
+"CL": {
+"iata": "CL",
+"name": "Lufthansa CityLine",
+"alliance": "star_alliance",
+"alliance_type": "affiliate",
+"icao": "CLH"
+},
+"CM": {
+"iata": "CM",
+"name": "Copa Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "CMP"
+},
+"ET": {
+"iata": "ET",
+"name": "Ethiopian Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "ETH"
+},
+"HO": {
+"iata": "HO",
+"name": "Juneyao Airlines",
+"alliance": "star_alliance",
+"alliance_type": "affiliate",
+"icao": "DJA"
+},
+"LH": {
+"iata": "LH",
+"name": "Lufthansa",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "DLH"
+},
+"LO": {
+"iata": "LO",
+"name": "LOT Polish Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "LOT"
+},
+"LX": {
+"iata": "LX",
+"name": "Swiss International Air Lines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "SWR"
+},
+"MS": {
+"iata": "MS",
+"name": "EgyptAir",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "MSR"
+},
+"NH": {
+"iata": "NH",
+"name": "All Nippon Airways",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "ANA"
+},
+"NZ": {
+"iata": "NZ",
+"name": "Air New Zealand",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "ANZ"
+},
+"OS": {
+"iata": "OS",
+"name": "Austrian Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "AUA"
+},
+"OU": {
+"iata": "OU",
+"name": "Croatia Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "CTN"
+},
+"OZ": {
+"iata": "OZ",
+"name": "Asiana Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "AAR"
+},
+"SA": {
+"iata": "SA",
+"name": "South African Airways",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "SAA"
+},
+"SK": {
+"iata": "SK",
+"name": "Scandinavian Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "SAS"
+},
+"SN": {
+"iata": "SN",
+"name": "Brussels Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "DAT"
+},
+"SQ": {
+"iata": "SQ",
+"name": "Singapore Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "SIA"
+},
+"TG": {
+"iata": "TG",
+"name": "Thai Airways",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "THA"
+},
+"TK": {
+"iata": "TK",
+"name": "Turkish Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "THY"
+},
+"TP": {
+"iata": "TP",
+"name": "TAP Portugal",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "TAP"
+},
+"UA": {
+"iata": "UA",
+"name": "United Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "UAL"
+},
+"ZH": {
+"iata": "ZH",
+"name": "Shenzhen Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "CSZ"
+},
+"4Y": {
+"iata": "4Y",
+"name": "Discover Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "RBU"
+}
+},
+"by_icao": {
+"AAL": {
+"iata": "AA",
+"name": "American Airlines",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "AAL"
+},
+"EGF": {
+"iata": "MQ",
+"name": "Envoy Air",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "EGF"
+},
+"LOF": {
+"iata": "AX",
+"name": "Trans States Airlines",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "LOF"
+},
+"USA": {
+"iata": "US",
+"name": "US Airways",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "USA"
+},
+"BAW": {
+"iata": "BA",
+"name": "British Airways",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "BAW"
+},
+"CBF": {
+"iata": "CJ",
+"name": "BA CityFlyer",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "CBF"
+},
+"CAW": {
+"iata": "MN",
+"name": "Comair",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "CAW"
+},
+"LBC": {
+"iata": "LV",
+"name": "OpenSkies",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "LBC"
+},
+"EIA": {
+"iata": "EZ",
+"name": "Sun Air of Scandinavia",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "EIA"
+},
+"CPA": {
+"iata": "CX",
+"name": "Cathay Pacific",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "CPA"
+},
+"HDA": {
+"iata": "KA",
+"name": "Cathay Dragon",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "HDA"
+},
+"FIN": {
+"iata": "AY",
+"name": "Finnair",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "FIN"
+},
+"IBE": {
+"iata": "IB",
+"name": "Iberia",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "IBE"
+},
+"ANE": {
+"iata": "YW",
+"name": "Air Nostrum",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "ANE"
+},
+"IBS": {
+"iata": "I2",
+"name": "Iberia Express",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "IBS"
+},
+"JAL": {
+"iata": "JL",
+"name": "Japan Airlines",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "JAL"
+},
+"JTA": {
+"iata": "NU",
+"name": "Japan Transocean Air",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "JTA"
+},
+"LAN": {
+"iata": "LA",
+"name": "LATAM Chile",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "LAN"
+},
+"DSM": {
+"iata": "4M",
+"name": "LATAM Argentina",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "DSM"
+},
+"ARE": {
+"iata": "4C",
+"name": "LATAM Colombia",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "ARE"
+},
+"LNE": {
+"iata": "XL",
+"name": "LATAM Ecuador",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "LNE"
+},
+"LXP": {
+"iata": "LU",
+"name": "LAN Express",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "LXP"
+},
+"LPE": {
+"iata": "LP",
+"name": "LATAM Per\u00fa",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "LPE"
+},
+"TAM": {
+"iata": "JJ",
+"name": "LATAM Brasil",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "TAM"
+},
+"QFA": {
+"iata": "QF",
+"name": "Qantas",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "QFA"
+},
+"NJS": {
+"iata": "NC",
+"name": "Cobham Aviation Services Australia",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "NJS"
+},
+"RJA": {
+"iata": "RJ",
+"name": "Royal Jordanian",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "RJA"
+},
+"SBI": {
+"iata": "S7",
+"name": "S7 Airlines",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "SBI"
+},
+"GLP": {
+"iata": "GH",
+"name": "Globus",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "GLP"
+},
+"QTR": {
+"iata": "QR",
+"name": "Qatar Airways",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "QTR"
+},
+"ALK": {
+"iata": "UL",
+"name": "SriLankan Airlines",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "ALK"
+},
+"MAS": {
+"iata": "MH",
+"name": "Malaysia Airlines",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "MAS"
+},
+"RAM": {
+"iata": "AT",
+"name": "Royal Air Maroc",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "RAM"
+},
+"ASA": {
+"iata": "AS",
+"name": "Alaska Airlines",
+"alliance": "oneworld",
+"alliance_type": "member",
+"icao": "ASA"
+},
+"QXE": {
+"iata": "QX",
+"name": "Horizon Air",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"icao": "QXE"
+},
+"AFL": {
+"iata": "SU",
+"name": "Aeroflot",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "AFL"
+},
+"DNV": {
+"iata": "D9",
+"name": "Donavia",
+"alliance": "skyteam",
+"alliance_type": "affiliate",
+"icao": "DNV"
+},
+"ARG": {
+"iata": "AR",
+"name": "Aerol\u00edneas Argentinas",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "ARG"
+},
+"AUT": {
+"iata": "AU",
+"name": "Austral L\u00edneas A\u00e9reas",
+"alliance": "skyteam",
+"alliance_type": "affiliate",
+"icao": "AUT"
+},
+"AMX": {
+"iata": "AM",
+"name": "AeroMexico",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "AMX"
+},
+"SLI": {
+"iata": "5D",
+"name": "Aerom\u00e9xico Connect",
+"alliance": "skyteam",
+"alliance_type": "affiliate",
+"icao": "SLI"
+},
+"AEA": {
+"iata": "UX",
+"name": "Air Europa",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "AEA"
+},
+"AFR": {
+"iata": "AF",
+"name": "Air France",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "AFR"
+},
+"RLA": {
+"iata": "A5",
+"name": "HOP!",
+"alliance": "skyteam",
+"alliance_type": "affiliate",
+"icao": "RLA"
+},
+"BCY": {
+"iata": "WX",
+"name": "CityJet",
+"alliance": "skyteam",
+"alliance_type": "affiliate",
+"icao": "BCY"
+},
+"AZA": {
+"iata": "AZ",
+"name": "ITA Airways",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "AZA"
+},
+"CAT": {
+"iata": "CT",
+"name": "Alitalia CityLiner",
+"alliance": "skyteam",
+"alliance_type": "affiliate",
+"icao": "CAT"
+},
+"CAL": {
+"iata": "CI",
+"name": "China Airlines",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "CAL"
+},
+"MDA": {
+"iata": "AE",
+"name": "Mandarin Airlines",
+"alliance": "skyteam",
+"alliance_type": "affiliate",
+"icao": "MDA"
+},
+"CES": {
+"iata": "MU",
+"name": "China Eastern Airlines",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "CES"
+},
+"CSH": {
+"iata": "FM",
+"name": "Shanghai Airlines",
+"alliance": "skyteam",
+"alliance_type": "affiliate",
+"icao": "CSH"
+},
+"CSA": {
+"iata": "OK",
+"name": "Czech Airlines",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "CSA"
+},
+"DAL": {
+"iata": "DL",
+"name": "Delta Air Lines",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "DAL"
+},
+"KQA": {
+"iata": "KQ",
+"name": "Kenya Airways",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "KQA"
+},
+"KLM": {
+"iata": "KL",
+"name": "KLM",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "KLM"
+},
+"KAL": {
+"iata": "KE",
+"name": "Korean Air",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "KAL"
+},
+"MEA": {
+"iata": "ME",
+"name": "Middle East Airlines",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "MEA"
+},
+"SVA": {
+"iata": "SV",
+"name": "Saudia",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "SVA"
+},
+"ROT": {
+"iata": "RO",
+"name": "TAROM",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "ROT"
+},
+"HVN": {
+"iata": "VN",
+"name": "Vietnam Airlines",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "HVN"
+},
+"CXA": {
+"iata": "MF",
+"name": "XiamenAir",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "CXA"
+},
+"GIA": {
+"iata": "GA",
+"name": "Garuda Indonesia",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "GIA"
+},
+"VIR": {
+"iata": "VS",
+"name": "Virgin Atlantic",
+"alliance": "skyteam",
+"alliance_type": "member",
+"icao": "VIR"
+},
+"AEE": {
+"iata": "A3",
+"name": "Aegean Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "AEE"
+},
+"OAL": {
+"iata": "OA",
+"name": "Olympic Air",
+"alliance": "star_alliance",
+"alliance_type": "affiliate",
+"icao": "OAL"
+},
+"ACA": {
+"iata": "AC",
+"name": "Air Canada",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "ACA"
+},
+"AIC": {
+"iata": "AI",
+"name": "Air India",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "AIC"
+},
+"AXB": {
+"iata": "IX",
+"name": "Air India Express",
+"alliance": "star_alliance",
+"alliance_type": "affiliate",
+"icao": "AXB"
+},
+"TKY": {
+"iata": "9I",
+"name": "Air India Regional",
+"alliance": "star_alliance",
+"alliance_type": "affiliate",
+"icao": "TKY"
+},
+"AVA": {
+"iata": "AV",
+"name": "Avianca",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "AVA"
+},
+"EVA": {
+"iata": "BR",
+"name": "EVA Air",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "EVA"
+},
+"CCA": {
+"iata": "CA",
+"name": "Air China",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "CCA"
+},
+"CLH": {
+"iata": "CL",
+"name": "Lufthansa CityLine",
+"alliance": "star_alliance",
+"alliance_type": "affiliate",
+"icao": "CLH"
+},
+"CMP": {
+"iata": "CM",
+"name": "Copa Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "CMP"
+},
+"ETH": {
+"iata": "ET",
+"name": "Ethiopian Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "ETH"
+},
+"DJA": {
+"iata": "HO",
+"name": "Juneyao Airlines",
+"alliance": "star_alliance",
+"alliance_type": "affiliate",
+"icao": "DJA"
+},
+"DLH": {
+"iata": "LH",
+"name": "Lufthansa",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "DLH"
+},
+"LOT": {
+"iata": "LO",
+"name": "LOT Polish Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "LOT"
+},
+"SWR": {
+"iata": "LX",
+"name": "Swiss International Air Lines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "SWR"
+},
+"MSR": {
+"iata": "MS",
+"name": "EgyptAir",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "MSR"
+},
+"ANA": {
+"iata": "NH",
+"name": "All Nippon Airways",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "ANA"
+},
+"ANZ": {
+"iata": "NZ",
+"name": "Air New Zealand",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "ANZ"
+},
+"AUA": {
+"iata": "OS",
+"name": "Austrian Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "AUA"
+},
+"CTN": {
+"iata": "OU",
+"name": "Croatia Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "CTN"
+},
+"AAR": {
+"iata": "OZ",
+"name": "Asiana Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "AAR"
+},
+"SAA": {
+"iata": "SA",
+"name": "South African Airways",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "SAA"
+},
+"SAS": {
+"iata": "SK",
+"name": "Scandinavian Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "SAS"
+},
+"DAT": {
+"iata": "SN",
+"name": "Brussels Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "DAT"
+},
+"SIA": {
+"iata": "SQ",
+"name": "Singapore Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "SIA"
+},
+"THA": {
+"iata": "TG",
+"name": "Thai Airways",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "THA"
+},
+"THY": {
+"iata": "TK",
+"name": "Turkish Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "THY"
+},
+"TAP": {
+"iata": "TP",
+"name": "TAP Portugal",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "TAP"
+},
+"UAL": {
+"iata": "UA",
+"name": "United Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "UAL"
+},
+"CSZ": {
+"iata": "ZH",
+"name": "Shenzhen Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "CSZ"
+},
+"RBU": {
+"iata": "4Y",
+"name": "Discover Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"icao": "RBU"
+}
+}
+}

@@ -4,10 +4,13 @@ import pytest
 
 from flyghts.reference import (
     AirlineInfo,
+    AllianceInfo,
     AirportInfo,
     ParsedStatus,
     get_airline,
     get_airport,
+    get_alliance,
+    get_alliance_by_iata,
     parse_status,
 )
 
@@ -82,6 +85,49 @@ class TestGetAirline:
         info2 = get_airline("CPA")
         assert info1 is not None and info2 is not None
         assert info1.icao == info2.icao
+
+
+class TestGetAlliance:
+    """Tests for alliance membership lookup."""
+
+    def test_cathay_oneworld_by_icao(self) -> None:
+        info = get_alliance("CPA")
+        assert info is not None
+        assert isinstance(info, AllianceInfo)
+        assert info.alliance == "oneworld"
+        assert info.alliance_type == "member"
+        assert info.is_member
+
+    def test_cathay_by_iata(self) -> None:
+        info = get_alliance_by_iata("CX")
+        assert info is not None
+        assert info.alliance == "oneworld"
+
+    def test_delta_skyteam(self) -> None:
+        info = get_alliance("DAL")
+        assert info is not None
+        assert info.alliance == "skyteam"
+
+    def test_united_star_alliance(self) -> None:
+        info = get_alliance("UAL")
+        assert info is not None
+        assert info.alliance == "star_alliance"
+
+    def test_unknown_returns_none(self) -> None:
+        assert get_alliance("ZZQ") is None
+        assert get_alliance_by_iata("ZZ") is None
+
+    def test_empty_returns_none(self) -> None:
+        assert get_alliance("") is None
+        assert get_alliance_by_iata("") is None
+
+    def test_members_only_filters_affiliates(self) -> None:
+        # Horizon Air (QX) is a oneworld affiliate in OPTD
+        assert get_alliance_by_iata("QX", members_only=True) is None
+        affiliate = get_alliance_by_iata("QX", members_only=False)
+        assert affiliate is not None
+        assert affiliate.alliance_type == "affiliate"
+        assert affiliate.alliance == "oneworld"
 
 
 class TestParseStatus:

@@ -86,6 +86,24 @@ uv run python scripts/validate_reference_data.py
 uv run python scripts/validate_reference_data.py --data-dir data/us/
 ```
 
+### Refresh Reference Data
+
+Airports and airlines come from OpenFlights; alliance membership from
+[OpenTravelData](https://github.com/opentraveldata/opentraveldata)
+(`optd_airline_alliance_membership.csv`, CC-BY 4.0). Only current OPTD rows
+(empty `to_date`) are bundled. OPTD can lag official alliance lists.
+
+```bash
+# Refresh airports, airlines, and alliances
+uv run python scripts/fetch_reference_data.py
+
+# Alliances only (used by the monthly GitHub Action)
+uv run python scripts/fetch_reference_data.py --alliances-only
+```
+
+A GitHub Actions workflow runs monthly and commits `alliances.json` when OPTD
+content changes. Trigger manually via Actions > "Update alliance data".
+
 ## Flight Audit
 
 Query and analyze flight traffic between routes (e.g. Hong Kong <-> Taipei).
@@ -125,5 +143,6 @@ uv run streamlit run streamlit/flight_dashboard.py
 1. Push the repo to GitHub (including `data/hkg/*.csv` files).
 2. Connect to [Streamlit Community Cloud](https://share.streamlit.io) and deploy `streamlit/flight_dashboard.py`.
 3. A GitHub Actions workflow runs daily at 02:00 HKT, fetches the last 2 days of HKG flight data, and commits the updated CSVs.
+4. Another workflow refreshes airline alliance membership monthly from OpenTravelData.
 
-To trigger a manual refresh, go to Actions > "Update flight data" > Run workflow.
+To trigger a manual refresh, go to Actions > "Update flight data" or "Update alliance data" > Run workflow.

@@ -8,7 +8,6 @@ which entries need to be added to _AIRLINE_OVERRIDES / _AIRPORT_OVERRIDES.
 
 Usage:
     uv run python scripts/validate_reference_data.py                        # all sources
-    uv run python scripts/validate_reference_data.py --data-dir data/korea/
     uv run python scripts/validate_reference_data.py --data-dir data/us/
     uv run python scripts/validate_reference_data.py --data-dir data/hkg/
 """

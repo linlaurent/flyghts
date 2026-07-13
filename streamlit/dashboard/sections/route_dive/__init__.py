@@ -1,10 +1,11 @@
 """Route deep dive section."""
 
 import pandas as pd
-import streamlit as st
 
+import streamlit as st
 from flyghts.reference import get_airport
 
+from ... import action_logger as al
 from ...context import DashboardContext
 from ...formatting import (
     RouteCityKey,
@@ -23,7 +24,7 @@ def render_route_dive(ctx: DashboardContext) -> None:
     route_mode_options = ["By airport", "By city", "By province"]
     if ctx.show_country:
         route_mode_options.append("By country")
-    route_mode = st.radio(
+    route_mode = al.radio(
         "Route by",
         options=route_mode_options,
         index=0,
@@ -41,7 +42,7 @@ def render_route_dive(ctx: DashboardContext) -> None:
             "By province": "provinces",
             "By country": "countries",
         }[route_mode]
-        route_multi_airport_only = st.checkbox(
+        route_multi_airport_only = al.checkbox(
             f"Only {_route_group_label} with multiple airports",
             value=True,
             help=(
@@ -99,7 +100,9 @@ def render_route_dive(ctx: DashboardContext) -> None:
             _route_city_iatas.setdefault(destination_key, set()).add(destination)
             city_pair = tuple(sorted((origin_key, destination_key)))
             _route_city_counts[city_pair] = _route_city_counts.get(city_pair, 0) + 1
-        focus_city_key = _airport_city_key(ctx.focus_airport) if ctx.focus_airport else None
+        focus_city_key = (
+            _airport_city_key(ctx.focus_airport) if ctx.focus_airport else None
+        )
         for (city_a, city_b), count in sorted(
             _route_city_counts.items(), key=lambda x: -x[1]
         ):
@@ -166,28 +169,28 @@ def render_route_dive(ctx: DashboardContext) -> None:
     col_search_r, col_select_r = st.columns(2)
     with col_search_r:
         if route_by_country:
-            route_search = st.text_input(
+            route_search = al.text_input(
                 "Search routes by country name",
                 placeholder="e.g. Japan, United States",
                 help="Filter the route list by typing a country name.",
                 key="route_dive_search",
             )
         elif route_by_province:
-            route_search = st.text_input(
+            route_search = al.text_input(
                 "Search routes by province or state name",
                 placeholder="e.g. Guangdong Province, Georgia, California",
                 help="Filter the route list by typing a province, state, or region name.",
                 key="route_dive_search",
             )
         elif route_by_city:
-            route_search = st.text_input(
+            route_search = al.text_input(
                 "Search routes by city, country, or airport code",
                 placeholder="e.g. New York, Los Angeles, JFK",
                 help="Filter the route list by typing a city, country, or airport code.",
                 key="route_dive_search",
             )
         else:
-            route_search = st.text_input(
+            route_search = al.text_input(
                 "Search routes by airport code or name",
                 placeholder="e.g. LAX, Atlanta, SFO",
                 help="Filter the route list by typing airport code (IATA) or airport name.",
@@ -209,7 +212,7 @@ def render_route_dive(ctx: DashboardContext) -> None:
         )
     else:
         with col_select_r:
-            sel_route_display = st.selectbox(
+            sel_route_display = al.selectbox(
                 "Select route",
                 options=filtered_routes,
                 index=0,
@@ -254,8 +257,12 @@ def render_route_dive(ctx: DashboardContext) -> None:
                 sel_region=sel_region if route_by_country or route_by_province else "",
                 city_a=city_a if route_by_city else None,
                 city_b=city_b if route_by_city else None,
-                airport_a=airport_a if not (route_by_country or route_by_province or route_by_city) else "",
-                airport_b=airport_b if not (route_by_country or route_by_province or route_by_city) else "",
+                airport_a=airport_a
+                if not (route_by_country or route_by_province or route_by_city)
+                else "",
+                airport_b=airport_b
+                if not (route_by_country or route_by_province or route_by_city)
+                else "",
                 _route_region_airports=_route_region_airports,
                 _route_region_country=_route_region_country,
                 _route_city_iatas=_route_city_iatas if route_by_city else {},

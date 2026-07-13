@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import pandas as pd
-import streamlit as st
 
+import streamlit as st
 from flyghts.reference import get_airport
 
+from . import action_logger as al
 from .config import DATASETS
 from .context import DashboardContext
 from .data import apply_filters, load_flights
@@ -16,7 +17,7 @@ def build_dashboard_context() -> DashboardContext | None:
     """Render sidebar controls, page header, and filtered flight context."""
     with st.sidebar:
         st.header("Dataset")
-        dataset_key = st.radio(
+        dataset_key = al.radio(
             "Dataset",
             options=list(DATASETS.keys()),
             index=0,
@@ -34,7 +35,7 @@ def build_dashboard_context() -> DashboardContext | None:
         if is_us:
             st.markdown("---")
             st.header("Mode")
-            mode_sel = st.radio(
+            mode_sel = al.radio(
                 "Mode",
                 options=["Global network", "Focus airport"],
                 index=0,
@@ -70,7 +71,7 @@ def build_dashboard_context() -> DashboardContext | None:
 
             st.markdown("---")
             st.header("Focus airport")
-            sel_airport_display = st.selectbox(
+            sel_airport_display = al.selectbox(
                 "Airport",
                 options=airport_options,
                 index=0,
@@ -116,7 +117,7 @@ def build_dashboard_context() -> DashboardContext | None:
         ]
         if is_us:
             section_options.append("Delay analysis")
-        section = st.radio(
+        section = al.radio(
             "View",
             options=section_options,
             index=0,
@@ -128,7 +129,7 @@ def build_dashboard_context() -> DashboardContext | None:
         if global_mode:
             direction = "Both"
         else:
-            direction = st.radio(
+            direction = al.radio(
                 "Direction",
                 options=["Departures", "Arrivals", "Both"],
                 index=2,
@@ -138,23 +139,23 @@ def build_dashboard_context() -> DashboardContext | None:
                     f"Both = all flights involving {focus_airport}"
                 ),
             )
-        start_date = st.date_input(
+        start_date = al.date_input(
             "Start date",
             value=min_date,
             min_value=min_date,
             max_value=max_date,
         )
-        end_date = st.date_input(
+        end_date = al.date_input(
             "End date",
             value=max_date,
             min_value=min_date,
             max_value=max_date,
         )
-        top_n = st.slider("Top N for rankings", min_value=5, max_value=50, value=10)
+        top_n = al.slider("Top N for rankings", min_value=5, max_value=50, value=10)
 
         has_cargo = "cargo" in df_all.columns
         if has_cargo and not is_us:
-            cargo_filter = st.radio(
+            cargo_filter = al.radio(
                 "Flight type",
                 options=["All", "Passenger only", "Cargo only"],
                 index=1,
@@ -167,7 +168,7 @@ def build_dashboard_context() -> DashboardContext | None:
 
         has_operating = "operating_airline" in df_all.columns
         if has_operating:
-            operating_only = st.checkbox(
+            operating_only = al.checkbox(
                 "Operating carrier only",
                 value=True,
                 help="Exclude code-share duplicates; show one row per physical flight",

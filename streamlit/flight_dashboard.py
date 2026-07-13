@@ -27,6 +27,7 @@ if _PROJECT_SRC.is_dir() and str(_PROJECT_SRC) not in sys.path:
     sys.path.insert(0, str(_PROJECT_SRC))
 
 from dashboard import build_dashboard_context  # noqa: E402
+from dashboard.action_logger import init_action_logger  # noqa: E402
 from dashboard.sections import dispatch_section  # noqa: E402
 
 
@@ -36,6 +37,7 @@ def main() -> None:
         page_icon="✈️",
         layout="wide",
     )
+    init_action_logger()
 
     ctx = build_dashboard_context()
     if ctx is None:

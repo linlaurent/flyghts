@@ -2,6 +2,7 @@
 
 import streamlit as st
 
+from ... import action_logger as al
 from ...context import DashboardContext
 from ...formatting import (
     ALLIANCE_ORDER,
@@ -28,7 +29,7 @@ def render_alliance_dive(ctx: DashboardContext) -> None:
     display_options = [_alliance_label(a) for a in options]
     display_to_id = {_alliance_label(a): a for a in options}
 
-    sel_display = st.selectbox(
+    sel_display = al.selectbox(
         "Select alliance",
         options=display_options,
         index=0,

@@ -3,10 +3,11 @@
 import numpy as np
 import pandas as pd
 import plotly.express as px
-import streamlit as st
 
+import streamlit as st
 from flyghts.reference import get_airline, get_airport
 
+from ... import action_logger as al
 from ...charts import _complete_daily_series, _start_flight_count_axis_at_zero
 from ...components import _render_aggrid
 from ...context import DashboardContext
@@ -413,7 +414,7 @@ def render_single_airline_dive(
             map_point_opts = ["City (airport)", "Province"]
             if ctx.show_country:
                 map_point_opts.append("Country")
-            map_point_by_dive = st.radio(
+            map_point_by_dive = al.radio(
                 "Map points by",
                 options=map_point_opts,
                 index=len(map_point_opts) - 1 if ctx.show_country else 0,

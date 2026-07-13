@@ -4,12 +4,8 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+
 import streamlit as st
-
-from flyghts.reference import get_airline, get_airport
-
-from ..context import DashboardContext
-
 from flyghts.insights import (
     DEFAULT_COMPANY_AIRLINE_COL,
     DEFAULT_MIN_ABSOLUTE_CHANGE_PER_DAY,
@@ -19,13 +15,16 @@ from flyghts.insights import (
     available_period_labels,
     compare_periods,
 )
+from flyghts.reference import get_airline, get_airport
 
+from .. import action_logger as al
 from ..charts import _start_flight_count_axis_at_zero
 from ..components import _render_aggrid, _render_insight_grid
+from ..context import DashboardContext
 from ..formatting import (
     ALLIANCE_ORDER,
-    _alliance_label,
     _airline_label,
+    _alliance_label,
     with_alliance_column,
 )
 from ..insight_ui import (
@@ -47,7 +46,7 @@ def render_insights(ctx: DashboardContext) -> None:
 
     ctl_kind, ctl_current, ctl_comparison = st.columns(3)
     with ctl_kind:
-        period_label = st.selectbox(
+        period_label = al.selectbox(
             "Period type",
             options=["Weekly", "Monthly"],
             index=1,
@@ -59,7 +58,7 @@ def render_insights(ctx: DashboardContext) -> None:
             st.info("At least two periods are required for insights.")
             return
     with ctl_current:
-        current_period = st.selectbox(
+        current_period = al.selectbox(
             "Current period",
             options=period_options,
             index=_default_current_period_index(period_options),
@@ -70,7 +69,7 @@ def render_insights(ctx: DashboardContext) -> None:
         period_options, current_period
     )
     with ctl_comparison:
-        comparison_period = st.selectbox(
+        comparison_period = al.selectbox(
             "Compare with",
             options=comparison_options,
             index=comparison_default_idx,
@@ -93,7 +92,7 @@ def render_insights(ctx: DashboardContext) -> None:
 
     ctl_baseline, ctl_abs, ctl_pct = st.columns(3)
     with ctl_baseline:
-        min_previous_flights = st.number_input(
+        min_previous_flights = al.number_input(
             "Minimum comparison flights",
             min_value=1,
             max_value=10_000,
@@ -103,7 +102,7 @@ def render_insights(ctx: DashboardContext) -> None:
             key="insights_min_previous_flights",
         )
     with ctl_abs:
-        min_absolute_change = st.number_input(
+        min_absolute_change = al.number_input(
             "Minimum change per day",
             min_value=0.1,
             max_value=1000.0,
@@ -113,7 +112,7 @@ def render_insights(ctx: DashboardContext) -> None:
             key="insights_min_absolute_change",
         )
     with ctl_pct:
-        min_percent_change = st.number_input(
+        min_percent_change = al.number_input(
             "Minimum percent change",
             min_value=1.0,
             max_value=100.0,
@@ -487,7 +486,7 @@ def render_insights(ctx: DashboardContext) -> None:
             )
 
     with insight_tabs[4]:
-        frequency_metric = st.radio(
+        frequency_metric = al.radio(
             "Frequency change metric",
             options=["Change/day", "Change (%)"],
             index=0,

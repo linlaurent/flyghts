@@ -1,10 +1,11 @@
 """Airline deep dive section."""
 
 import pandas as pd
-import streamlit as st
 
+import streamlit as st
 from flyghts.reference import get_airline
 
+from ... import action_logger as al
 from ...context import DashboardContext
 from .comparison import render_airline_comparison
 from .single_airline import render_single_airline_dive
@@ -29,7 +30,7 @@ def render_airline_dive(ctx: DashboardContext) -> None:
     else:
         col_search_a, col_select_a = st.columns(2)
         with col_search_a:
-            airline_search = st.text_input(
+            airline_search = al.text_input(
                 "Search airlines by code or name",
                 placeholder="e.g. CPA, Cathay, United",
                 help="Filter the airline list by typing ICAO code or airline name.",
@@ -57,7 +58,7 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                         break
 
             with col_select_a:
-                sel_dive_airline = st.selectbox(
+                sel_dive_airline = al.selectbox(
                     "Select airline",
                     options=filtered_airlines,
                     index=min(default_dive_idx, len(filtered_airlines) - 1),
@@ -70,7 +71,9 @@ def render_airline_dive(ctx: DashboardContext) -> None:
                 else ""
             )
             df_airline = (
-                ctx.df[ctx.df[ctx.airline_col] == dive_icao] if dive_icao else pd.DataFrame()
+                ctx.df[ctx.df[ctx.airline_col] == dive_icao]
+                if dive_icao
+                else pd.DataFrame()
             )
 
             if df_airline.empty:

@@ -23,5 +23,13 @@ alwaysApply: false
 - New sections go in `dashboard/sections/` and register in `dispatch_section`.
 - Shared tab/chart logic goes in `dashboard/tab_charts.py` (or similar), not duplicated across sections.
 - Section files over ~400 lines become a package: `__init__.py` for dispatch, one module per tab or mode.
-- After structural changes, run `uv run pytest tests/test_dashboard_imports.py tests/test_dashboard_chart_rules.py -v`.
+- After structural changes, run `uv run pytest tests/test_dashboard_imports.py tests/test_dashboard_chart_rules.py tests/test_action_logger.py -v`.
 - Then **launch** the dashboard (`uv run streamlit run streamlit/flight_dashboard.py`) and smoke-test via the browser at the **Local URL** that process prints — do not reuse an existing localhost URL (another app may be on that port).
+
+# Action logging
+
+- Log user input widgets via `dashboard.action_logger` wrappers (`al.radio`, `al.selectbox`, `al.multiselect`, `al.slider`, `al.date_input`, `al.text_input`, `al.number_input`, `al.checkbox`), not raw `st.*` calls.
+- Import as `from .. import action_logger as al` (or the correct relative path) and use `al.<widget>(...)`.
+- Only `dashboard/action_logger.py` may call `st.radio` / `st.selectbox` / etc. directly.
+- `st.tabs` cannot report the active tab; leave tabs as `st.tabs` unless intentionally replaced with a valued control that can be logged.
+- Disable logging with `FLYGHITS_ACTION_LOG=0`. Logs go to stderr and `logs/user_actions_YYYY-MM-DD.log`.

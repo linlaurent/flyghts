@@ -4,18 +4,18 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import streamlit as st
 
+import streamlit as st
 from flyghts.reference import get_airline, get_airport
 
-from ..context import DashboardContext
-
+from .. import action_logger as al
 from ..charts import (
     _render_overview_flights_per_day,
     _render_overview_flights_per_day_by_alliance,
     _start_flight_count_axis_at_zero,
 )
 from ..components import _render_aggrid
+from ..context import DashboardContext
 from ..data import get_destination_column, map_point_label_to_aggregate
 from ..formatting import (
     ALLIANCE_ORDER,
@@ -293,7 +293,7 @@ def render_overview(ctx: DashboardContext) -> None:
 
         col_map_airline_g, col_map_alliance_g = st.columns(2)
         with col_map_airline_g:
-            sel_map_airlines_g = st.multiselect(
+            sel_map_airlines_g = al.multiselect(
                 "Filter by airlines",
                 options=map_airline_display_g,
                 default=[],
@@ -301,7 +301,7 @@ def render_overview(ctx: DashboardContext) -> None:
                 key="overview_g_map_airlines",
             )
         with col_map_alliance_g:
-            sel_map_alliances_g = st.multiselect(
+            sel_map_alliances_g = al.multiselect(
                 "Filter by alliance",
                 options=map_alliance_display_g,
                 default=[],
@@ -563,7 +563,7 @@ def render_overview(ctx: DashboardContext) -> None:
             map_point_opts = ["City (airport)", "Province"]
             if ctx.show_country:
                 map_point_opts.append("Country")
-            map_point_by = st.radio(
+            map_point_by = al.radio(
                 "Map points by",
                 options=map_point_opts,
                 index=0,
@@ -571,14 +571,14 @@ def render_overview(ctx: DashboardContext) -> None:
                 help="Show each destination as a precise city/airport, or aggregate by province/state or country.",
             )
         with col_map_airline:
-            sel_map_airlines = st.multiselect(
+            sel_map_airlines = al.multiselect(
                 "Filter by airlines",
                 options=map_airline_display,
                 default=[],
                 help="Leave empty to show all. Select airlines to compare on map with distinct colors.",
             )
         with col_map_alliance:
-            sel_map_alliances = st.multiselect(
+            sel_map_alliances = al.multiselect(
                 "Filter by alliance",
                 options=map_alliance_display,
                 default=[],
@@ -586,7 +586,7 @@ def render_overview(ctx: DashboardContext) -> None:
             )
         if col_map_country is not None:
             with col_map_country:
-                sel_map_countries = st.multiselect(
+                sel_map_countries = al.multiselect(
                     "Filter by country",
                     options=map_country_options,
                     default=[],

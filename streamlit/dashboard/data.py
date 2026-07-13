@@ -1,6 +1,7 @@
 """Data loading and filtering for the flight dashboard."""
 
 import re
+from typing import Literal
 
 import pandas as pd
 import streamlit as st
@@ -8,6 +9,8 @@ import streamlit as st
 from flyghts.reference import get_airport
 
 from .config import DATASETS, PROJECT_ROOT
+
+MapAggregateBy = Literal["airport", "province", "country"]
 
 _DELAY_RE = re.compile(r"\(\+(\d+)min\)")
 
@@ -120,20 +123,46 @@ def parse_delay_minutes(status: str) -> int | None:
     return None
 
 
-def build_map_points(dest_counts: "pd.Series", by_country: bool) -> list[dict]:
+def _map_region_key(iata: str, mode: Literal["province", "country"]) -> str:
+    """Resolve province or country label for map aggregation."""
+    info = get_airport(iata)
+    if mode == "country":
+        return info.country if info and info.country else iata
+    if info:
+        province = getattr(info, "province", "")
+        if province:
+            return province
+        if info.country:
+            return info.country
+    return iata
+
+
+def map_point_label_to_aggregate(map_point_by: str) -> MapAggregateBy:
+    """Map UI radio label to build_map_points aggregate_by mode."""
+    if map_point_by == "Country":
+        return "country"
+    if map_point_by == "Province":
+        return "province"
+    return "airport"
+
+
+def build_map_points(
+    dest_counts: "pd.Series",
+    aggregate_by: MapAggregateBy = "airport",
+) -> list[dict]:
     """Build map point data from destination IATA counts."""
     points: list[dict] = []
-    if by_country:
-        country_agg: dict[str, list[tuple[float, float, int]]] = {}
+    if aggregate_by in ("province", "country"):
+        region_agg: dict[str, list[tuple[float, float, int]]] = {}
         for iata, count in dest_counts.items():
             info = get_airport(iata)
             if not info or (info.latitude == 0 and info.longitude == 0):
                 continue
-            country = info.country or iata
-            if country not in country_agg:
-                country_agg[country] = []
-            country_agg[country].append((info.latitude, info.longitude, count))
-        for country, pts in country_agg.items():
+            region = _map_region_key(iata, aggregate_by)
+            region_agg.setdefault(region, []).append(
+                (info.latitude, info.longitude, count)
+            )
+        for region, pts in region_agg.items():
             total = sum(p[2] for p in pts)
             if total == 0:
                 continue
@@ -141,11 +170,11 @@ def build_map_points(dest_counts: "pd.Series", by_country: bool) -> list[dict]:
             lon = sum(p[1] * p[2] for p in pts) / total
             points.append(
                 {
-                    "iata": country,
+                    "iata": region,
                     "lat": lat,
                     "lon": lon,
                     "count": total,
-                    "label": f"{country}: {total:,} flights",
+                    "label": f"{region}: {total:,} flights",
                 }
             )
     else:

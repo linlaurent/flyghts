@@ -25,9 +25,9 @@ def _dashboard_source() -> str:
 def _dashboard_rule_source() -> str:
     return DASHBOARD_RULE_PATH.read_text()
 
+
 def _section_source(name: str) -> str:
     return (STREAMLIT_DIR / "dashboard" / "sections" / name).read_text()
-
 
 
 def test_flight_count_plotly_axes_start_at_zero() -> None:
@@ -101,7 +101,7 @@ def test_route_deep_dive_supports_grouped_modes() -> None:
     assert 'route_mode_options = ["By airport", "By city", "By province"]' in source
     assert "route_by_province" in source
     assert "route_str_to_region" in source
-    assert "route_by_city = route_mode == \"By city\"" in source
+    assert 'route_by_city = route_mode == "By city"' in source
     assert "route_str_to_city_keys" in source
     assert "Search routes by city, country, or airport code" in source
     assert "Search routes by province or state name" in source
@@ -123,6 +123,44 @@ def test_route_deep_dive_supports_grouped_modes() -> None:
     assert "Airport comparison" in source
     assert "Top airline contributions by airport" in source
     assert "Share of city flights per day by airport" in source
+
+
+def test_province_splits_alongside_city_and_country() -> None:
+    source = _dashboard_source()
+    overview = (STREAMLIT_DIR / "dashboard" / "sections" / "overview.py").read_text()
+    data = (STREAMLIT_DIR / "dashboard" / "data.py").read_text()
+
+    assert 'aggregate_by: MapAggregateBy = "airport"' in data
+    assert '"province"' in data
+    assert "def map_point_label_to_aggregate(" in data
+    assert "Top destinations by province" in overview
+    assert 'map_point_opts = ["City (airport)", "Province"]' in overview
+    assert 'map_point_opts = ["City (airport)", "Province"]' in source
+    assert "options=map_point_opts" in source
+    assert "map_point_label_to_aggregate(" in source
+    assert (
+        '"Province"'
+        in (
+            STREAMLIT_DIR
+            / "dashboard"
+            / "sections"
+            / "airline_dive"
+            / "single_airline.py"
+        ).read_text()
+    )
+    assert (
+        "Province"
+        in (
+            STREAMLIT_DIR
+            / "dashboard"
+            / "sections"
+            / "airline_dive"
+            / "single_airline.py"
+        )
+        .read_text()
+        .split("route_rows_d.append")[1]
+        .split("route_df = pd.DataFrame")[0]
+    )
 
 
 def test_insight_frequency_changes_can_use_percent_metric() -> None:
@@ -277,9 +315,12 @@ def test_overview_flights_per_day_includes_top_airlines() -> None:
     assert "def _render_overview_flights_per_day(" in source
     assert "_render_overview_flights_per_day(" in source
     assert 'total_label = f"Total ({total_avg:.1f} avg/day)"' in source
-    assert 'f"{name} ({avg:.1f} avg/day)"' in source.split(
-        "def _render_overview_flights_per_day("
-    )[1].split("def _render_flight_map(")[0]
+    assert (
+        'f"{name} ({avg:.1f} avg/day)"'
+        in source.split("def _render_overview_flights_per_day(")[1].split(
+            "def _render_flight_map("
+        )[0]
+    )
 
 
 def test_aggrid_columns_expand_with_flex() -> None:

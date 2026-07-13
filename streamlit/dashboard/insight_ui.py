@@ -203,7 +203,7 @@ def _render_insight_route_map(
         focus_airport,
         focus_lat,
         focus_lon,
-        False,
+        "airport",
         [],
         airline_col,
         geo_scope,

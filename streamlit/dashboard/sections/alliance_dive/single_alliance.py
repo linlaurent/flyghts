@@ -9,7 +9,7 @@ from flyghts.reference import get_airport
 from ...charts import _start_flight_count_axis_at_zero
 from ...components import _render_aggrid
 from ...context import DashboardContext
-from ...data import get_destination_column
+from ...data import get_destination_column, map_point_label_to_aggregate
 from ...formatting import _airline_label, _alliance_label
 from ...maps import _render_flight_map, _render_network_map
 from ...tab_charts import (
@@ -214,23 +214,23 @@ def render_single_alliance_dive(
                 top_routes_n=ctx.top_n,
             )
         else:
-            map_by_country = False
+            map_point_opts = ["City (airport)", "Province"]
             if ctx.show_country:
-                map_point_by = st.radio(
-                    "Map points by",
-                    options=["City (airport)", "Country"],
-                    index=1,
-                    horizontal=True,
-                    key="alliance_dive_map_by",
-                )
-                map_by_country = map_point_by == "Country"
+                map_point_opts.append("Country")
+            map_point_by = st.radio(
+                "Map points by",
+                options=map_point_opts,
+                index=len(map_point_opts) - 1 if ctx.show_country else 0,
+                horizontal=True,
+                key="alliance_dive_map_by",
+            )
             _render_flight_map(
                 df_alliance,
                 ctx.direction,
                 ctx.focus_airport,
                 ctx.focus_lat,
                 ctx.focus_lon,
-                map_by_country,
+                map_point_label_to_aggregate(map_point_by),
                 top_codes,
                 ctx.airline_col,
                 ctx.geo_scope,

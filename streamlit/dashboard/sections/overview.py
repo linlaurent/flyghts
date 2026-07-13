@@ -16,9 +16,10 @@ from ..charts import (
     _start_flight_count_axis_at_zero,
 )
 from ..components import _render_aggrid
-from ..data import get_destination_column
+from ..data import get_destination_column, map_point_label_to_aggregate
 from ..formatting import (
     ALLIANCE_ORDER,
+    _airport_province,
     _alliance_label,
     with_alliance_column,
 )
@@ -358,6 +359,23 @@ def render_overview(ctx: DashboardContext) -> None:
             else 0.0
         )
 
+        province_counts: dict[str, int] = {}
+        for iata, count in dest_counts.items():
+            province = _airport_province(iata)
+            province_counts[province] = province_counts.get(province, 0) + count
+        province_sorted = sorted(province_counts.items(), key=lambda x: -x[1])[
+            : ctx.top_n
+        ]
+        province_df = pd.DataFrame(
+            [{"Province": p, "Flights": n} for p, n in province_sorted],
+            columns=["Province", "Flights"],
+        )
+        province_df["Share (%)"] = (
+            (100 * province_df["Flights"] / ctx.total_flights).round(1)
+            if ctx.total_flights
+            else 0.0
+        )
+
         if ctx.show_country:
             country_counts: dict[str, int] = {}
             for iata, count in dest_counts.items():
@@ -411,6 +429,23 @@ def render_overview(ctx: DashboardContext) -> None:
         )
         _start_flight_count_axis_at_zero(fig_city, "x")
 
+        fig_province = px.bar(
+            province_df,
+            x="Flights",
+            y="Province",
+            orientation="h",
+            color="Flights",
+            color_continuous_scale="Tealgrn",
+            text=province_df["Share (%)"].apply(lambda x: f"{x}%"),
+        )
+        fig_province.update_traces(textposition="outside")
+        fig_province.update_layout(
+            height=chart_h,
+            yaxis={"categoryorder": "total ascending"},
+            showlegend=False,
+        )
+        _start_flight_count_axis_at_zero(fig_province, "x")
+
         if ctx.show_country:
             fig_country = px.bar(
                 country_df,
@@ -449,8 +484,16 @@ def render_overview(ctx: DashboardContext) -> None:
             st.plotly_chart(fig_city, width="stretch")
 
         if ctx.show_country:
-            st.subheader("Top destinations by country")
-            st.plotly_chart(fig_country, width="stretch")
+            r3c1, r3c2 = st.columns(2)
+            with r3c1:
+                st.subheader("Top destinations by province")
+                st.plotly_chart(fig_province, width="stretch")
+            with r3c2:
+                st.subheader("Top destinations by country")
+                st.plotly_chart(fig_country, width="stretch")
+        else:
+            st.subheader("Top destinations by province")
+            st.plotly_chart(fig_province, width="stretch")
 
         day_col, alliance_col = st.columns(2)
         with day_col:
@@ -509,13 +552,15 @@ def render_overview(ctx: DashboardContext) -> None:
         map_country_options = sorted(_country_set)
 
         if ctx.show_country:
-            col_map_by, col_map_airline, col_map_alliance, col_map_country = st.columns(4)
+            col_map_by, col_map_airline, col_map_alliance, col_map_country = st.columns(
+                4
+            )
         else:
             col_map_by, col_map_airline, col_map_alliance = st.columns(3)
             col_map_country = None
 
         with col_map_by:
-            map_point_opts = ["City (airport)"]
+            map_point_opts = ["City (airport)", "Province"]
             if ctx.show_country:
                 map_point_opts.append("Country")
             map_point_by = st.radio(
@@ -523,7 +568,7 @@ def render_overview(ctx: DashboardContext) -> None:
                 options=map_point_opts,
                 index=0,
                 horizontal=True,
-                help="Show each destination as a precise city/airport, or aggregate by country.",
+                help="Show each destination as a precise city/airport, or aggregate by province/state or country.",
             )
         with col_map_airline:
             sel_map_airlines = st.multiselect(
@@ -550,7 +595,7 @@ def render_overview(ctx: DashboardContext) -> None:
         else:
             sel_map_countries = []
 
-        map_by_country = map_point_by == "Country"
+        map_aggregate_by = map_point_label_to_aggregate(map_point_by)
         sel_map_codes = [
             map_display_to_code[d] for d in sel_map_airlines if d in map_display_to_code
         ]
@@ -584,7 +629,7 @@ def render_overview(ctx: DashboardContext) -> None:
             ctx.focus_airport,
             ctx.focus_lat,
             ctx.focus_lon,
-            map_by_country,
+            map_aggregate_by,
             sel_map_codes,
             map_airline_col,
             ctx.geo_scope,

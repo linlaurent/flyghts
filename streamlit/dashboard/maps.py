@@ -12,7 +12,7 @@ from flyghts.reference import get_airline, get_airport
 
 from .charts import _complete_daily_series, _start_flight_count_axis_at_zero
 from .components import _render_aggrid
-from .data import build_map_points, get_destination_column
+from .data import MapAggregateBy, build_map_points, get_destination_column
 
 
 def _get_map_layout_opts(
@@ -91,7 +91,7 @@ def _render_flight_map(
     focus_airport: str,
     focus_lat: float,
     focus_lon: float,
-    map_by_country: bool,
+    aggregate_by: MapAggregateBy,
     airline_codes: list[str],
     airline_col: str,
     geo_scope: str = "world",
@@ -112,7 +112,7 @@ def _render_flight_map(
     ).value_counts()
     if top_arcs_n is not None and top_arcs_n > 0:
         map_dest_counts = map_dest_counts.head(top_arcs_n)
-    map_data = build_map_points(map_dest_counts, map_by_country)
+    map_data = build_map_points(map_dest_counts, aggregate_by)
     map_df = pd.DataFrame(map_data)
     if map_df.empty:
         st.info("No destination airports with valid coordinates in the reference data.")
@@ -195,7 +195,7 @@ def _render_flight_map(
             ).value_counts()
             if top_arcs_n is not None and top_arcs_n > 0:
                 a_dest_counts = a_dest_counts.head(top_arcs_n)
-            a_points = build_map_points(a_dest_counts, map_by_country)
+            a_points = build_map_points(a_dest_counts, aggregate_by)
             a_df = pd.DataFrame(a_points)
             if a_df.empty:
                 continue
@@ -418,7 +418,7 @@ def _render_region_airport_map(
         st.info("No airports with valid coordinates to display on map.")
         return
 
-    map_data = build_map_points(filtered, by_country=False)
+    map_data = build_map_points(filtered, aggregate_by="airport")
     map_df = pd.DataFrame(map_data)
     if map_df.empty:
         st.info("No airports with valid coordinates in the reference data.")
@@ -541,9 +541,7 @@ def _render_route_top_airports_tab(
         return
 
     _airport_df["Label"] = _airport_df.apply(
-        lambda r: (
-            f"{r['Airport']} - {r['Name']}" if r["Name"] else r["Airport"]
-        ),
+        lambda r: f"{r['Airport']} - {r['Name']}" if r["Name"] else r["Airport"],
         axis=1,
     )
     fig_airports = px.bar(
@@ -602,9 +600,7 @@ def _render_route_top_airports_tab(
     _by_date_airport.columns = ["Date", "route_dest", "Flights"]
     _by_date_airport = _by_date_airport[_by_date_airport["route_dest"].isin(_top_iatas)]
     _by_date_airport["Airport label"] = _by_date_airport["route_dest"].apply(
-        lambda iata: (
-            f"{iata} - {get_airport(iata).name}" if get_airport(iata) else iata
-        )
+        lambda iata: f"{iata} - {get_airport(iata).name}" if get_airport(iata) else iata
     )
     if not _by_date_airport.empty:
         _by_date_airport = _complete_daily_series(
@@ -629,6 +625,4 @@ def _render_route_top_airports_tab(
         _start_flight_count_axis_at_zero(fig_airport_time, "y")
         st.plotly_chart(fig_airport_time, width="stretch")
 
-    _render_aggrid(
-        _airport_df[["Airport", "Name", "City", "Flights", "Share (%)"]]
-    )
+    _render_aggrid(_airport_df[["Airport", "Name", "City", "Flights", "Share (%)"]])

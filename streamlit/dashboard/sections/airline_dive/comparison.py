@@ -10,7 +10,7 @@ from flyghts.reference import get_airline, get_airport
 from ...charts import _complete_daily_series, _start_flight_count_axis_at_zero
 from ...components import _render_aggrid
 from ...context import DashboardContext
-from ...data import get_destination_column
+from ...data import get_destination_column, map_point_label_to_aggregate
 from ...maps import _render_flight_map, _render_network_map
 
 
@@ -158,7 +158,9 @@ def render_airline_comparison(
                     for code in cmp_codes:
                         df_a = ctx.df[ctx.df[ctx.airline_col] == code]
                         top = (
-                            get_destination_column(df_a, ctx.direction, ctx.focus_airport)
+                            get_destination_column(
+                                df_a, ctx.direction, ctx.focus_airport
+                            )
                             .value_counts()
                             .head(ctx.top_n)
                             .index
@@ -415,25 +417,24 @@ def render_airline_comparison(
                         top_routes_n=ctx.top_n,
                     )
                 else:
+                    map_point_opts = ["City (airport)", "Province"]
                     if ctx.show_country:
-                        map_point_by_cmp = st.radio(
-                            "Map points by",
-                            options=["City (airport)", "Country"],
-                            index=1,
-                            horizontal=True,
-                            help="Show each destination as a precise city/airport, or aggregate by country.",
-                            key="airline_cmp_map_by",
-                        )
-                    else:
-                        map_point_by_cmp = "City (airport)"
-                    map_by_country_cmp = map_point_by_cmp == "Country"
+                        map_point_opts.append("Country")
+                    map_point_by_cmp = st.radio(
+                        "Map points by",
+                        options=map_point_opts,
+                        index=len(map_point_opts) - 1 if ctx.show_country else 0,
+                        horizontal=True,
+                        help="Show each destination as a precise city/airport, or aggregate by province/state or country.",
+                        key="airline_cmp_map_by",
+                    )
                     _render_flight_map(
                         df_cmp,
                         ctx.direction,
                         ctx.focus_airport,
                         ctx.focus_lat,
                         ctx.focus_lon,
-                        map_by_country_cmp,
+                        map_point_label_to_aggregate(map_point_by_cmp),
                         cmp_codes,
                         ctx.airline_col,
                         ctx.geo_scope,

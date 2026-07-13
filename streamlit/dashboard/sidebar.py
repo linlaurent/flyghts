@@ -111,6 +111,7 @@ def build_dashboard_context() -> DashboardContext | None:
             "Overview",
             "Insights",
             "Airline deep dive",
+            "Alliance deep dive",
             "Route deep dive",
         ]
         if is_us:

@@ -13,6 +13,7 @@ from ..context import DashboardContext
 from ..charts import _complete_daily_series, _start_flight_count_axis_at_zero
 from ..components import _render_aggrid
 from ..data import parse_delay_minutes
+from ..formatting import ALLIANCE_ORDER, _alliance_label, with_alliance_column
 
 
 def render_delay_analysis(ctx: DashboardContext) -> None:
@@ -112,6 +113,70 @@ def render_delay_analysis(ctx: DashboardContext) -> None:
         )
         fig_otp.update_layout(height=320, showlegend=False)
         st.plotly_chart(fig_otp, width="stretch")
+
+    # ── On-time performance by alliance (OPTD members only) ──
+    st.subheader("On-time performance by alliance")
+    st.caption(
+        "Alliance membership from OpenTravelData — not inferred from code-shares."
+    )
+    df_delay_a = with_alliance_column(df_with_delay, ctx.airline_col)
+    alliance_delay = (
+        df_delay_a.groupby("alliance")["delay_min"]
+        .agg(
+            total="count",
+            on_time=lambda x: int((x == 0).sum()),
+            avg_delay=lambda x: x[x > 0].mean(),
+            delayed_15=lambda x: int((x >= 15).sum()),
+        )
+        .reset_index()
+    )
+    alliance_delay.columns = [
+        "alliance",
+        "Total",
+        "On-time",
+        "Avg delay (min)",
+        "Delayed 15+ min",
+    ]
+    alliance_delay["On-time (%)"] = (
+        100 * alliance_delay["On-time"] / alliance_delay["Total"]
+    ).round(1)
+    alliance_delay["Alliance"] = alliance_delay["alliance"].map(_alliance_label)
+    alliance_delay["alliance_order"] = alliance_delay["alliance"].apply(
+        lambda a: ALLIANCE_ORDER.index(a) if a in ALLIANCE_ORDER else 99
+    )
+    alliance_delay = alliance_delay.sort_values("alliance_order")
+
+    if not alliance_delay.empty:
+        plot_all = alliance_delay.sort_values("On-time (%)", ascending=True)
+        fig_otp_all = px.bar(
+            plot_all,
+            x="On-time (%)",
+            y="Alliance",
+            orientation="h",
+            color="On-time (%)",
+            color_continuous_scale="RdYlGn",
+            range_color=[50, 100],
+            text=plot_all["On-time (%)"].apply(lambda x: f"{x}%"),
+            custom_data=["Total", "Avg delay (min)"],
+        )
+        fig_otp_all.update_traces(
+            textposition="outside",
+            hovertemplate="%{y}<br>On-time: %{x}%<br>Total flights: %{customdata[0]:,}<br>Avg delay: %{customdata[1]:.0f} min<extra></extra>",
+        )
+        fig_otp_all.update_layout(height=320, showlegend=False)
+        st.plotly_chart(fig_otp_all, width="stretch")
+        _render_aggrid(
+            alliance_delay[
+                [
+                    "Alliance",
+                    "Total",
+                    "On-time",
+                    "On-time (%)",
+                    "Avg delay (min)",
+                    "Delayed 15+ min",
+                ]
+            ]
+        )
 
     # ── Average delay by hour ──
     st.subheader("Average delay by hour of day")

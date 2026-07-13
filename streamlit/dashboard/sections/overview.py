@@ -10,10 +10,70 @@ from flyghts.reference import get_airline, get_airport
 
 from ..context import DashboardContext
 
-from ..charts import _render_overview_flights_per_day, _start_flight_count_axis_at_zero
+from ..charts import (
+    _render_overview_flights_per_day,
+    _render_overview_flights_per_day_by_alliance,
+    _start_flight_count_axis_at_zero,
+)
 from ..components import _render_aggrid
 from ..data import get_destination_column
+from ..formatting import (
+    ALLIANCE_ORDER,
+    _alliance_label,
+    with_alliance_column,
+)
 from ..maps import _render_flight_map, _render_network_map
+
+
+def _top_alliances_chart(
+    df: pd.DataFrame, airline_col: str, total_flights: int, chart_h: int
+):
+    """Build Top alliances bar chart from OPTD membership (not code-shares)."""
+    df_a = with_alliance_column(df, airline_col)
+    alliance_counts = df_a["alliance"].value_counts()
+    rows = []
+    for alliance_id in ALLIANCE_ORDER:
+        count = int(alliance_counts.get(alliance_id, 0))
+        if count <= 0 and alliance_id not in alliance_counts.index:
+            continue
+        share = 100 * count / total_flights if total_flights > 0 else 0
+        rows.append(
+            {
+                "Alliance": _alliance_label(alliance_id),
+                "Flights": count,
+                "Share (%)": round(share, 1),
+            }
+        )
+    # Include any unexpected keys
+    for alliance_id, count in alliance_counts.items():
+        if alliance_id in ALLIANCE_ORDER:
+            continue
+        share = 100 * count / total_flights if total_flights > 0 else 0
+        rows.append(
+            {
+                "Alliance": _alliance_label(alliance_id),
+                "Flights": int(count),
+                "Share (%)": round(share, 1),
+            }
+        )
+    alliance_df = pd.DataFrame(rows, columns=["Alliance", "Flights", "Share (%)"])
+    if alliance_df.empty:
+        return None, alliance_df
+    fig = px.bar(
+        alliance_df,
+        x="Flights",
+        y="Alliance",
+        orientation="h",
+        color="Flights",
+        color_continuous_scale="Teal",
+        text=alliance_df["Share (%)"].apply(lambda x: f"{x}%"),
+    )
+    fig.update_traces(textposition="outside")
+    fig.update_layout(
+        height=chart_h, yaxis={"categoryorder": "total ascending"}, showlegend=False
+    )
+    _start_flight_count_axis_at_zero(fig, "x")
+    return fig, alliance_df
 
 
 def render_overview(ctx: DashboardContext) -> None:
@@ -31,9 +91,7 @@ def render_overview(ctx: DashboardContext) -> None:
                 "Share (%)": round(share, 1),
             }
         )
-    airline_df = pd.DataFrame(
-        airline_rows, columns=["Airline", "Flights", "Share (%)"]
-    )
+    airline_df = pd.DataFrame(airline_rows, columns=["Airline", "Flights", "Share (%)"])
     fig_airlines = px.bar(
         airline_df,
         x="Flights",
@@ -48,6 +106,9 @@ def render_overview(ctx: DashboardContext) -> None:
         height=chart_h, yaxis={"categoryorder": "total ascending"}, showlegend=False
     )
     _start_flight_count_axis_at_zero(fig_airlines, "x")
+    fig_alliances, _alliance_df = _top_alliances_chart(
+        ctx.df, ctx.airline_col, ctx.total_flights, chart_h
+    )
 
     if ctx.global_mode:
         # ── Global mode: top routes + top airports ──
@@ -102,7 +163,7 @@ def render_overview(ctx: DashboardContext) -> None:
             info = get_airport(iata)
             city = info.city if info and info.city else iata
             city_counts_g[city] = city_counts_g.get(city, 0) + cnt
-        city_sorted_g = sorted(city_counts_g.items(), key=lambda x: -x[1])[:ctx.top_n]
+        city_sorted_g = sorted(city_counts_g.items(), key=lambda x: -x[1])[: ctx.top_n]
         city_df_g = pd.DataFrame(
             [{"City": c, "Flights": n} for c, n in city_sorted_g],
             columns=["City", "Flights"],
@@ -169,16 +230,22 @@ def render_overview(ctx: DashboardContext) -> None:
             st.subheader("Top airlines by flight count")
             st.plotly_chart(fig_airlines, width="stretch")
         with r1c2:
-            st.subheader("Top airports by total traffic")
-            st.plotly_chart(fig_apt_ov, width="stretch")
+            st.subheader("Top alliances by flight count")
+            if fig_alliances is not None:
+                st.plotly_chart(fig_alliances, width="stretch")
+            else:
+                st.caption("No alliance data for filtered flights.")
 
         r2c1, r2c2 = st.columns(2)
         with r2c1:
-            st.subheader("Top routes (O-D pairs)")
-            st.plotly_chart(fig_routes_ov, width="stretch")
+            st.subheader("Top airports by total traffic")
+            st.plotly_chart(fig_apt_ov, width="stretch")
         with r2c2:
             st.subheader("Top cities by total traffic")
             st.plotly_chart(fig_city_g, width="stretch")
+
+        st.subheader("Top routes (O-D pairs)")
+        st.plotly_chart(fig_routes_ov, width="stretch")
 
         _render_overview_flights_per_day(
             ctx.df,
@@ -187,11 +254,19 @@ def render_overview(ctx: DashboardContext) -> None:
             start_date=ctx.start_date,
             end_date=ctx.end_date,
         )
+        _render_overview_flights_per_day_by_alliance(
+            ctx.df,
+            airline_col=ctx.airline_col,
+            start_date=ctx.start_date,
+            end_date=ctx.end_date,
+        )
 
         # ── Network map ──
         st.header("US domestic network map")
         map_airline_col = (
-            "operating_airline" if (ctx.operating_only and ctx.has_operating) else "airline"
+            "operating_airline"
+            if (ctx.operating_only and ctx.has_operating)
+            else "airline"
         )
         map_airlines_g = sorted(ctx.df[map_airline_col].dropna().unique().tolist())
         map_airline_display_g: list[str] = []
@@ -217,7 +292,9 @@ def render_overview(ctx: DashboardContext) -> None:
             for d in sel_map_airlines_g
             if d in map_display_to_code_g
         ]
-        _render_network_map(ctx.df, map_airline_col, sel_map_codes_g, ctx.geo_scope, ctx.top_n)
+        _render_network_map(
+            ctx.df, map_airline_col, sel_map_codes_g, ctx.geo_scope, ctx.top_n
+        )
 
     else:
         # ── Focus mode: top destinations ──
@@ -241,7 +318,7 @@ def render_overview(ctx: DashboardContext) -> None:
             info = get_airport(iata)
             city = info.city if info and info.city else iata
             city_counts[city] = city_counts.get(city, 0) + count
-        city_sorted = sorted(city_counts.items(), key=lambda x: -x[1])[:ctx.top_n]
+        city_sorted = sorted(city_counts.items(), key=lambda x: -x[1])[: ctx.top_n]
         city_df = pd.DataFrame(
             [{"City": c, "Flights": n} for c, n in city_sorted],
             columns=["City", "Flights"],
@@ -259,7 +336,7 @@ def render_overview(ctx: DashboardContext) -> None:
                 country = info.country if info and info.country else iata
                 country_counts[country] = country_counts.get(country, 0) + count
             country_sorted = sorted(country_counts.items(), key=lambda x: -x[1])[
-                :ctx.top_n
+                : ctx.top_n
             ]
             country_df = pd.DataFrame(
                 [{"Country": c, "Flights": n} for c, n in country_sorted],
@@ -328,20 +405,23 @@ def render_overview(ctx: DashboardContext) -> None:
             st.subheader("Top airlines by flight count")
             st.plotly_chart(fig_airlines, width="stretch")
         with r1c2:
+            st.subheader("Top alliances by flight count")
+            if fig_alliances is not None:
+                st.plotly_chart(fig_alliances, width="stretch")
+            else:
+                st.caption("No alliance data for filtered flights.")
+
+        r2c1, r2c2 = st.columns(2)
+        with r2c1:
             st.subheader("Top destinations by airport")
             st.plotly_chart(fig_apt, width="stretch")
-
-        if ctx.show_country:
-            r2c1, r2c2 = st.columns(2)
-            with r2c1:
-                st.subheader("Top destinations by city")
-                st.plotly_chart(fig_city, width="stretch")
-            with r2c2:
-                st.subheader("Top destinations by country")
-                st.plotly_chart(fig_country, width="stretch")
-        else:
+        with r2c2:
             st.subheader("Top destinations by city")
             st.plotly_chart(fig_city, width="stretch")
+
+        if ctx.show_country:
+            st.subheader("Top destinations by country")
+            st.plotly_chart(fig_country, width="stretch")
 
         _render_overview_flights_per_day(
             ctx.df,
@@ -350,12 +430,20 @@ def render_overview(ctx: DashboardContext) -> None:
             start_date=ctx.start_date,
             end_date=ctx.end_date,
         )
+        _render_overview_flights_per_day_by_alliance(
+            ctx.df,
+            airline_col=ctx.airline_col,
+            start_date=ctx.start_date,
+            end_date=ctx.end_date,
+        )
 
         # ── Interactive Map ──
         st.header("Interactive map: flight flow by destination")
 
         map_airline_col = (
-            "operating_airline" if (ctx.operating_only and ctx.has_operating) else "airline"
+            "operating_airline"
+            if (ctx.operating_only and ctx.has_operating)
+            else "airline"
         )
         map_airlines = sorted(ctx.df[map_airline_col].dropna().unique().tolist())
         map_airline_display: list[str] = []
@@ -418,16 +506,12 @@ def render_overview(ctx: DashboardContext) -> None:
 
         map_by_country = map_point_by == "Country"
         sel_map_codes = [
-            map_display_to_code[d]
-            for d in sel_map_airlines
-            if d in map_display_to_code
+            map_display_to_code[d] for d in sel_map_airlines if d in map_display_to_code
         ]
 
         if sel_map_countries:
             _allowed_iatas = {
-                iata
-                for iata, c in _iata_to_country.items()
-                if c in sel_map_countries
+                iata for iata, c in _iata_to_country.items() if c in sel_map_countries
             }
             if ctx.direction == "Departures":
                 _country_mask = ctx.df["destination"].isin(_allowed_iatas)

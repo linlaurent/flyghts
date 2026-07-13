@@ -78,9 +78,7 @@ def _render_overview_flights_per_day(
 ) -> None:
     """Render overview daily flight totals with top-airline breakdown."""
     st.header("Flights per day")
-    flights_per_day = (
-        df.groupby(df["date"].dt.date).size().reset_index(name="Flights")
-    )
+    flights_per_day = df.groupby(df["date"].dt.date).size().reset_index(name="Flights")
     flights_per_day.columns = ["Date", "Flights"]
     flights_per_day = _complete_daily_series(
         flights_per_day,
@@ -131,7 +129,10 @@ def _render_overview_flights_per_day(
         ],
         ignore_index=True,
     )
-    color_order = [total_label, *[airline_label_map[name] for name in airline_avgs.index]]
+    color_order = [
+        total_label,
+        *[airline_label_map[name] for name in airline_avgs.index],
+    ]
 
     fig_per_day = px.line(
         combined,
@@ -144,3 +145,53 @@ def _render_overview_flights_per_day(
     fig_per_day.update_layout(height=350)
     _start_flight_count_axis_at_zero(fig_per_day, "y")
     st.plotly_chart(fig_per_day, width="stretch")
+
+
+def _render_overview_flights_per_day_by_alliance(
+    df: pd.DataFrame,
+    *,
+    airline_col: str,
+    start_date,
+    end_date,
+) -> None:
+    """Render daily flights broken down by OPTD alliance (not code-shares)."""
+    from .formatting import (
+        ALLIANCE_ORDER,
+        _alliance_label,
+        with_alliance_column,
+    )
+
+    st.subheader("Flights per day by alliance")
+    df_a = with_alliance_column(df, airline_col)
+    by_date = (
+        df_a.groupby([df_a["date"].dt.date, "alliance"])
+        .size()
+        .reset_index(name="Flights")
+    )
+    by_date.columns = ["Date", "alliance", "Flights"]
+    by_date["Alliance"] = by_date["alliance"].map(_alliance_label)
+    by_date = _complete_daily_series(
+        by_date,
+        date_col="Date",
+        value_cols=["Flights"],
+        start_date=start_date,
+        end_date=end_date,
+        group_cols=["alliance", "Alliance"],
+    )
+    if by_date.empty:
+        st.caption("No date data.")
+        return
+
+    present = [a for a in ALLIANCE_ORDER if a in set(by_date["alliance"])]
+    label_order = [_alliance_label(a) for a in present]
+    fig = px.line(
+        by_date,
+        x="Date",
+        y="Flights",
+        color="Alliance",
+        labels={"Date": "Date", "Flights": "Number of flights"},
+        category_orders={"Alliance": label_order},
+    )
+    fig.update_layout(height=350)
+    _start_flight_count_axis_at_zero(fig, "y")
+    st.plotly_chart(fig, width="stretch")

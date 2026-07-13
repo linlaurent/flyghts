@@ -16,6 +16,54 @@ def _airline_label(code: str) -> str:
     return f"{code} - {info.name}" if info and info.name else code
 
 
+INDEPENDENT_ALLIANCE = "independent"
+
+ALLIANCE_DISPLAY: dict[str, str] = {
+    "oneworld": "oneworld",
+    "skyteam": "SkyTeam",
+    "star_alliance": "Star Alliance",
+    INDEPENDENT_ALLIANCE: "Independent",
+}
+
+ALLIANCE_ORDER: list[str] = [
+    "oneworld",
+    "skyteam",
+    "star_alliance",
+    INDEPENDENT_ALLIANCE,
+]
+
+
+def _alliance_id(icao: str) -> str:
+    """Map airline ICAO to OPTD alliance id (members only). Never from code-shares."""
+    from flyghts.reference import get_alliance
+
+    if not icao:
+        return INDEPENDENT_ALLIANCE
+    info = get_alliance(str(icao), members_only=True)
+    if info is None:
+        return INDEPENDENT_ALLIANCE
+    return info.alliance
+
+
+def _alliance_label(alliance_id: str) -> str:
+    return ALLIANCE_DISPLAY.get(alliance_id, alliance_id)
+
+
+def with_alliance_column(
+    df: pd.DataFrame, airline_col: str, *, column: str = "alliance"
+) -> pd.DataFrame:
+    """Return a copy with OPTD alliance id per airline_col (members → independent)."""
+    out = df.copy()
+    if airline_col not in out.columns or out.empty:
+        out[column] = INDEPENDENT_ALLIANCE
+        return out
+    codes = out[airline_col].astype(str)
+    unique = codes.dropna().unique()
+    mapping = {code: _alliance_id(code) for code in unique}
+    out[column] = codes.map(mapping).fillna(INDEPENDENT_ALLIANCE)
+    return out
+
+
 def _route_label(origin: str, destination: str) -> str:
     o_info = get_airport(origin)
     d_info = get_airport(destination)
@@ -84,11 +132,7 @@ def _build_region_route_selection(
             continue
         if mode == "country":
             n_airports = len(region_airports.get(region, set()))
-            region_name = (
-                f"{region} ({n_airports} airports)"
-                if n_airports
-                else region
-            )
+            region_name = f"{region} ({n_airports} airports)" if n_airports else region
         else:
             country = region_country.get(region, "")
             region_name = f"{region}, {country}" if country else region

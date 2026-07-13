@@ -44,6 +44,7 @@ def test_dashboard_section_renderers_are_callable() -> None:
     from dashboard.sections import (
         dispatch_section,
         render_airline_dive,
+        render_alliance_dive,
         render_delay_analysis,
         render_insights,
         render_overview,
@@ -55,6 +56,7 @@ def test_dashboard_section_renderers_are_callable() -> None:
         render_overview,
         render_insights,
         render_airline_dive,
+        render_alliance_dive,
         render_route_dive,
         render_delay_analysis,
     ):

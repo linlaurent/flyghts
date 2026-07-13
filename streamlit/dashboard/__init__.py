@@ -21,6 +21,8 @@ from .formatting import (
     _airline_label,
     _airport_city_key,
     _airport_province,
+    _alliance_id,
+    _alliance_label,
     _build_region_route_selection,
     _city_key_display,
     _city_key_label,
@@ -29,6 +31,7 @@ from .formatting import (
     _multi_airport_city_keys_for_iatas,
     _region_key_for_iata,
     _route_label,
+    with_alliance_column,
 )
 from .insight_ui import (
     _comparison_period_options,
@@ -56,6 +59,8 @@ __all__ = [
     "_airline_label",
     "_airport_city_key",
     "_airport_province",
+    "_alliance_id",
+    "_alliance_label",
     "_build_region_route_selection",
     "_city_key_display",
     "_city_key_label",
@@ -88,4 +93,5 @@ __all__ = [
     "get_destination_column",
     "load_flights",
     "parse_delay_minutes",
+    "with_alliance_column",
 ]

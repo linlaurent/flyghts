@@ -283,20 +283,46 @@ def render_overview(ctx: DashboardContext) -> None:
             map_airline_display_g.append(display)
             map_display_to_code_g[display] = code
 
-        sel_map_airlines_g = st.multiselect(
-            "Filter by airlines",
-            options=map_airline_display_g,
-            default=[],
-            help="Leave empty to show all. Select airlines to compare with distinct colors.",
-            key="overview_g_map_airlines",
-        )
+        df_map_alliances_g = with_alliance_column(ctx.df, map_airline_col)
+        present_alliances_g = [
+            a for a in ALLIANCE_ORDER if a in set(df_map_alliances_g["alliance"])
+        ]
+        map_alliance_display_g = [_alliance_label(a) for a in present_alliances_g]
+        map_alliance_to_id_g = {_alliance_label(a): a for a in present_alliances_g}
+
+        col_map_airline_g, col_map_alliance_g = st.columns(2)
+        with col_map_airline_g:
+            sel_map_airlines_g = st.multiselect(
+                "Filter by airlines",
+                options=map_airline_display_g,
+                default=[],
+                help="Leave empty to show all. Select airlines to compare with distinct colors.",
+                key="overview_g_map_airlines",
+            )
+        with col_map_alliance_g:
+            sel_map_alliances_g = st.multiselect(
+                "Filter by alliance",
+                options=map_alliance_display_g,
+                default=[],
+                help="Leave empty to show all. Select alliances to show only member airlines.",
+                key="overview_g_map_alliances",
+            )
         sel_map_codes_g = [
             map_display_to_code_g[d]
             for d in sel_map_airlines_g
             if d in map_display_to_code_g
         ]
+        sel_map_alliance_ids_g = [
+            map_alliance_to_id_g[d]
+            for d in sel_map_alliances_g
+            if d in map_alliance_to_id_g
+        ]
+        df_network = ctx.df
+        if sel_map_alliance_ids_g:
+            df_network = with_alliance_column(df_network, map_airline_col)
+            df_network = df_network[df_network["alliance"].isin(sel_map_alliance_ids_g)]
         _render_network_map(
-            ctx.df, map_airline_col, sel_map_codes_g, ctx.geo_scope, ctx.top_n
+            df_network, map_airline_col, sel_map_codes_g, ctx.geo_scope, ctx.top_n
         )
 
     else:
@@ -463,6 +489,13 @@ def render_overview(ctx: DashboardContext) -> None:
             map_airline_display.append(display)
             map_display_to_code[display] = code
 
+        df_map_alliances = with_alliance_column(ctx.df, map_airline_col)
+        present_alliances = [
+            a for a in ALLIANCE_ORDER if a in set(df_map_alliances["alliance"])
+        ]
+        map_alliance_display = [_alliance_label(a) for a in present_alliances]
+        map_alliance_to_id = {_alliance_label(a): a for a in present_alliances}
+
         _dest_codes_for_countries = get_destination_column(
             ctx.df, ctx.direction, ctx.focus_airport
         )
@@ -476,9 +509,9 @@ def render_overview(ctx: DashboardContext) -> None:
         map_country_options = sorted(_country_set)
 
         if ctx.show_country:
-            col_map_by, col_map_airline, col_map_country = st.columns(3)
+            col_map_by, col_map_airline, col_map_alliance, col_map_country = st.columns(4)
         else:
-            col_map_by, col_map_airline = st.columns(2)
+            col_map_by, col_map_airline, col_map_alliance = st.columns(3)
             col_map_country = None
 
         with col_map_by:
@@ -499,6 +532,13 @@ def render_overview(ctx: DashboardContext) -> None:
                 default=[],
                 help="Leave empty to show all. Select airlines to compare on map with distinct colors.",
             )
+        with col_map_alliance:
+            sel_map_alliances = st.multiselect(
+                "Filter by alliance",
+                options=map_alliance_display,
+                default=[],
+                help="Leave empty to show all. Select alliances to show only member airlines.",
+            )
         if col_map_country is not None:
             with col_map_country:
                 sel_map_countries = st.multiselect(
@@ -513,6 +553,9 @@ def render_overview(ctx: DashboardContext) -> None:
         map_by_country = map_point_by == "Country"
         sel_map_codes = [
             map_display_to_code[d] for d in sel_map_airlines if d in map_display_to_code
+        ]
+        sel_map_alliance_ids = [
+            map_alliance_to_id[d] for d in sel_map_alliances if d in map_alliance_to_id
         ]
 
         if sel_map_countries:
@@ -530,6 +573,10 @@ def render_overview(ctx: DashboardContext) -> None:
             df_map = ctx.df[_country_mask]
         else:
             df_map = ctx.df
+
+        if sel_map_alliance_ids:
+            df_map = with_alliance_column(df_map, map_airline_col)
+            df_map = df_map[df_map["alliance"].isin(sel_map_alliance_ids)]
 
         _render_flight_map(
             df_map,

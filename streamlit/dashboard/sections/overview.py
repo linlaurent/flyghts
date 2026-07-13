@@ -247,19 +247,22 @@ def render_overview(ctx: DashboardContext) -> None:
         st.subheader("Top routes (O-D pairs)")
         st.plotly_chart(fig_routes_ov, width="stretch")
 
-        _render_overview_flights_per_day(
-            ctx.df,
-            airline_col=ctx.airline_col,
-            top_n=ctx.top_n,
-            start_date=ctx.start_date,
-            end_date=ctx.end_date,
-        )
-        _render_overview_flights_per_day_by_alliance(
-            ctx.df,
-            airline_col=ctx.airline_col,
-            start_date=ctx.start_date,
-            end_date=ctx.end_date,
-        )
+        day_col, alliance_col = st.columns(2)
+        with day_col:
+            _render_overview_flights_per_day(
+                ctx.df,
+                airline_col=ctx.airline_col,
+                top_n=ctx.top_n,
+                start_date=ctx.start_date,
+                end_date=ctx.end_date,
+            )
+        with alliance_col:
+            _render_overview_flights_per_day_by_alliance(
+                ctx.df,
+                airline_col=ctx.airline_col,
+                start_date=ctx.start_date,
+                end_date=ctx.end_date,
+            )
 
         # ── Network map ──
         st.header("US domestic network map")
@@ -423,19 +426,22 @@ def render_overview(ctx: DashboardContext) -> None:
             st.subheader("Top destinations by country")
             st.plotly_chart(fig_country, width="stretch")
 
-        _render_overview_flights_per_day(
-            ctx.df,
-            airline_col=ctx.airline_col,
-            top_n=ctx.top_n,
-            start_date=ctx.start_date,
-            end_date=ctx.end_date,
-        )
-        _render_overview_flights_per_day_by_alliance(
-            ctx.df,
-            airline_col=ctx.airline_col,
-            start_date=ctx.start_date,
-            end_date=ctx.end_date,
-        )
+        day_col, alliance_col = st.columns(2)
+        with day_col:
+            _render_overview_flights_per_day(
+                ctx.df,
+                airline_col=ctx.airline_col,
+                top_n=ctx.top_n,
+                start_date=ctx.start_date,
+                end_date=ctx.end_date,
+            )
+        with alliance_col:
+            _render_overview_flights_per_day_by_alliance(
+                ctx.df,
+                airline_col=ctx.airline_col,
+                start_date=ctx.start_date,
+                end_date=ctx.end_date,
+            )
 
         # ── Interactive Map ──
         st.header("Interactive map: flight flow by destination")

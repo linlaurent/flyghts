@@ -77,7 +77,7 @@ def _render_overview_flights_per_day(
     end_date,
 ) -> None:
     """Render overview daily flight totals with top-airline breakdown."""
-    st.header("Flights per day")
+    st.subheader("Flights per day")
     flights_per_day = df.groupby(df["date"].dt.date).size().reset_index(name="Flights")
     flights_per_day.columns = ["Date", "Flights"]
     flights_per_day = _complete_daily_series(

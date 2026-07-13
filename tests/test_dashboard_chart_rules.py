@@ -125,6 +125,22 @@ def test_route_deep_dive_supports_grouped_modes() -> None:
     assert "Share of city flights per day by airport" in source
 
 
+def test_route_deep_dive_top_airports_imports_get_destination_column() -> None:
+    tabs = (
+        STREAMLIT_DIR / "dashboard" / "sections" / "route_dive" / "tabs.py"
+    ).read_text()
+
+    assert "from ...data import get_destination_column" in tabs
+    assert "get_destination_column(" in tabs
+    assert "_city_pair_airport_counts(" in tabs
+    top_airports_block = tabs.split("if tab_route_top_airports is not None:")[1].split(
+        "if tab_route_airport_compare is not None:"
+    )[0]
+    assert "if route_by_city:" in top_airports_block
+    assert "get_destination_column(" in top_airports_block
+    assert "_city_pair_airport_counts(" in top_airports_block
+
+
 def test_province_splits_alongside_city_and_country() -> None:
     source = _dashboard_source()
     overview = (STREAMLIT_DIR / "dashboard" / "sections" / "overview.py").read_text()

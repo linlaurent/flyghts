@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+import subprocess
 import sys
 from collections.abc import Iterator
 from pathlib import Path
@@ -11,6 +12,8 @@ from pathlib import Path
 import pytest
 
 STREAMLIT_DIR = Path(__file__).resolve().parent.parent / "streamlit"
+PROJECT_ROOT = STREAMLIT_DIR.parent
+DASHBOARD_DIR = STREAMLIT_DIR / "dashboard"
 
 
 def _dashboard_module_names() -> list[str]:
@@ -71,3 +74,23 @@ def test_flight_dashboard_entrypoint_imports() -> None:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert callable(module.main)
+
+
+def test_dashboard_has_no_undefined_names() -> None:
+    """Catch missing imports (F821) that import-time checks cannot see."""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "ruff",
+            "check",
+            str(DASHBOARD_DIR),
+            "--select",
+            "F821",
+        ],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr

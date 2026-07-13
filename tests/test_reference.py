@@ -7,10 +7,14 @@ from flyghts.reference import (
     AllianceInfo,
     AirportInfo,
     ParsedStatus,
+    find_missing_reference_codes,
     get_airline,
     get_airport,
     get_alliance,
     get_alliance_by_iata,
+    list_airlines,
+    list_airports,
+    list_alliances,
     parse_status,
 )
 
@@ -85,6 +89,76 @@ class TestGetAirline:
         info2 = get_airline("CPA")
         assert info1 is not None and info2 is not None
         assert info1.icao == info2.icao
+
+    def test_cpa_includes_iata(self) -> None:
+        info = get_airline("CPA")
+        assert info is not None
+        assert info.iata == "CX"
+
+
+class TestListReference:
+    """Tests for bulk list helpers."""
+
+    def test_list_airlines_includes_cathay(self) -> None:
+        airlines = list_airlines()
+        assert len(airlines) > 1000
+        by_icao = {a.icao: a for a in airlines}
+        assert "CPA" in by_icao
+        assert by_icao["CPA"].iata == "CX"
+        assert airlines == sorted(airlines, key=lambda a: a.icao)
+
+    def test_list_airports_includes_hkg(self) -> None:
+        airports = list_airports()
+        assert len(airports) > 1000
+        by_iata = {a.iata: a for a in airports}
+        assert "HKG" in by_iata
+        assert airports == sorted(airports, key=lambda a: a.iata)
+
+    def test_list_alliances_includes_members_and_affiliates(self) -> None:
+        all_rows = list_alliances(members_only=False)
+        members = list_alliances(members_only=True)
+        assert len(all_rows) > len(members)
+        assert any(a.icao == "CPA" and a.alliance == "oneworld" for a in members)
+        assert any(a.alliance_type == "affiliate" for a in all_rows)
+        assert not any(a.alliance_type == "affiliate" for a in members)
+
+
+class TestCoverageGaps:
+    """Tests for find_missing_reference_codes."""
+
+    def test_known_codes_have_no_gaps(self) -> None:
+        import pandas as pd
+
+        df = pd.DataFrame(
+            {
+                "airline": ["CPA", "CPA"],
+                "operating_airline": ["CPA", "CPA"],
+                "origin": ["HKG", "HKG"],
+                "destination": ["NRT", "ICN"],
+            }
+        )
+        gaps = find_missing_reference_codes(df)
+        assert gaps.missing_airlines == []
+        assert gaps.missing_airports == []
+        assert gaps.total_airline_codes == 1
+        assert gaps.total_airport_codes == 3
+
+    def test_reports_missing_codes_by_frequency(self) -> None:
+        import pandas as pd
+
+        df = pd.DataFrame(
+            {
+                "airline": ["ZZQ", "ZZQ", "YYQ"],
+                "operating_airline": ["ZZQ", "ZZQ", "YYQ"],
+                "origin": ["HKG", "QQQ", "QQQ"],
+                "destination": ["NRT", "QQQ", "HKG"],
+            }
+        )
+        gaps = find_missing_reference_codes(df)
+        assert gaps.missing_airlines == [("ZZQ", 4), ("YYQ", 2)]
+        assert gaps.missing_airports == [("QQQ", 3)]
+        assert gaps.total_airline_codes == 2
+        assert gaps.total_airport_codes == 3
 
 
 class TestGetAlliance:

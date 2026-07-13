@@ -84,3 +84,16 @@ def get_alliance_by_iata(
     if members_only and not info.is_member:
         return None
     return info
+
+
+def list_alliances(*, members_only: bool = False) -> list[AllianceInfo]:
+    """Return alliance memberships from the ICAO index, sorted by alliance then ICAO."""
+    _, by_icao = _load_alliances()
+    results: list[AllianceInfo] = []
+    for row in by_icao.values():
+        info = _row_to_info(row)
+        if members_only and not info.is_member:
+            continue
+        results.append(info)
+    results.sort(key=lambda a: (a.alliance, a.icao or a.iata))
+    return results

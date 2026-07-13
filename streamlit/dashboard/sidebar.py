@@ -114,6 +114,7 @@ def build_dashboard_context() -> DashboardContext | None:
             "Airline deep dive",
             "Alliance deep dive",
             "Route deep dive",
+            "Reference data",
         ]
         if is_us:
             section_options.append("Delay analysis")

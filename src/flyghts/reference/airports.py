@@ -108,13 +108,27 @@ def _load_airports() -> dict[str, dict]:
     global _airports_cache
     if _airports_cache is None:
         try:
-            data_path = resources.files("flyghts.reference.data").joinpath("airports.json")
+            data_path = resources.files("flyghts.reference.data").joinpath(
+                "airports.json"
+            )
             with data_path.open() as f:
                 _airports_cache = json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
             _airports_cache = {}
         _airports_cache = {**_airports_cache, **_AIRPORT_OVERRIDES}
     return _airports_cache
+
+
+def _row_to_airport(iata: str, row: dict) -> AirportInfo:
+    return AirportInfo(
+        iata=row.get("iata", iata),
+        name=row.get("name", ""),
+        city=row.get("city", ""),
+        country=row.get("country", ""),
+        latitude=float(row.get("latitude", 0)),
+        longitude=float(row.get("longitude", 0)),
+        province=row.get("province", ""),
+    )
 
 
 def get_airport(iata: str) -> Optional[AirportInfo]:
@@ -126,12 +140,10 @@ def get_airport(iata: str) -> Optional[AirportInfo]:
     row = data.get(iata)
     if not row:
         return None
-    return AirportInfo(
-        iata=row.get("iata", iata),
-        name=row.get("name", ""),
-        city=row.get("city", ""),
-        country=row.get("country", ""),
-        latitude=float(row.get("latitude", 0)),
-        longitude=float(row.get("longitude", 0)),
-        province=row.get("province", ""),
-    )
+    return _row_to_airport(iata, row)
+
+
+def list_airports() -> list[AirportInfo]:
+    """Return all airports in reference data, sorted by IATA."""
+    data = _load_airports()
+    return [_row_to_airport(iata, row) for iata, row in sorted(data.items())]

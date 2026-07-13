@@ -14,13 +14,11 @@ Usage:
 
 import argparse
 import sys
-from collections import Counter
 from pathlib import Path
 
 import pandas as pd
 
-from flyghts.reference.airlines import get_airline
-from flyghts.reference.airports import get_airport
+from flyghts.reference import find_missing_reference_codes
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DATA_DIR = PROJECT_ROOT / "data"
@@ -41,95 +39,56 @@ def _load_all_flights(data_dir: Path) -> pd.DataFrame:
     return df
 
 
-def _validate_airlines(df: pd.DataFrame) -> list[tuple[str, int]]:
-    """Find airline codes not in reference data. Returns (code, count) pairs."""
-    codes: Counter[str] = Counter()
-
-    for col in ("airline", "operating_airline"):
-        if col not in df.columns:
-            continue
-        for val in df[col].dropna():
-            code = str(val).strip()
-            if code:
-                codes[code] += 1
-
-    missing = []
-    for code, count in codes.most_common():
-        if not get_airline(code):
-            missing.append((code, count))
-    return missing
-
-
-def _validate_airports(df: pd.DataFrame) -> list[tuple[str, int]]:
-    """Find airport codes not in reference data. Returns (code, count) pairs."""
-    codes: Counter[str] = Counter()
-
-    for col in ("origin", "destination"):
-        if col not in df.columns:
-            continue
-        for val in df[col].dropna():
-            code = str(val).strip()
-            if code:
-                codes[code] += 1
-
-    missing = []
-    for code, count in codes.most_common():
-        if not get_airport(code):
-            missing.append((code, count))
-    return missing
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Validate flight data files against reference data"
     )
     parser.add_argument(
-        "--data-dir", type=str, default=None,
+        "--data-dir",
+        type=str,
+        default=None,
         help="Directory to scan (default: data/ with all subdirectories)",
     )
     args = parser.parse_args()
 
     data_dir = Path(args.data_dir) if args.data_dir else DEFAULT_DATA_DIR
     df = _load_all_flights(data_dir)
+    gaps = find_missing_reference_codes(df)
 
-    missing_airlines = _validate_airlines(df)
-    missing_airports = _validate_airports(df)
-
-    total_airline_codes = len(
-        set(df["airline"].dropna().unique())
-        | (set(df["operating_airline"].dropna().unique()) if "operating_airline" in df.columns else set())
+    print(f"\n{'=' * 60}")
+    print(
+        f"AIRLINES: {len(gaps.missing_airlines)} unmatched "
+        f"out of {gaps.total_airline_codes} unique codes"
     )
-    total_airport_codes = len(
-        set(df["origin"].dropna().unique())
-        | (set(df["destination"].dropna().unique()) if "destination" in df.columns else set())
-    )
-
-    print(f"\n{'='*60}")
-    print(f"AIRLINES: {len(missing_airlines)} unmatched out of {total_airline_codes} unique codes")
-    print(f"{'='*60}")
-    if missing_airlines:
+    print(f"{'=' * 60}")
+    if gaps.missing_airlines:
         print(f"{'Code':<10} {'Occurrences':>12}")
-        print(f"{'-'*10} {'-'*12}")
-        for code, count in missing_airlines:
+        print(f"{'-' * 10} {'-' * 12}")
+        for code, count in gaps.missing_airlines:
             print(f"{code:<10} {count:>12,}")
     else:
         print("All airline codes found in reference data.")
 
-    print(f"\n{'='*60}")
-    print(f"AIRPORTS: {len(missing_airports)} unmatched out of {total_airport_codes} unique codes")
-    print(f"{'='*60}")
-    if missing_airports:
+    print(f"\n{'=' * 60}")
+    print(
+        f"AIRPORTS: {len(gaps.missing_airports)} unmatched "
+        f"out of {gaps.total_airport_codes} unique codes"
+    )
+    print(f"{'=' * 60}")
+    if gaps.missing_airports:
         print(f"{'Code':<10} {'Occurrences':>12}")
-        print(f"{'-'*10} {'-'*12}")
-        for code, count in missing_airports:
+        print(f"{'-' * 10} {'-' * 12}")
+        for code, count in gaps.missing_airports:
             print(f"{code:<10} {count:>12,}")
     else:
         print("All airport codes found in reference data.")
 
-    total_missing = len(missing_airlines) + len(missing_airports)
+    total_missing = len(gaps.missing_airlines) + len(gaps.missing_airports)
     if total_missing > 0:
-        print(f"\nTotal: {total_missing} unmatched codes. "
-              "Add them to _AIRLINE_OVERRIDES / _AIRPORT_OVERRIDES in the reference module.")
+        print(
+            f"\nTotal: {total_missing} unmatched codes. "
+            "Add them to _AIRLINE_OVERRIDES / _AIRPORT_OVERRIDES in the reference module."
+        )
     else:
         print("\nAll codes matched. Reference data is complete for this dataset.")
 

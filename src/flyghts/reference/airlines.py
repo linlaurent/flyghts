@@ -14,6 +14,7 @@ class AirlineInfo:
     icao: str
     name: str
     country: str
+    iata: str = ""
 
 
 _airlines_cache: Optional[dict[str, dict]] = None
@@ -35,7 +36,11 @@ _AIRLINE_OVERRIDES: dict[str, dict] = {
     "ICV": {"icao": "ICV", "name": "Cargolux Italia", "country": "Italy"},
     "IGT": {"icao": "IGT", "name": "Georgian Airlines", "country": "Georgia"},
     "KHV": {"icao": "KHV", "name": "Air Cambodia", "country": "Cambodia"},
-    "LKH": {"icao": "LKH", "name": "Small Planet Airlines Cambodia", "country": "Cambodia"},
+    "LKH": {
+        "icao": "LKH",
+        "name": "Small Planet Airlines Cambodia",
+        "country": "Cambodia",
+    },
     "KME": {"icao": "KME", "name": "Cambodia Airways", "country": "Cambodia"},
     "KXP": {"icao": "KXP", "name": "MJets Air", "country": "Malaysia"},
     "LSI": {"icao": "LSI", "name": "MSC Air Cargo", "country": "Italy"},
@@ -51,7 +56,11 @@ _AIRLINE_OVERRIDES: dict[str, dict] = {
     "UZU": {"icao": "UZU", "name": "SpaceBee Airlines", "country": "Uzbekistan"},
     "VYU": {"icao": "VYU", "name": "Vaayu", "country": "United Arab Emirates"},
     "WCM": {"icao": "WCM", "name": "World Cargo Airlines", "country": "Malaysia"},
-    "WGN": {"icao": "WGN", "name": "Western Global Airlines", "country": "United States"},
+    "WGN": {
+        "icao": "WGN",
+        "name": "Western Global Airlines",
+        "country": "United States",
+    },
     "XKY": {"icao": "XKY", "name": "Skyway Airlines", "country": "Philippines"},
 }
 
@@ -60,7 +69,9 @@ def _load_airlines() -> dict[str, dict]:
     global _airlines_cache
     if _airlines_cache is None:
         try:
-            data_path = resources.files("flyghts.reference.data").joinpath("airlines.json")
+            data_path = resources.files("flyghts.reference.data").joinpath(
+                "airlines.json"
+            )
             with data_path.open() as f:
                 _airlines_cache = json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
@@ -89,6 +100,15 @@ def iata_to_icao(iata: str) -> Optional[str]:
     return _build_iata_index().get(iata)
 
 
+def _row_to_airline(icao: str, row: dict) -> AirlineInfo:
+    return AirlineInfo(
+        icao=row.get("icao", icao),
+        name=row.get("name", ""),
+        country=row.get("country", ""),
+        iata=row.get("iata", "") or "",
+    )
+
+
 def get_airline(icao: str) -> Optional[AirlineInfo]:
     """Look up airline by ICAO code. Returns None if not found."""
     if not icao:
@@ -98,11 +118,7 @@ def get_airline(icao: str) -> Optional[AirlineInfo]:
     row = data.get(icao)
     if not row:
         return None
-    return AirlineInfo(
-        icao=row.get("icao", icao),
-        name=row.get("name", ""),
-        country=row.get("country", ""),
-    )
+    return _row_to_airline(icao, row)
 
 
 def get_airline_by_iata(iata: str) -> Optional[AirlineInfo]:
@@ -111,3 +127,9 @@ def get_airline_by_iata(iata: str) -> Optional[AirlineInfo]:
     if icao is None:
         return None
     return get_airline(icao)
+
+
+def list_airlines() -> list[AirlineInfo]:
+    """Return all airlines in reference data, sorted by ICAO."""
+    data = _load_airlines()
+    return [_row_to_airline(icao, row) for icao, row in sorted(data.items())]

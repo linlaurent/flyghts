@@ -51,6 +51,7 @@ def test_dashboard_section_renderers_are_callable() -> None:
         render_delay_analysis,
         render_insights,
         render_overview,
+        render_reference_data,
         render_route_dive,
     )
 
@@ -61,6 +62,7 @@ def test_dashboard_section_renderers_are_callable() -> None:
         render_airline_dive,
         render_alliance_dive,
         render_route_dive,
+        render_reference_data,
         render_delay_analysis,
     ):
         assert callable(renderer)

@@ -6,6 +6,7 @@ from .alliance_dive import render_alliance_dive
 from .delay import render_delay_analysis
 from .insights import render_insights
 from .overview import render_overview
+from .reference_data import render_reference_data
 from .route_dive import render_route_dive
 
 __all__ = [
@@ -15,6 +16,7 @@ __all__ = [
     "render_delay_analysis",
     "render_insights",
     "render_overview",
+    "render_reference_data",
     "render_route_dive",
 ]
 
@@ -31,5 +33,7 @@ def dispatch_section(ctx: DashboardContext) -> None:
         render_alliance_dive(ctx)
     elif ctx.section == "Route deep dive":
         render_route_dive(ctx)
+    elif ctx.section == "Reference data":
+        render_reference_data(ctx)
     elif ctx.section == "Delay analysis":
         render_delay_analysis(ctx)

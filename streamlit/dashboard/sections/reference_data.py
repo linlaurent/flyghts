@@ -63,6 +63,8 @@ def _alliances_dataframe() -> pd.DataFrame:
                 "ICAO": a.icao,
                 "IATA": a.iata,
                 "Name": a.name,
+                "From": a.from_date.isoformat() if a.from_date else "",
+                "To": a.to_date.isoformat() if a.to_date else "",
             }
             for a in rows
         ]
@@ -77,8 +79,10 @@ def render_reference_data(ctx: DashboardContext) -> None:
     """Render browseable reference tables and dataset coverage gaps."""
     st.subheader("Reference data")
     st.caption(
-        "Airlines, airports, and alliances are static reference tables "
-        "(not affected by flight filters). Coverage gaps use the full loaded "
+        "Airlines and airports are static reference tables "
+        "(not affected by flight filters). Alliances are OPTD membership "
+        "intervals (From/To); empty To means open-ended in OPTD. "
+        "Coverage gaps use the full loaded "
         f"{ctx.dataset_key} dataset before date/direction filters."
     )
 
@@ -99,6 +103,9 @@ def render_reference_data(ctx: DashboardContext) -> None:
     with tab_alliances:
         alliances_df = _alliances_dataframe()
         st.metric("Alliance memberships", f"{len(alliances_df):,}")
+        st.caption(
+            "One row per OPTD membership spell. Empty To = still current in OPTD."
+        )
         _render_aggrid(alliances_df, height=520)
 
     with tab_gaps:

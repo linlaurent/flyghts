@@ -8,8 +8,9 @@ Province/state names are enriched from OurAirports regions.csv.
 
 Alliance membership comes from OpenTravelData (CC-BY 4.0):
   https://github.com/opentraveldata/opentraveldata
-Only rows with an empty to_date are kept (current in OPTD). OPTD can lag
-official alliance member lists; spot-check when accuracy matters.
+Full membership intervals (from_date / to_date) are bundled for
+point-in-time joins. OPTD can lag official alliance member lists;
+spot-check when accuracy matters.
 
 Usage:
     uv run python scripts/fetch_reference_data.py
@@ -192,19 +193,15 @@ def fetch_airports_and_airlines(data_dir: Path) -> None:
 
 
 def fetch_alliances(data_dir: Path) -> None:
-    """Download OPTD alliance membership and write alliances.json (current only)."""
+    """Download OPTD alliance membership and write alliances.json (intervals)."""
     print("Fetching OPTD alliance membership...")
     resp = requests.get(ALLIANCES_URL, timeout=60)
     resp.raise_for_status()
 
     iata_to_icao = _iata_to_icao_from_airlines(data_dir / "airlines.json")
-    # Prefer member over affiliate when the same IATA appears twice
-    by_iata: dict[str, dict[str, str]] = {}
+    by_iata: dict[str, list[dict]] = {}
     reader = csv.DictReader(io.StringIO(resp.text), delimiter="^")
     for row in reader:
-        to_date = (row.get("to_date") or "").strip()
-        if to_date:
-            continue
         iata = (row.get("airline_iata_code_2c") or "").strip().upper()
         if not iata:
             continue
@@ -213,41 +210,38 @@ def fetch_alliances(data_dir: Path) -> None:
             continue
         alliance_type = _normalize_alliance_type(row.get("alliance_type") or "")
         name = (row.get("airline_name") or "").strip()
-        entry = {
+        from_raw = (row.get("from_date") or "").strip()
+        to_raw = (row.get("to_date") or "").strip()
+        entry: dict = {
             "iata": iata,
             "name": name,
             "alliance": alliance,
             "alliance_type": alliance_type,
+            "from_date": from_raw or None,
+            "to_date": to_raw or None,
         }
         icao = iata_to_icao.get(iata)
         if icao:
             entry["icao"] = icao
+        by_iata.setdefault(iata, []).append(entry)
 
-        existing = by_iata.get(iata)
-        if existing is None:
-            by_iata[iata] = entry
-        elif existing.get("alliance_type") == "affiliate" and alliance_type == "member":
-            by_iata[iata] = entry
+    by_icao: dict[str, list[dict]] = {}
+    for intervals in by_iata.values():
+        for entry in intervals:
+            icao = entry.get("icao")
+            if not icao:
+                continue
+            by_icao.setdefault(icao, []).append(entry)
 
-    by_icao: dict[str, dict[str, str]] = {}
-    for entry in by_iata.values():
-        icao = entry.get("icao")
-        if not icao:
-            continue
-        existing = by_icao.get(icao)
-        if existing is None:
-            by_icao[icao] = entry
-        elif (
-            existing.get("alliance_type") == "affiliate"
-            and entry.get("alliance_type") == "member"
-        ):
-            by_icao[icao] = entry
-
+    n_intervals = sum(len(v) for v in by_iata.values())
+    n_open = sum(
+        1 for intervals in by_iata.values() for e in intervals if not e.get("to_date")
+    )
     payload = {
         "source": "OpenTravelData optd_airline_alliance_membership.csv",
         "license": "CC-BY-4.0",
         "note": (
-            "Current membership only (empty to_date in OPTD). "
+            "Point-in-time intervals (from_date/to_date). "
             "OPTD can lag official alliance lists."
         ),
         "by_iata": by_iata,
@@ -256,10 +250,9 @@ def fetch_alliances(data_dir: Path) -> None:
     alliances_path = data_dir / "alliances.json"
     with open(alliances_path, "w") as f:
         json.dump(payload, f, indent=0)
-    members = sum(1 for e in by_iata.values() if e.get("alliance_type") == "member")
     print(
-        f"Wrote {len(by_iata)} current alliance rows "
-        f"({members} members, {len(by_icao)} with ICAO) to {alliances_path}"
+        f"Wrote {n_intervals} alliance intervals "
+        f"({n_open} open-ended, {len(by_icao)} ICAO keys) to {alliances_path}"
     )
 
 

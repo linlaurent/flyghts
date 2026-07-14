@@ -46,6 +46,7 @@ def test_with_alliance_column_does_not_use_codeshare_pair() -> None:
         {
             "airline": ["CPA", "AAL", "HGB"],
             "operating_airline": ["CPA", "CPA", "HGB"],
+            "date": pd.to_datetime(["2024-06-01", "2024-06-01", "2024-06-01"]),
         }
     )
     # Even when marketing AAL codeshares on CPA metal, AAL stays oneworld from OPTD
@@ -54,3 +55,21 @@ def test_with_alliance_column_does_not_use_codeshare_pair() -> None:
 
     out_op = with_alliance_column(df, "operating_airline")
     assert list(out_op["alliance"]) == ["oneworld", "oneworld", "independent"]
+
+
+def test_with_alliance_column_is_point_in_time() -> None:
+    """Same ICAO can map to different alliances on different flight dates."""
+    from dashboard.formatting import INDEPENDENT_ALLIANCE, with_alliance_column
+
+    df = pd.DataFrame(
+        {
+            "airline": ["COA", "COA", "COA"],
+            "date": pd.to_datetime(["2008-01-01", "2010-06-01", "2015-01-01"]),
+        }
+    )
+    out = with_alliance_column(df, "airline")
+    assert list(out["alliance"]) == [
+        "skyteam",
+        "star_alliance",
+        INDEPENDENT_ALLIANCE,
+    ]

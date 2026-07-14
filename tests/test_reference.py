@@ -121,6 +121,9 @@ class TestListReference:
         assert any(a.icao == "CPA" and a.alliance == "oneworld" for a in members)
         assert any(a.alliance_type == "affiliate" for a in all_rows)
         assert not any(a.alliance_type == "affiliate" for a in members)
+        ended = [a for a in members if a.to_date is not None]
+        assert ended
+        assert any(a.icao == "CSN" and a.to_date is not None for a in members)
 
 
 class TestCoverageGaps:
@@ -171,6 +174,7 @@ class TestGetAlliance:
         assert info.alliance == "oneworld"
         assert info.alliance_type == "member"
         assert info.is_member
+        assert info.from_date is not None
 
     def test_cathay_by_iata(self) -> None:
         info = get_alliance_by_iata("CX")
@@ -202,6 +206,32 @@ class TestGetAlliance:
         assert affiliate is not None
         assert affiliate.alliance_type == "affiliate"
         assert affiliate.alliance == "oneworld"
+
+    def test_point_in_time_ended_membership(self) -> None:
+        from datetime import date
+
+        # China Southern left SkyTeam end of 2018 in OPTD
+        during = get_alliance("CSN", as_of=date(2015, 6, 1))
+        assert during is not None
+        assert during.alliance == "skyteam"
+        assert during.to_date == date(2018, 12, 31)
+
+        after = get_alliance("CSN", as_of=date(2019, 1, 1))
+        assert after is None
+
+        before = get_alliance("CSN", as_of=date(2007, 1, 1))
+        assert before is None
+
+    def test_point_in_time_alliance_switch(self) -> None:
+        from datetime import date
+
+        # Continental: SkyTeam then Star Alliance in OPTD
+        sky = get_alliance("COA", as_of=date(2008, 1, 1))
+        assert sky is not None and sky.alliance == "skyteam"
+        star = get_alliance("COA", as_of=date(2010, 6, 1))
+        assert star is not None and star.alliance == "star_alliance"
+        later = get_alliance("COA", as_of=date(2015, 1, 1))
+        assert later is None
 
 
 class TestParseStatus:

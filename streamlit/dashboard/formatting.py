@@ -33,13 +33,18 @@ ALLIANCE_ORDER: list[str] = [
 ]
 
 
-def _alliance_id(icao: str) -> str:
-    """Map airline ICAO to OPTD alliance id (members only). Never from code-shares."""
+def _alliance_id(icao: str, as_of=None) -> str:
+    """Map airline ICAO to OPTD alliance id as of date (members only). Never from code-shares."""
+    from datetime import date as date_cls
+
     from flyghts.reference import get_alliance
 
     if not icao:
         return INDEPENDENT_ALLIANCE
-    info = get_alliance(str(icao), members_only=True)
+    as_of_date = as_of
+    if as_of_date is not None and not isinstance(as_of_date, date_cls):
+        as_of_date = pd.Timestamp(as_of_date).date()
+    info = get_alliance(str(icao), as_of=as_of_date, members_only=True)
     if info is None:
         return INDEPENDENT_ALLIANCE
     return info.alliance
@@ -50,17 +55,40 @@ def _alliance_label(alliance_id: str) -> str:
 
 
 def with_alliance_column(
-    df: pd.DataFrame, airline_col: str, *, column: str = "alliance"
+    df: pd.DataFrame,
+    airline_col: str,
+    *,
+    date_col: str = "date",
+    column: str = "alliance",
 ) -> pd.DataFrame:
-    """Return a copy with OPTD alliance id per airline_col (members → independent)."""
+    """Return a copy with OPTD alliance id per airline_col at each flight date (PIT)."""
     out = df.copy()
     if airline_col not in out.columns or out.empty:
         out[column] = INDEPENDENT_ALLIANCE
         return out
-    codes = out[airline_col].astype(str)
-    unique = codes.dropna().unique()
-    mapping = {code: _alliance_id(code) for code in unique}
-    out[column] = codes.map(mapping).fillna(INDEPENDENT_ALLIANCE)
+
+    if date_col not in out.columns:
+        codes = out[airline_col].astype(str)
+        unique = codes.dropna().unique()
+        mapping = {code: _alliance_id(code) for code in unique}
+        out[column] = codes.map(mapping).fillna(INDEPENDENT_ALLIANCE)
+        return out
+
+    work = out[[airline_col, date_col]].copy()
+    work["_icao"] = work[airline_col].astype(str)
+    work["_as_of"] = pd.to_datetime(work[date_col], errors="coerce").dt.normalize()
+    pairs = work.dropna(subset=["_as_of"]).drop_duplicates(subset=["_icao", "_as_of"])
+    pair_map: dict[tuple[str, object], str] = {}
+    for icao, as_of_ts in pairs[["_icao", "_as_of"]].itertuples(index=False):
+        pair_map[(icao, as_of_ts.date())] = _alliance_id(icao, as_of=as_of_ts.date())
+
+    def _lookup(row) -> str:
+        as_of_ts = row["_as_of"]
+        if pd.isna(as_of_ts):
+            return INDEPENDENT_ALLIANCE
+        return pair_map.get((row["_icao"], as_of_ts.date()), INDEPENDENT_ALLIANCE)
+
+    out[column] = work.apply(_lookup, axis=1)
     return out
 
 

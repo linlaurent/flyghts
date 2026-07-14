@@ -90,8 +90,9 @@ uv run python scripts/validate_reference_data.py --data-dir data/us/
 
 Airports and airlines come from OpenFlights; alliance membership from
 [OpenTravelData](https://github.com/opentraveldata/opentraveldata)
-(`optd_airline_alliance_membership.csv`, CC-BY 4.0). Only current OPTD rows
-(empty `to_date`) are bundled. OPTD can lag official alliance lists.
+(`optd_airline_alliance_membership.csv`, CC-BY 4.0). Full membership
+intervals (`from_date` / `to_date`) are bundled for **point-in-time** joins
+against each flight date. OPTD can lag official alliance lists.
 
 ```bash
 # Refresh airports, airlines, and alliances

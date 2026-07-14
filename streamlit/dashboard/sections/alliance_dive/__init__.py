@@ -17,7 +17,8 @@ from .single_alliance import render_single_alliance_dive
 def render_alliance_dive(ctx: DashboardContext) -> None:
     st.header("Alliance deep dive")
     st.caption(
-        "Alliance membership from OpenTravelData (full members only). "
+        "Alliance membership from OpenTravelData (full members only), "
+        "point-in-time by flight date. "
         "Not inferred from marketing vs operating code-shares."
     )
 

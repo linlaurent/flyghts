@@ -1,1345 +1,2493 @@
 {
 "source": "OpenTravelData optd_airline_alliance_membership.csv",
 "license": "CC-BY-4.0",
-"note": "Current membership only (empty to_date in OPTD). OPTD can lag official alliance lists.",
+"note": "Point-in-time intervals (from_date/to_date). OPTD can lag official alliance lists.",
 "by_iata": {
-"AA": {
+"AB": [
+{
+"iata": "AB",
+"name": "Air Berlin",
+"alliance": "oneworld",
+"alliance_type": "member",
+"from_date": "2012-03-20",
+"to_date": "2017-10-28",
+"icao": "BER"
+}
+],
+"HG": [
+{
+"iata": "HG",
+"name": "Niki",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"from_date": "2012-03-20",
+"to_date": "2017-10-28",
+"icao": "NLY"
+}
+],
+"AA": [
+{
 "iata": "AA",
 "name": "American Airlines",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "1999-02-01",
+"to_date": null,
 "icao": "AAL"
-},
-"MQ": {
+}
+],
+"MQ": [
+{
 "iata": "MQ",
 "name": "Envoy Air",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "1999-02-01",
+"to_date": null,
 "icao": "EGF"
-},
-"AX": {
+}
+],
+"AX": [
+{
 "iata": "AX",
 "name": "Trans States Airlines",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "1999-02-01",
+"to_date": null,
 "icao": "LOF"
-},
-"US": {
+}
+],
+"US": [
+{
 "iata": "US",
 "name": "US Airways",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2014-04-01",
+"to_date": null,
 "icao": "USA"
 },
-"BA": {
+{
+"iata": "US",
+"name": "US Airways",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"from_date": "2004-05-01",
+"to_date": "2014-03-31",
+"icao": "USA"
+}
+],
+"BA": [
+{
 "iata": "BA",
 "name": "British Airways",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "1999-02-01",
+"to_date": null,
 "icao": "BAW"
-},
-"CJ": {
+}
+],
+"CJ": [
+{
 "iata": "CJ",
 "name": "BA CityFlyer",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "1999-02-01",
+"to_date": null,
 "icao": "CBF"
-},
-"MN": {
+}
+],
+"MN": [
+{
 "iata": "MN",
 "name": "Comair",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "1999-02-01",
+"to_date": null,
 "icao": "CAW"
-},
-"LV": {
+}
+],
+"LV": [
+{
 "iata": "LV",
 "name": "OpenSkies",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "1999-02-01",
+"to_date": null,
 "icao": "LBC"
-},
-"EZ": {
+}
+],
+"EZ": [
+{
 "iata": "EZ",
 "name": "Sun Air of Scandinavia",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "1999-02-01",
+"to_date": null,
 "icao": "EIA"
-},
-"CX": {
+}
+],
+"CX": [
+{
 "iata": "CX",
 "name": "Cathay Pacific",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "1999-02-01",
+"to_date": null,
 "icao": "CPA"
-},
-"KA": {
+}
+],
+"KA": [
+{
 "iata": "KA",
 "name": "Cathay Dragon",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2007-11-01",
+"to_date": null,
 "icao": "HDA"
-},
-"AY": {
+}
+],
+"AY": [
+{
 "iata": "AY",
 "name": "Finnair",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "1999-09-01",
+"to_date": null,
 "icao": "FIN"
-},
-"IB": {
+}
+],
+"IB": [
+{
 "iata": "IB",
 "name": "Iberia",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "1999-09-01",
+"to_date": null,
 "icao": "IBE"
-},
-"YW": {
+}
+],
+"YW": [
+{
 "iata": "YW",
 "name": "Air Nostrum",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "1999-09-01",
+"to_date": null,
 "icao": "ANE"
-},
-"I2": {
+}
+],
+"I2": [
+{
 "iata": "I2",
 "name": "Iberia Express",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2012-03-25",
+"to_date": null,
 "icao": "IBS"
-},
-"JL": {
+}
+],
+"JL": [
+{
 "iata": "JL",
 "name": "Japan Airlines",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "2007-04-01",
+"to_date": null,
 "icao": "JAL"
-},
-"NU": {
+}
+],
+"XM": [
+{
+"iata": "XM",
+"name": "Zimex Aviation",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"from_date": "2007-04-01",
+"to_date": "2012-12-31",
+"icao": "SMX"
+}
+],
+"JC": [
+{
+"iata": "JC",
+"name": "Japan Air Commuter",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"from_date": "2007-04-01",
+"to_date": "2014-09-30",
+"icao": "JEX"
+}
+],
+"NU": [
+{
 "iata": "NU",
 "name": "Japan Transocean Air",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2007-04-01",
+"to_date": null,
 "icao": "JTA"
-},
-"LA": {
+}
+],
+"LA": [
+{
 "iata": "LA",
 "name": "LATAM Chile",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "2000-06-01",
+"to_date": null,
 "icao": "LAN"
-},
-"4M": {
+}
+],
+"4M": [
+{
 "iata": "4M",
 "name": "LATAM Argentina",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2007-04-01",
+"to_date": null,
 "icao": "DSM"
-},
-"4C": {
+}
+],
+"4C": [
+{
 "iata": "4C",
 "name": "LATAM Colombia",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2013-10-01",
+"to_date": null,
 "icao": "ARE"
-},
-"XL": {
+}
+],
+"XL": [
+{
 "iata": "XL",
 "name": "LATAM Ecuador",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2007-04-01",
+"to_date": null,
 "icao": "LNE"
-},
-"LU": {
+}
+],
+"LU": [
+{
 "iata": "LU",
 "name": "LAN Express",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2000-06-01",
+"to_date": null,
 "icao": "LXP"
-},
-"LP": {
+}
+],
+"LP": [
+{
 "iata": "LP",
 "name": "LATAM Per\u00fa",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2000-06-01",
+"to_date": null,
 "icao": "LPE"
-},
-"JJ": {
+}
+],
+"JJ": [
+{
 "iata": "JJ",
 "name": "LATAM Brasil",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "2014-04-01",
+"to_date": null,
 "icao": "TAM"
 },
-"QF": {
+{
+"iata": "JJ",
+"name": "TAM Linhas Aereas",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"from_date": "2010-05-01",
+"to_date": "2014-03-31",
+"icao": "TAM"
+}
+],
+"QF": [
+{
 "iata": "QF",
 "name": "Qantas",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "1999-02-01",
+"to_date": null,
 "icao": "QFA"
-},
-"NC": {
+}
+],
+"NC": [
+{
 "iata": "NC",
 "name": "Cobham Aviation Services Australia",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2005-06-01",
+"to_date": null,
 "icao": "NJS"
-},
-"RJ": {
+}
+],
+"RJ": [
+{
 "iata": "RJ",
 "name": "Royal Jordanian",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "2007-04-01",
+"to_date": null,
 "icao": "RJA"
-},
-"S7": {
+}
+],
+"S7": [
+{
 "iata": "S7",
 "name": "S7 Airlines",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "2010-11-15",
+"to_date": null,
 "icao": "SBI"
-},
-"GH": {
+}
+],
+"GH": [
+{
 "iata": "GH",
 "name": "Globus",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2008-12-01",
+"to_date": null,
 "icao": "GLP"
-},
-"QR": {
+}
+],
+"QR": [
+{
 "iata": "QR",
 "name": "Qatar Airways",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "2013-10-30",
+"to_date": null,
 "icao": "QTR"
-},
-"UL": {
+}
+],
+"UL": [
+{
 "iata": "UL",
 "name": "SriLankan Airlines",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "2014-05-01",
+"to_date": null,
 "icao": "ALK"
-},
-"MH": {
+}
+],
+"MH": [
+{
 "iata": "MH",
 "name": "Malaysia Airlines",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "2013-02-01",
+"to_date": null,
 "icao": "MAS"
-},
-"AT": {
+}
+],
+"MA": [
+{
+"iata": "MA",
+"name": "MAL\u00c9V Hungarian Airlines",
+"alliance": "oneworld",
+"alliance_type": "member",
+"from_date": "2007-03-29",
+"to_date": "2012-02-03",
+"icao": "MAH"
+}
+],
+"AT": [
+{
 "iata": "AT",
 "name": "Royal Air Maroc",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "2020-04-01",
+"to_date": null,
 "icao": "RAM"
-},
-"FN": {
+}
+],
+"FN": [
+{
 "iata": "FN",
 "name": "Royal Air Maroc Express",
 "alliance": "oneworld",
-"alliance_type": "affiliate"
-},
-"AS": {
+"alliance_type": "affiliate",
+"from_date": "2020-04-01",
+"to_date": null
+}
+],
+"AS": [
+{
 "iata": "AS",
 "name": "Alaska Airlines",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "2021-03-31",
+"to_date": null,
 "icao": "ASA"
-},
-"QX": {
+}
+],
+"QX": [
+{
 "iata": "QX",
 "name": "Horizon Air",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2021-03-31",
+"to_date": null,
 "icao": "QXE"
-},
-"SU": {
+}
+],
+"SU": [
+{
 "iata": "SU",
 "name": "Aeroflot",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2006-04-14",
+"to_date": null,
 "icao": "AFL"
-},
-"D9": {
+}
+],
+"D9": [
+{
 "iata": "D9",
 "name": "Donavia",
 "alliance": "skyteam",
 "alliance_type": "affiliate",
+"from_date": "2006-04-14",
+"to_date": null,
 "icao": "DNV"
-},
-"AR": {
+}
+],
+"AR": [
+{
 "iata": "AR",
 "name": "Aerol\u00edneas Argentinas",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2012-08-29",
+"to_date": null,
 "icao": "ARG"
-},
-"AU": {
+}
+],
+"AU": [
+{
 "iata": "AU",
 "name": "Austral L\u00edneas A\u00e9reas",
 "alliance": "skyteam",
 "alliance_type": "affiliate",
+"from_date": "2012-08-29",
+"to_date": null,
 "icao": "AUT"
-},
-"AM": {
+}
+],
+"AM": [
+{
 "iata": "AM",
 "name": "AeroMexico",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2000-06-22",
+"to_date": null,
 "icao": "AMX"
-},
-"5D": {
+}
+],
+"5D": [
+{
 "iata": "5D",
 "name": "Aerom\u00e9xico Connect",
 "alliance": "skyteam",
 "alliance_type": "affiliate",
+"from_date": "2000-06-22",
+"to_date": null,
 "icao": "SLI"
-},
-"UX": {
+}
+],
+"UX": [
+{
 "iata": "UX",
 "name": "Air Europa",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2007-09-04",
+"to_date": null,
 "icao": "AEA"
-},
-"AF": {
+}
+],
+"AF": [
+{
 "iata": "AF",
 "name": "Air France",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2000-06-22",
+"to_date": null,
 "icao": "AFR"
-},
-"A5": {
+}
+],
+"A5": [
+{
 "iata": "A5",
 "name": "HOP!",
 "alliance": "skyteam",
 "alliance_type": "affiliate",
+"from_date": "2013-03-31",
+"to_date": null,
 "icao": "RLA"
-},
-"WX": {
+}
+],
+"DB": [
+{
+"iata": "DB",
+"name": "HOP Brit Air",
+"alliance": "skyteam",
+"alliance_type": "affiliate",
+"from_date": "2000-06-22",
+"to_date": "2013-03-30",
+"icao": "BZH"
+}
+],
+"WX": [
+{
 "iata": "WX",
 "name": "CityJet",
 "alliance": "skyteam",
 "alliance_type": "affiliate",
+"from_date": "2000-06-22",
+"to_date": null,
 "icao": "BCY"
-},
-"AZ": {
+}
+],
+"YS": [
+{
+"iata": "YS",
+"name": "HOP Regional",
+"alliance": "skyteam",
+"alliance_type": "affiliate",
+"from_date": "2000-06-22",
+"to_date": "2013-03-30",
+"icao": "RAE"
+}
+],
+"AZ": [
+{
 "iata": "AZ",
 "name": "ITA Airways",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2001-07-27",
+"to_date": null,
 "icao": "AZA"
-},
-"CT": {
+}
+],
+"CT": [
+{
 "iata": "CT",
 "name": "Alitalia CityLiner",
 "alliance": "skyteam",
 "alliance_type": "affiliate",
+"from_date": "2006-06-01",
+"to_date": null,
 "icao": "CAT"
-},
-"CI": {
+}
+],
+"CI": [
+{
 "iata": "CI",
 "name": "China Airlines",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2011-09-28",
+"to_date": null,
 "icao": "CAL"
-},
-"AE": {
+}
+],
+"AE": [
+{
 "iata": "AE",
 "name": "Mandarin Airlines",
 "alliance": "skyteam",
 "alliance_type": "affiliate",
+"from_date": "2011-09-28",
+"to_date": null,
 "icao": "MDA"
-},
-"MU": {
+}
+],
+"MU": [
+{
 "iata": "MU",
 "name": "China Eastern Airlines",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2011-06-21",
+"to_date": null,
 "icao": "CES"
-},
-"FM": {
+}
+],
+"FM": [
+{
 "iata": "FM",
 "name": "Shanghai Airlines",
 "alliance": "skyteam",
 "alliance_type": "affiliate",
+"from_date": "2011-06-21",
+"to_date": null,
 "icao": "CSH"
+}
+],
+"CZ": [
+{
+"iata": "CZ",
+"name": "China Southern Airlines",
+"alliance": "skyteam",
+"alliance_type": "member",
+"from_date": "2007-11-15",
+"to_date": "2018-12-31",
+"icao": "CSN"
+}
+],
+"CO": [
+{
+"iata": "CO",
+"name": "Continental Airlines",
+"alliance": "skyteam",
+"alliance_type": "member",
+"from_date": "2004-09-13",
+"to_date": "2009-10-24",
+"icao": "COA"
 },
-"OK": {
+{
+"iata": "CO",
+"name": "Continental Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"from_date": "2009-10-27",
+"to_date": "2012-03-03",
+"icao": "COA"
+}
+],
+"OK": [
+{
 "iata": "OK",
 "name": "Czech Airlines",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2001-03-25",
+"to_date": null,
 "icao": "CSA"
-},
-"DL": {
+}
+],
+"DL": [
+{
 "iata": "DL",
 "name": "Delta Air Lines",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2000-06-22",
+"to_date": null,
 "icao": "DAL"
-},
-"KQ": {
+}
+],
+"KQ": [
+{
 "iata": "KQ",
 "name": "Kenya Airways",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2007-09-04",
+"to_date": null,
 "icao": "KQA"
-},
-"KL": {
+}
+],
+"KL": [
+{
 "iata": "KL",
 "name": "KLM",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2004-09-13",
+"to_date": null,
 "icao": "KLM"
-},
-"KE": {
+}
+],
+"KE": [
+{
 "iata": "KE",
 "name": "Korean Air",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2000-06-22",
+"to_date": null,
 "icao": "KAL"
-},
-"ME": {
+}
+],
+"ME": [
+{
 "iata": "ME",
 "name": "Middle East Airlines",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2012-06-28",
+"to_date": null,
 "icao": "MEA"
-},
-"SV": {
+}
+],
+"NW": [
+{
+"iata": "NW",
+"name": "Northwest Airlines",
+"alliance": "skyteam",
+"alliance_type": "member",
+"from_date": "2004-09-13",
+"to_date": "2010-01-31",
+"icao": "NWA"
+}
+],
+"SV": [
+{
 "iata": "SV",
 "name": "Saudia",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2012-05-29",
+"to_date": null,
 "icao": "SVA"
-},
-"RO": {
+}
+],
+"RO": [
+{
 "iata": "RO",
 "name": "TAROM",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2010-06-25",
+"to_date": null,
 "icao": "ROT"
-},
-"VN": {
+}
+],
+"VN": [
+{
 "iata": "VN",
 "name": "Vietnam Airlines",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2010-06-10",
+"to_date": null,
 "icao": "HVN"
-},
-"MF": {
+}
+],
+"MF": [
+{
 "iata": "MF",
 "name": "XiamenAir",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2012-11-21",
+"to_date": null,
 "icao": "CXA"
-},
-"GA": {
+}
+],
+"GA": [
+{
 "iata": "GA",
 "name": "Garuda Indonesia",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2014-03-05",
+"to_date": null,
 "icao": "GIA"
-},
-"VS": {
+}
+],
+"VS": [
+{
 "iata": "VS",
 "name": "Virgin Atlantic",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2023-03-02",
+"to_date": null,
 "icao": "VIR"
-},
-"A3": {
+}
+],
+"A3": [
+{
 "iata": "A3",
 "name": "Aegean Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2010-06-01",
+"to_date": null,
 "icao": "AEE"
-},
-"OA": {
+}
+],
+"OA": [
+{
 "iata": "OA",
 "name": "Olympic Air",
 "alliance": "star_alliance",
 "alliance_type": "affiliate",
+"from_date": "2013-10-01",
+"to_date": null,
 "icao": "OAL"
-},
-"AC": {
+}
+],
+"AC": [
+{
 "iata": "AC",
 "name": "Air Canada",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "1997-05-01",
+"to_date": null,
 "icao": "ACA"
-},
-"AI": {
+}
+],
+"AI": [
+{
 "iata": "AI",
 "name": "Air India",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2014-07-11",
+"to_date": null,
 "icao": "AIC"
-},
-"IX": {
+}
+],
+"IX": [
+{
 "iata": "IX",
 "name": "Air India Express",
 "alliance": "star_alliance",
 "alliance_type": "affiliate",
+"from_date": "2014-07-11",
+"to_date": null,
 "icao": "AXB"
-},
-"9I": {
+}
+],
+"9I": [
+{
 "iata": "9I",
 "name": "Air India Regional",
 "alliance": "star_alliance",
 "alliance_type": "affiliate",
+"from_date": "2014-07-11",
+"to_date": null,
 "icao": "TKY"
-},
-"AV": {
+}
+],
+"AV": [
+{
 "iata": "AV",
 "name": "Avianca",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2012-06-01",
+"to_date": null,
 "icao": "AVA"
-},
-"BR": {
+}
+],
+"BR": [
+{
 "iata": "BR",
 "name": "EVA Air",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2013-06-01",
+"to_date": null,
 "icao": "EVA"
-},
-"CA": {
+}
+],
+"CA": [
+{
 "iata": "CA",
 "name": "Air China",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2007-12-01",
+"to_date": null,
 "icao": "CCA"
-},
-"CL": {
+}
+],
+"CL": [
+{
 "iata": "CL",
 "name": "Lufthansa CityLine",
 "alliance": "star_alliance",
 "alliance_type": "affiliate",
+"from_date": "1999-05-01",
+"to_date": null,
 "icao": "CLH"
-},
-"CM": {
+}
+],
+"CM": [
+{
 "iata": "CM",
 "name": "Copa Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2012-06-01",
+"to_date": null,
 "icao": "CMP"
-},
-"ET": {
+}
+],
+"ET": [
+{
 "iata": "ET",
 "name": "Ethiopian Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2011-12-01",
+"to_date": null,
 "icao": "ETH"
-},
-"HO": {
+}
+],
+"HO": [
+{
 "iata": "HO",
 "name": "Juneyao Airlines",
 "alliance": "star_alliance",
 "alliance_type": "affiliate",
+"from_date": "2017-05-23",
+"to_date": null,
 "icao": "DJA"
-},
-"LH": {
+}
+],
+"JK": [
+{
+"iata": "JK",
+"name": "Spanair",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"from_date": "2003-05-01",
+"to_date": "2012-01-27",
+"icao": "JKK"
+}
+],
+"JP": [
+{
+"iata": "JP",
+"name": "Adria Airways",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"from_date": "2004-11-01",
+"to_date": "2019-09-30",
+"icao": "ADR"
+}
+],
+"KF": [
+{
+"iata": "KF",
+"name": "Blue1",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"from_date": "2004-11-03",
+"to_date": "2012-11-30",
+"icao": "BLF"
+}
+],
+"LH": [
+{
 "iata": "LH",
 "name": "Lufthansa",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "1999-05-01",
+"to_date": null,
 "icao": "DLH"
-},
-"LO": {
+}
+],
+"LO": [
+{
 "iata": "LO",
 "name": "LOT Polish Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2003-10-01",
+"to_date": null,
 "icao": "LOT"
-},
-"LX": {
+}
+],
+"LX": [
+{
 "iata": "LX",
 "name": "Swiss International Air Lines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2006-04-01",
+"to_date": null,
 "icao": "SWR"
-},
-"MS": {
+}
+],
+"MS": [
+{
 "iata": "MS",
 "name": "EgyptAir",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2008-06-01",
+"to_date": null,
 "icao": "MSR"
-},
-"NH": {
+}
+],
+"NH": [
+{
 "iata": "NH",
 "name": "All Nippon Airways",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "1999-10-01",
+"to_date": null,
 "icao": "ANA"
-},
-"NZ": {
+}
+],
+"NZ": [
+{
 "iata": "NZ",
 "name": "Air New Zealand",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "1999-03-01",
+"to_date": null,
 "icao": "ANZ"
-},
-"OS": {
+}
+],
+"O6": [
+{
+"iata": "O6",
+"name": "Avianca Brasil",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"from_date": "2015-07-22",
+"to_date": "2019-08-31",
+"icao": "ONE"
+}
+],
+"OS": [
+{
 "iata": "OS",
 "name": "Austrian Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2000-03-01",
+"to_date": null,
 "icao": "AUA"
-},
-"OU": {
+}
+],
+"OU": [
+{
 "iata": "OU",
 "name": "Croatia Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2004-11-01",
+"to_date": null,
 "icao": "CTN"
-},
-"OZ": {
+}
+],
+"OZ": [
+{
 "iata": "OZ",
 "name": "Asiana Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2003-03-01",
+"to_date": null,
 "icao": "AAR"
-},
-"SA": {
+}
+],
+"SA": [
+{
 "iata": "SA",
 "name": "South African Airways",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2006-04-01",
+"to_date": null,
 "icao": "SAA"
-},
-"SK": {
+}
+],
+"SK": [
+{
 "iata": "SK",
 "name": "Scandinavian Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "1997-05-01",
+"to_date": null,
 "icao": "SAS"
-},
-"SN": {
+}
+],
+"SN": [
+{
 "iata": "SN",
 "name": "Brussels Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2009-12-01",
+"to_date": null,
 "icao": "DAT"
-},
-"SQ": {
+}
+],
+"SQ": [
+{
 "iata": "SQ",
 "name": "Singapore Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2000-04-01",
+"to_date": null,
 "icao": "SIA"
-},
-"TG": {
+}
+],
+"TA": [
+{
+"iata": "TA",
+"name": "TACA International Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"from_date": "2012-06-01",
+"to_date": "2013-05-21",
+"icao": "TAT"
+}
+],
+"TG": [
+{
 "iata": "TG",
 "name": "Thai Airways",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "1997-05-01",
+"to_date": null,
 "icao": "THA"
-},
-"TK": {
+}
+],
+"TK": [
+{
 "iata": "TK",
 "name": "Turkish Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2008-04-01",
+"to_date": null,
 "icao": "THY"
-},
-"TP": {
+}
+],
+"TP": [
+{
 "iata": "TP",
 "name": "TAP Portugal",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2005-03-01",
+"to_date": null,
 "icao": "TAP"
-},
-"UA": {
+}
+],
+"UA": [
+{
 "iata": "UA",
 "name": "United Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "1997-05-01",
+"to_date": null,
 "icao": "UAL"
-},
-"ZH": {
+}
+],
+"ZH": [
+{
 "iata": "ZH",
 "name": "Shenzhen Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2012-11-01",
+"to_date": null,
 "icao": "CSZ"
-},
-"4Y": {
+}
+],
+"4Y": [
+{
 "iata": "4Y",
 "name": "Discover Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2021-07-24",
+"to_date": null,
 "icao": "RBU"
 }
+]
 },
 "by_icao": {
-"AAL": {
+"BER": [
+{
+"iata": "AB",
+"name": "Air Berlin",
+"alliance": "oneworld",
+"alliance_type": "member",
+"from_date": "2012-03-20",
+"to_date": "2017-10-28",
+"icao": "BER"
+}
+],
+"NLY": [
+{
+"iata": "HG",
+"name": "Niki",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"from_date": "2012-03-20",
+"to_date": "2017-10-28",
+"icao": "NLY"
+}
+],
+"AAL": [
+{
 "iata": "AA",
 "name": "American Airlines",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "1999-02-01",
+"to_date": null,
 "icao": "AAL"
-},
-"EGF": {
+}
+],
+"EGF": [
+{
 "iata": "MQ",
 "name": "Envoy Air",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "1999-02-01",
+"to_date": null,
 "icao": "EGF"
-},
-"LOF": {
+}
+],
+"LOF": [
+{
 "iata": "AX",
 "name": "Trans States Airlines",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "1999-02-01",
+"to_date": null,
 "icao": "LOF"
-},
-"USA": {
+}
+],
+"USA": [
+{
 "iata": "US",
 "name": "US Airways",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2014-04-01",
+"to_date": null,
 "icao": "USA"
 },
-"BAW": {
+{
+"iata": "US",
+"name": "US Airways",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"from_date": "2004-05-01",
+"to_date": "2014-03-31",
+"icao": "USA"
+}
+],
+"BAW": [
+{
 "iata": "BA",
 "name": "British Airways",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "1999-02-01",
+"to_date": null,
 "icao": "BAW"
-},
-"CBF": {
+}
+],
+"CBF": [
+{
 "iata": "CJ",
 "name": "BA CityFlyer",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "1999-02-01",
+"to_date": null,
 "icao": "CBF"
-},
-"CAW": {
+}
+],
+"CAW": [
+{
 "iata": "MN",
 "name": "Comair",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "1999-02-01",
+"to_date": null,
 "icao": "CAW"
-},
-"LBC": {
+}
+],
+"LBC": [
+{
 "iata": "LV",
 "name": "OpenSkies",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "1999-02-01",
+"to_date": null,
 "icao": "LBC"
-},
-"EIA": {
+}
+],
+"EIA": [
+{
 "iata": "EZ",
 "name": "Sun Air of Scandinavia",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "1999-02-01",
+"to_date": null,
 "icao": "EIA"
-},
-"CPA": {
+}
+],
+"CPA": [
+{
 "iata": "CX",
 "name": "Cathay Pacific",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "1999-02-01",
+"to_date": null,
 "icao": "CPA"
-},
-"HDA": {
+}
+],
+"HDA": [
+{
 "iata": "KA",
 "name": "Cathay Dragon",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2007-11-01",
+"to_date": null,
 "icao": "HDA"
-},
-"FIN": {
+}
+],
+"FIN": [
+{
 "iata": "AY",
 "name": "Finnair",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "1999-09-01",
+"to_date": null,
 "icao": "FIN"
-},
-"IBE": {
+}
+],
+"IBE": [
+{
 "iata": "IB",
 "name": "Iberia",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "1999-09-01",
+"to_date": null,
 "icao": "IBE"
-},
-"ANE": {
+}
+],
+"ANE": [
+{
 "iata": "YW",
 "name": "Air Nostrum",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "1999-09-01",
+"to_date": null,
 "icao": "ANE"
-},
-"IBS": {
+}
+],
+"IBS": [
+{
 "iata": "I2",
 "name": "Iberia Express",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2012-03-25",
+"to_date": null,
 "icao": "IBS"
-},
-"JAL": {
+}
+],
+"JAL": [
+{
 "iata": "JL",
 "name": "Japan Airlines",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "2007-04-01",
+"to_date": null,
 "icao": "JAL"
-},
-"JTA": {
+}
+],
+"SMX": [
+{
+"iata": "XM",
+"name": "Zimex Aviation",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"from_date": "2007-04-01",
+"to_date": "2012-12-31",
+"icao": "SMX"
+}
+],
+"JEX": [
+{
+"iata": "JC",
+"name": "Japan Air Commuter",
+"alliance": "oneworld",
+"alliance_type": "affiliate",
+"from_date": "2007-04-01",
+"to_date": "2014-09-30",
+"icao": "JEX"
+}
+],
+"JTA": [
+{
 "iata": "NU",
 "name": "Japan Transocean Air",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2007-04-01",
+"to_date": null,
 "icao": "JTA"
-},
-"LAN": {
+}
+],
+"LAN": [
+{
 "iata": "LA",
 "name": "LATAM Chile",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "2000-06-01",
+"to_date": null,
 "icao": "LAN"
-},
-"DSM": {
+}
+],
+"DSM": [
+{
 "iata": "4M",
 "name": "LATAM Argentina",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2007-04-01",
+"to_date": null,
 "icao": "DSM"
-},
-"ARE": {
+}
+],
+"ARE": [
+{
 "iata": "4C",
 "name": "LATAM Colombia",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2013-10-01",
+"to_date": null,
 "icao": "ARE"
-},
-"LNE": {
+}
+],
+"LNE": [
+{
 "iata": "XL",
 "name": "LATAM Ecuador",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2007-04-01",
+"to_date": null,
 "icao": "LNE"
-},
-"LXP": {
+}
+],
+"LXP": [
+{
 "iata": "LU",
 "name": "LAN Express",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2000-06-01",
+"to_date": null,
 "icao": "LXP"
-},
-"LPE": {
+}
+],
+"LPE": [
+{
 "iata": "LP",
 "name": "LATAM Per\u00fa",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2000-06-01",
+"to_date": null,
 "icao": "LPE"
-},
-"TAM": {
+}
+],
+"TAM": [
+{
 "iata": "JJ",
 "name": "LATAM Brasil",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "2014-04-01",
+"to_date": null,
 "icao": "TAM"
 },
-"QFA": {
+{
+"iata": "JJ",
+"name": "TAM Linhas Aereas",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"from_date": "2010-05-01",
+"to_date": "2014-03-31",
+"icao": "TAM"
+}
+],
+"QFA": [
+{
 "iata": "QF",
 "name": "Qantas",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "1999-02-01",
+"to_date": null,
 "icao": "QFA"
-},
-"NJS": {
+}
+],
+"NJS": [
+{
 "iata": "NC",
 "name": "Cobham Aviation Services Australia",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2005-06-01",
+"to_date": null,
 "icao": "NJS"
-},
-"RJA": {
+}
+],
+"RJA": [
+{
 "iata": "RJ",
 "name": "Royal Jordanian",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "2007-04-01",
+"to_date": null,
 "icao": "RJA"
-},
-"SBI": {
+}
+],
+"SBI": [
+{
 "iata": "S7",
 "name": "S7 Airlines",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "2010-11-15",
+"to_date": null,
 "icao": "SBI"
-},
-"GLP": {
+}
+],
+"GLP": [
+{
 "iata": "GH",
 "name": "Globus",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2008-12-01",
+"to_date": null,
 "icao": "GLP"
-},
-"QTR": {
+}
+],
+"QTR": [
+{
 "iata": "QR",
 "name": "Qatar Airways",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "2013-10-30",
+"to_date": null,
 "icao": "QTR"
-},
-"ALK": {
+}
+],
+"ALK": [
+{
 "iata": "UL",
 "name": "SriLankan Airlines",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "2014-05-01",
+"to_date": null,
 "icao": "ALK"
-},
-"MAS": {
+}
+],
+"MAS": [
+{
 "iata": "MH",
 "name": "Malaysia Airlines",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "2013-02-01",
+"to_date": null,
 "icao": "MAS"
-},
-"RAM": {
+}
+],
+"MAH": [
+{
+"iata": "MA",
+"name": "MAL\u00c9V Hungarian Airlines",
+"alliance": "oneworld",
+"alliance_type": "member",
+"from_date": "2007-03-29",
+"to_date": "2012-02-03",
+"icao": "MAH"
+}
+],
+"RAM": [
+{
 "iata": "AT",
 "name": "Royal Air Maroc",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "2020-04-01",
+"to_date": null,
 "icao": "RAM"
-},
-"ASA": {
+}
+],
+"ASA": [
+{
 "iata": "AS",
 "name": "Alaska Airlines",
 "alliance": "oneworld",
 "alliance_type": "member",
+"from_date": "2021-03-31",
+"to_date": null,
 "icao": "ASA"
-},
-"QXE": {
+}
+],
+"QXE": [
+{
 "iata": "QX",
 "name": "Horizon Air",
 "alliance": "oneworld",
 "alliance_type": "affiliate",
+"from_date": "2021-03-31",
+"to_date": null,
 "icao": "QXE"
-},
-"AFL": {
+}
+],
+"AFL": [
+{
 "iata": "SU",
 "name": "Aeroflot",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2006-04-14",
+"to_date": null,
 "icao": "AFL"
-},
-"DNV": {
+}
+],
+"DNV": [
+{
 "iata": "D9",
 "name": "Donavia",
 "alliance": "skyteam",
 "alliance_type": "affiliate",
+"from_date": "2006-04-14",
+"to_date": null,
 "icao": "DNV"
-},
-"ARG": {
+}
+],
+"ARG": [
+{
 "iata": "AR",
 "name": "Aerol\u00edneas Argentinas",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2012-08-29",
+"to_date": null,
 "icao": "ARG"
-},
-"AUT": {
+}
+],
+"AUT": [
+{
 "iata": "AU",
 "name": "Austral L\u00edneas A\u00e9reas",
 "alliance": "skyteam",
 "alliance_type": "affiliate",
+"from_date": "2012-08-29",
+"to_date": null,
 "icao": "AUT"
-},
-"AMX": {
+}
+],
+"AMX": [
+{
 "iata": "AM",
 "name": "AeroMexico",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2000-06-22",
+"to_date": null,
 "icao": "AMX"
-},
-"SLI": {
+}
+],
+"SLI": [
+{
 "iata": "5D",
 "name": "Aerom\u00e9xico Connect",
 "alliance": "skyteam",
 "alliance_type": "affiliate",
+"from_date": "2000-06-22",
+"to_date": null,
 "icao": "SLI"
-},
-"AEA": {
+}
+],
+"AEA": [
+{
 "iata": "UX",
 "name": "Air Europa",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2007-09-04",
+"to_date": null,
 "icao": "AEA"
-},
-"AFR": {
+}
+],
+"AFR": [
+{
 "iata": "AF",
 "name": "Air France",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2000-06-22",
+"to_date": null,
 "icao": "AFR"
-},
-"RLA": {
+}
+],
+"RLA": [
+{
 "iata": "A5",
 "name": "HOP!",
 "alliance": "skyteam",
 "alliance_type": "affiliate",
+"from_date": "2013-03-31",
+"to_date": null,
 "icao": "RLA"
-},
-"BCY": {
+}
+],
+"BZH": [
+{
+"iata": "DB",
+"name": "HOP Brit Air",
+"alliance": "skyteam",
+"alliance_type": "affiliate",
+"from_date": "2000-06-22",
+"to_date": "2013-03-30",
+"icao": "BZH"
+}
+],
+"BCY": [
+{
 "iata": "WX",
 "name": "CityJet",
 "alliance": "skyteam",
 "alliance_type": "affiliate",
+"from_date": "2000-06-22",
+"to_date": null,
 "icao": "BCY"
-},
-"AZA": {
+}
+],
+"RAE": [
+{
+"iata": "YS",
+"name": "HOP Regional",
+"alliance": "skyteam",
+"alliance_type": "affiliate",
+"from_date": "2000-06-22",
+"to_date": "2013-03-30",
+"icao": "RAE"
+}
+],
+"AZA": [
+{
 "iata": "AZ",
 "name": "ITA Airways",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2001-07-27",
+"to_date": null,
 "icao": "AZA"
-},
-"CAT": {
+}
+],
+"CAT": [
+{
 "iata": "CT",
 "name": "Alitalia CityLiner",
 "alliance": "skyteam",
 "alliance_type": "affiliate",
+"from_date": "2006-06-01",
+"to_date": null,
 "icao": "CAT"
-},
-"CAL": {
+}
+],
+"CAL": [
+{
 "iata": "CI",
 "name": "China Airlines",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2011-09-28",
+"to_date": null,
 "icao": "CAL"
-},
-"MDA": {
+}
+],
+"MDA": [
+{
 "iata": "AE",
 "name": "Mandarin Airlines",
 "alliance": "skyteam",
 "alliance_type": "affiliate",
+"from_date": "2011-09-28",
+"to_date": null,
 "icao": "MDA"
-},
-"CES": {
+}
+],
+"CES": [
+{
 "iata": "MU",
 "name": "China Eastern Airlines",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2011-06-21",
+"to_date": null,
 "icao": "CES"
-},
-"CSH": {
+}
+],
+"CSH": [
+{
 "iata": "FM",
 "name": "Shanghai Airlines",
 "alliance": "skyteam",
 "alliance_type": "affiliate",
+"from_date": "2011-06-21",
+"to_date": null,
 "icao": "CSH"
+}
+],
+"CSN": [
+{
+"iata": "CZ",
+"name": "China Southern Airlines",
+"alliance": "skyteam",
+"alliance_type": "member",
+"from_date": "2007-11-15",
+"to_date": "2018-12-31",
+"icao": "CSN"
+}
+],
+"COA": [
+{
+"iata": "CO",
+"name": "Continental Airlines",
+"alliance": "skyteam",
+"alliance_type": "member",
+"from_date": "2004-09-13",
+"to_date": "2009-10-24",
+"icao": "COA"
 },
-"CSA": {
+{
+"iata": "CO",
+"name": "Continental Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"from_date": "2009-10-27",
+"to_date": "2012-03-03",
+"icao": "COA"
+}
+],
+"CSA": [
+{
 "iata": "OK",
 "name": "Czech Airlines",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2001-03-25",
+"to_date": null,
 "icao": "CSA"
-},
-"DAL": {
+}
+],
+"DAL": [
+{
 "iata": "DL",
 "name": "Delta Air Lines",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2000-06-22",
+"to_date": null,
 "icao": "DAL"
-},
-"KQA": {
+}
+],
+"KQA": [
+{
 "iata": "KQ",
 "name": "Kenya Airways",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2007-09-04",
+"to_date": null,
 "icao": "KQA"
-},
-"KLM": {
+}
+],
+"KLM": [
+{
 "iata": "KL",
 "name": "KLM",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2004-09-13",
+"to_date": null,
 "icao": "KLM"
-},
-"KAL": {
+}
+],
+"KAL": [
+{
 "iata": "KE",
 "name": "Korean Air",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2000-06-22",
+"to_date": null,
 "icao": "KAL"
-},
-"MEA": {
+}
+],
+"MEA": [
+{
 "iata": "ME",
 "name": "Middle East Airlines",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2012-06-28",
+"to_date": null,
 "icao": "MEA"
-},
-"SVA": {
+}
+],
+"NWA": [
+{
+"iata": "NW",
+"name": "Northwest Airlines",
+"alliance": "skyteam",
+"alliance_type": "member",
+"from_date": "2004-09-13",
+"to_date": "2010-01-31",
+"icao": "NWA"
+}
+],
+"SVA": [
+{
 "iata": "SV",
 "name": "Saudia",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2012-05-29",
+"to_date": null,
 "icao": "SVA"
-},
-"ROT": {
+}
+],
+"ROT": [
+{
 "iata": "RO",
 "name": "TAROM",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2010-06-25",
+"to_date": null,
 "icao": "ROT"
-},
-"HVN": {
+}
+],
+"HVN": [
+{
 "iata": "VN",
 "name": "Vietnam Airlines",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2010-06-10",
+"to_date": null,
 "icao": "HVN"
-},
-"CXA": {
+}
+],
+"CXA": [
+{
 "iata": "MF",
 "name": "XiamenAir",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2012-11-21",
+"to_date": null,
 "icao": "CXA"
-},
-"GIA": {
+}
+],
+"GIA": [
+{
 "iata": "GA",
 "name": "Garuda Indonesia",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2014-03-05",
+"to_date": null,
 "icao": "GIA"
-},
-"VIR": {
+}
+],
+"VIR": [
+{
 "iata": "VS",
 "name": "Virgin Atlantic",
 "alliance": "skyteam",
 "alliance_type": "member",
+"from_date": "2023-03-02",
+"to_date": null,
 "icao": "VIR"
-},
-"AEE": {
+}
+],
+"AEE": [
+{
 "iata": "A3",
 "name": "Aegean Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2010-06-01",
+"to_date": null,
 "icao": "AEE"
-},
-"OAL": {
+}
+],
+"OAL": [
+{
 "iata": "OA",
 "name": "Olympic Air",
 "alliance": "star_alliance",
 "alliance_type": "affiliate",
+"from_date": "2013-10-01",
+"to_date": null,
 "icao": "OAL"
-},
-"ACA": {
+}
+],
+"ACA": [
+{
 "iata": "AC",
 "name": "Air Canada",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "1997-05-01",
+"to_date": null,
 "icao": "ACA"
-},
-"AIC": {
+}
+],
+"AIC": [
+{
 "iata": "AI",
 "name": "Air India",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2014-07-11",
+"to_date": null,
 "icao": "AIC"
-},
-"AXB": {
+}
+],
+"AXB": [
+{
 "iata": "IX",
 "name": "Air India Express",
 "alliance": "star_alliance",
 "alliance_type": "affiliate",
+"from_date": "2014-07-11",
+"to_date": null,
 "icao": "AXB"
-},
-"TKY": {
+}
+],
+"TKY": [
+{
 "iata": "9I",
 "name": "Air India Regional",
 "alliance": "star_alliance",
 "alliance_type": "affiliate",
+"from_date": "2014-07-11",
+"to_date": null,
 "icao": "TKY"
-},
-"AVA": {
+}
+],
+"AVA": [
+{
 "iata": "AV",
 "name": "Avianca",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2012-06-01",
+"to_date": null,
 "icao": "AVA"
-},
-"EVA": {
+}
+],
+"EVA": [
+{
 "iata": "BR",
 "name": "EVA Air",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2013-06-01",
+"to_date": null,
 "icao": "EVA"
-},
-"CCA": {
+}
+],
+"CCA": [
+{
 "iata": "CA",
 "name": "Air China",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2007-12-01",
+"to_date": null,
 "icao": "CCA"
-},
-"CLH": {
+}
+],
+"CLH": [
+{
 "iata": "CL",
 "name": "Lufthansa CityLine",
 "alliance": "star_alliance",
 "alliance_type": "affiliate",
+"from_date": "1999-05-01",
+"to_date": null,
 "icao": "CLH"
-},
-"CMP": {
+}
+],
+"CMP": [
+{
 "iata": "CM",
 "name": "Copa Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2012-06-01",
+"to_date": null,
 "icao": "CMP"
-},
-"ETH": {
+}
+],
+"ETH": [
+{
 "iata": "ET",
 "name": "Ethiopian Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2011-12-01",
+"to_date": null,
 "icao": "ETH"
-},
-"DJA": {
+}
+],
+"DJA": [
+{
 "iata": "HO",
 "name": "Juneyao Airlines",
 "alliance": "star_alliance",
 "alliance_type": "affiliate",
+"from_date": "2017-05-23",
+"to_date": null,
 "icao": "DJA"
-},
-"DLH": {
+}
+],
+"JKK": [
+{
+"iata": "JK",
+"name": "Spanair",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"from_date": "2003-05-01",
+"to_date": "2012-01-27",
+"icao": "JKK"
+}
+],
+"ADR": [
+{
+"iata": "JP",
+"name": "Adria Airways",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"from_date": "2004-11-01",
+"to_date": "2019-09-30",
+"icao": "ADR"
+}
+],
+"BLF": [
+{
+"iata": "KF",
+"name": "Blue1",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"from_date": "2004-11-03",
+"to_date": "2012-11-30",
+"icao": "BLF"
+}
+],
+"DLH": [
+{
 "iata": "LH",
 "name": "Lufthansa",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "1999-05-01",
+"to_date": null,
 "icao": "DLH"
-},
-"LOT": {
+}
+],
+"LOT": [
+{
 "iata": "LO",
 "name": "LOT Polish Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2003-10-01",
+"to_date": null,
 "icao": "LOT"
-},
-"SWR": {
+}
+],
+"SWR": [
+{
 "iata": "LX",
 "name": "Swiss International Air Lines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2006-04-01",
+"to_date": null,
 "icao": "SWR"
-},
-"MSR": {
+}
+],
+"MSR": [
+{
 "iata": "MS",
 "name": "EgyptAir",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2008-06-01",
+"to_date": null,
 "icao": "MSR"
-},
-"ANA": {
+}
+],
+"ANA": [
+{
 "iata": "NH",
 "name": "All Nippon Airways",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "1999-10-01",
+"to_date": null,
 "icao": "ANA"
-},
-"ANZ": {
+}
+],
+"ANZ": [
+{
 "iata": "NZ",
 "name": "Air New Zealand",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "1999-03-01",
+"to_date": null,
 "icao": "ANZ"
-},
-"AUA": {
+}
+],
+"ONE": [
+{
+"iata": "O6",
+"name": "Avianca Brasil",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"from_date": "2015-07-22",
+"to_date": "2019-08-31",
+"icao": "ONE"
+}
+],
+"AUA": [
+{
 "iata": "OS",
 "name": "Austrian Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2000-03-01",
+"to_date": null,
 "icao": "AUA"
-},
-"CTN": {
+}
+],
+"CTN": [
+{
 "iata": "OU",
 "name": "Croatia Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2004-11-01",
+"to_date": null,
 "icao": "CTN"
-},
-"AAR": {
+}
+],
+"AAR": [
+{
 "iata": "OZ",
 "name": "Asiana Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2003-03-01",
+"to_date": null,
 "icao": "AAR"
-},
-"SAA": {
+}
+],
+"SAA": [
+{
 "iata": "SA",
 "name": "South African Airways",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2006-04-01",
+"to_date": null,
 "icao": "SAA"
-},
-"SAS": {
+}
+],
+"SAS": [
+{
 "iata": "SK",
 "name": "Scandinavian Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "1997-05-01",
+"to_date": null,
 "icao": "SAS"
-},
-"DAT": {
+}
+],
+"DAT": [
+{
 "iata": "SN",
 "name": "Brussels Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2009-12-01",
+"to_date": null,
 "icao": "DAT"
-},
-"SIA": {
+}
+],
+"SIA": [
+{
 "iata": "SQ",
 "name": "Singapore Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2000-04-01",
+"to_date": null,
 "icao": "SIA"
-},
-"THA": {
+}
+],
+"TAT": [
+{
+"iata": "TA",
+"name": "TACA International Airlines",
+"alliance": "star_alliance",
+"alliance_type": "member",
+"from_date": "2012-06-01",
+"to_date": "2013-05-21",
+"icao": "TAT"
+}
+],
+"THA": [
+{
 "iata": "TG",
 "name": "Thai Airways",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "1997-05-01",
+"to_date": null,
 "icao": "THA"
-},
-"THY": {
+}
+],
+"THY": [
+{
 "iata": "TK",
 "name": "Turkish Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2008-04-01",
+"to_date": null,
 "icao": "THY"
-},
-"TAP": {
+}
+],
+"TAP": [
+{
 "iata": "TP",
 "name": "TAP Portugal",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2005-03-01",
+"to_date": null,
 "icao": "TAP"
-},
-"UAL": {
+}
+],
+"UAL": [
+{
 "iata": "UA",
 "name": "United Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "1997-05-01",
+"to_date": null,
 "icao": "UAL"
-},
-"CSZ": {
+}
+],
+"CSZ": [
+{
 "iata": "ZH",
 "name": "Shenzhen Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2012-11-01",
+"to_date": null,
 "icao": "CSZ"
-},
-"RBU": {
+}
+],
+"RBU": [
+{
 "iata": "4Y",
 "name": "Discover Airlines",
 "alliance": "star_alliance",
 "alliance_type": "member",
+"from_date": "2021-07-24",
+"to_date": null,
 "icao": "RBU"
 }
+]
 }
 }

@@ -117,7 +117,8 @@ def render_delay_analysis(ctx: DashboardContext) -> None:
     # ── On-time performance by alliance (OPTD members only) ──
     st.subheader("On-time performance by alliance")
     st.caption(
-        "Alliance membership from OpenTravelData — not inferred from code-shares."
+        "Alliance membership from OpenTravelData, point-in-time by flight date "
+        "— not inferred from code-shares."
     )
     df_delay_a = with_alliance_column(df_with_delay, ctx.airline_col)
     alliance_delay = (

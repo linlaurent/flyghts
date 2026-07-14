@@ -233,8 +233,8 @@ def render_insights(ctx: DashboardContext) -> None:
 
     with insight_tabs[2]:
         st.caption(
-            "Alliance membership from OpenTravelData (OPTD members only). "
-            "Not inferred from code-shares."
+            "Alliance membership from OpenTravelData (OPTD members only), "
+            "point-in-time by flight date. Not inferred from code-shares."
         )
         curr_counts = (
             df_curr_a["alliance"].value_counts()

@@ -478,7 +478,10 @@ def render_route_tabs(
         )
 
         st.subheader("Alliance share on this route")
-        st.caption("Alliance from OpenTravelData members only — not from code-shares.")
+        st.caption(
+            "Alliance from OpenTravelData members only, point-in-time by flight date "
+            "— not from code-shares."
+        )
         df_route_a = with_alliance_column(df_route, ctx.airline_col)
         alliance_counts_route = df_route_a["alliance"].value_counts()
         alliance_rows = []

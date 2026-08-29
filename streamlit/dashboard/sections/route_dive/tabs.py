@@ -8,6 +8,7 @@ import streamlit as st
 
 from flyghts.reference import get_airline, get_airport
 
+from ... import action_logger as al
 from ...charts import _complete_daily_series, _start_flight_count_axis_at_zero
 from ...components import _render_aggrid
 from ...context import DashboardContext
@@ -36,6 +37,102 @@ from ...tab_charts import (
     render_secondary_grouped_over_time,
     render_weekday_average,
 )
+from .drilldown import (
+    RouteMode,
+    apply_drill_request,
+    available_drill_levels,
+    build_drill_request,
+    city_pairs_for_city,
+    collect_drill_entities,
+    current_level_caption,
+)
+
+
+def _render_route_drill_down_panel(
+    ctx: DashboardContext,
+    *,
+    df_route: pd.DataFrame,
+    current_mode: RouteMode,
+    route_label: str,
+) -> None:
+    levels = available_drill_levels(current_mode)
+    if not levels:
+        return
+
+    st.caption(
+        current_level_caption(
+            route_by_country=current_mode == "By country",
+            route_by_province=current_mode == "By province",
+            route_by_city=current_mode == "By city",
+            route_label=route_label,
+        )
+    )
+    with st.expander("Investigate at lower level"):
+        target_mode = al.selectbox(
+            "Level",
+            options=levels,
+            help="Choose a lower aggregation level to investigate within this route.",
+            key=f"route_dive_drill_level_{current_mode}",
+        )
+        entities = collect_drill_entities(df_route, target_mode)
+        if not entities:
+            st.caption("No lower-level entities are available in this route.")
+            return
+
+        entity_labels = [entity.label for entity in entities]
+        selected_entity_label = al.selectbox(
+            "Entity",
+            options=entity_labels,
+            help="Pick a province, city, or airport within the current route scope.",
+            key=f"route_dive_drill_entity_{current_mode}_{target_mode}",
+        )
+        selected_entity = next(
+            entity for entity in entities if entity.label == selected_entity_label
+        )
+
+        selected_city_pair: tuple[RouteCityKey, RouteCityKey] | None = None
+        if target_mode == "By city" and selected_entity.city_key is not None:
+            pair_options = city_pairs_for_city(
+                df_route,
+                selected_entity.city_key,
+                focus_airport=ctx.focus_airport,
+                global_mode=ctx.global_mode,
+            )
+            if len(pair_options) > 1:
+                pair_labels = [label for label, _, _ in pair_options]
+                selected_pair_label = al.selectbox(
+                    "City route",
+                    options=pair_labels,
+                    help="Choose which city-pair route to open when multiple exist.",
+                    key=(
+                        f"route_dive_drill_city_pair_{current_mode}_"
+                        f"{selected_entity.city_key}"
+                    ),
+                )
+                selected_city_pair = next(
+                    pair
+                    for label, pair, _ in pair_options
+                    if label == selected_pair_label
+                )
+
+        if al.button(
+            "Investigate",
+            help="Switch to the selected level and open this entity.",
+            key=f"route_dive_drill_go_{current_mode}_{target_mode}",
+        ):
+            request = build_drill_request(
+                target_mode,
+                selected_entity,
+                df_route,
+                focus_airport=ctx.focus_airport,
+                global_mode=ctx.global_mode,
+                city_pair=selected_city_pair,
+            )
+            if request is None:
+                st.warning("Could not resolve a route for the selected entity.")
+            else:
+                apply_drill_request(request)
+                st.rerun()
 
 
 def render_route_tabs(
@@ -106,6 +203,21 @@ def render_route_tabs(
         st.metric("Total flights on route", f"{n_route:,}")
     with m2:
         st.metric("Share of traffic", f"{pct_route:.1f}%")
+
+    if route_by_country:
+        current_mode: RouteMode = "By country"
+    elif route_by_province:
+        current_mode = "By province"
+    elif route_by_city:
+        current_mode = "By city"
+    else:
+        current_mode = "By airport"
+    _render_route_drill_down_panel(
+        ctx,
+        df_route=df_route,
+        current_mode=current_mode,
+        route_label=route_label,
+    )
 
     _show_airport_compare = bool(_airport_compare_city_keys) or (
         route_by_province and len(_airport_compare_province_iatas) >= 2

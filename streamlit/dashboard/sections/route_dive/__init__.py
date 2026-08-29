@@ -15,11 +15,14 @@ from ...formatting import (
     _city_key_label,
     _multi_airport_city_keys_for_iatas,
 )
+from .drilldown import consume_drill_request, consume_pending_drill_match
 from .tabs import render_route_tabs
 
 
 def render_route_dive(ctx: DashboardContext) -> None:
     st.header("Route deep dive")
+
+    consume_drill_request()
 
     route_mode_options = ["By airport", "By city", "By province"]
     if ctx.show_country:
@@ -163,8 +166,8 @@ def render_route_dive(ctx: DashboardContext) -> None:
                     info = get_airport(other)
                     name = info.name if info and info.name else other
                     label = f"{other} - {name} - {count:,} flights"
-                route_display_options.append(label)
-                route_str_to_airports[label] = (a, b)
+            route_display_options.append(label)
+            route_str_to_airports[label] = (a, b)
 
     col_search_r, col_select_r = st.columns(2)
     with col_search_r:
@@ -204,6 +207,14 @@ def render_route_dive(ctx: DashboardContext) -> None:
     else:
         filtered_routes = route_display_options
 
+    pending_label = consume_pending_drill_match(
+        route_str_to_region=route_str_to_region,
+        route_str_to_city_keys=route_str_to_city_keys,
+        route_str_to_airports=route_str_to_airports,
+    )
+    if pending_label and pending_label in filtered_routes:
+        st.session_state["route_dive_selection"] = pending_label
+
     if not filtered_routes:
         st.info(
             "No routes match your search."
@@ -217,6 +228,7 @@ def render_route_dive(ctx: DashboardContext) -> None:
                 options=filtered_routes,
                 index=0,
                 help="Explore statistics for a route (both directions grouped).",
+                key="route_dive_selection",
             )
 
         if route_by_country or route_by_province:

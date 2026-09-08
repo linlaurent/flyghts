@@ -9,12 +9,12 @@ import pandas as pd
 import streamlit as st
 from flyghts.reference import get_airport
 
+from ...data import get_destination_column
 from ...formatting import (
     RouteCityKey,
     _airport_city_key,
     _airport_province,
     _city_key_display,
-    _city_key_label,
 )
 
 RouteMode = Literal["By country", "By province", "By city", "By airport"]
@@ -70,25 +70,38 @@ def current_level_caption(
     return f"Viewing at {level} level: {route_label}"
 
 
-def _iatas_in_route(df_route: pd.DataFrame) -> set[str]:
-    return set(
-        pd.concat([df_route["origin"], df_route["destination"]]).dropna().unique()
-    )
-
-
 def collect_drill_entities(
     df_route: pd.DataFrame,
     target_mode: DrillTargetMode,
+    *,
+    direction: str = "Both",
+    focus_airport: str | None = None,
 ) -> list[DrillEntityOption]:
-    iatas = _iatas_in_route(df_route)
+    """List lower-level entities with flight counts matching the route selector.
+
+    Counts use the counterpart airport (focus-relative destination), same as
+    the province/city/airport route lists — not unique airport inventory.
+    """
+    if df_route.empty or "origin" not in df_route.columns:
+        return []
+
+    endpoint_counts = (
+        get_destination_column(df_route, direction, focus_airport)
+        .dropna()
+        .astype(str)
+        .value_counts()
+    )
+    if endpoint_counts.empty:
+        return []
+
     options: list[DrillEntityOption] = []
 
     if target_mode == "By province":
         province_counts: dict[str, int] = {}
         province_country: dict[str, str] = {}
-        for iata in iatas:
+        for iata, count in endpoint_counts.items():
             province = _airport_province(iata)
-            province_counts[province] = province_counts.get(province, 0) + 1
+            province_counts[province] = province_counts.get(province, 0) + int(count)
             info = get_airport(iata)
             if info and info.country:
                 province_country.setdefault(province, info.country)
@@ -102,10 +115,10 @@ def collect_drill_entities(
     elif target_mode == "By city":
         city_counts: dict[RouteCityKey, int] = {}
         city_iatas: dict[RouteCityKey, set[str]] = {}
-        for iata in iatas:
+        for iata, count in endpoint_counts.items():
             city_key = _airport_city_key(iata)
-            city_counts[city_key] = city_counts.get(city_key, 0) + 1
-            city_iatas.setdefault(city_key, set()).add(iata)
+            city_counts[city_key] = city_counts.get(city_key, 0) + int(count)
+            city_iatas.setdefault(city_key, set()).add(str(iata))
         for city_key, count in sorted(
             city_counts.items(), key=lambda x: (-x[1], x[0][0])
         ):
@@ -115,17 +128,12 @@ def collect_drill_entities(
             )
             options.append(DrillEntityOption(label=label, city_key=city_key))
     else:
-        airport_counts: dict[str, int] = {}
-        for origin, destination in df_route[["origin", "destination"]].itertuples(
-            index=False
+        for iata, count in sorted(
+            endpoint_counts.items(), key=lambda x: (-int(x[1]), x[0])
         ):
-            for iata in (origin, destination):
-                if iata in iatas:
-                    airport_counts[iata] = airport_counts.get(iata, 0) + 1
-        for iata, count in sorted(airport_counts.items(), key=lambda x: (-x[1], x[0])):
             info = get_airport(iata)
             name = info.name if info and info.name else iata
-            label = f"{iata} - {name} — {count:,} flights"
+            label = f"{iata} - {name} — {int(count):,} flights"
             options.append(DrillEntityOption(label=label, iata=iata))
 
     return options

@@ -134,10 +134,38 @@ def test_match_drill_to_route_label_for_region_city_and_airport() -> None:
 
 def test_collect_drill_entities_for_airports() -> None:
     df = _sample_df()
-    options = collect_drill_entities(df, "By airport")
+    options = collect_drill_entities(
+        df, "By airport", direction="Both", focus_airport="HKG"
+    )
     labels = [option.label for option in options]
-    assert any(label.startswith("HKG -") for label in labels)
-    assert any(label.startswith("ICN -") for label in labels)
+    icn = next(label for label in labels if label.startswith("ICN -"))
+    assert icn.endswith("— 3 flights")
+    assert not any(label.startswith("HKG -") for label in labels)
+
+
+def test_collect_drill_entities_counts_flights_not_airports() -> None:
+    df = pd.DataFrame(
+        {
+            "origin": ["HKG", "HKG", "HKG", "HKG"],
+            "destination": ["CAN", "CAN", "CAN", "PEK"],
+        }
+    )
+    provinces = collect_drill_entities(
+        df, "By province", direction="Both", focus_airport="HKG"
+    )
+    gd = next(option for option in provinces if option.region == "Guangdong Province")
+    beijing = next(
+        option for option in provinces if option.region == "Beijing Municipality"
+    )
+    assert gd.label.endswith("— 3 flights")
+    assert beijing.label.endswith("— 1 flights")
+
+    cities = collect_drill_entities(
+        df, "By city", direction="Both", focus_airport="HKG"
+    )
+    can_key = _airport_city_key("CAN")
+    guangzhou = next(option for option in cities if option.city_key == can_key)
+    assert guangzhou.label.endswith("— 3 flights")
 
 
 def test_build_drill_request_for_city_and_airport() -> None:

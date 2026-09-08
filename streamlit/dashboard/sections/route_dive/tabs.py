@@ -74,7 +74,12 @@ def _render_route_drill_down_panel(
             help="Choose a lower aggregation level to investigate within this route.",
             key=f"route_dive_drill_level_{current_mode}",
         )
-        entities = collect_drill_entities(df_route, target_mode)
+        entities = collect_drill_entities(
+            df_route,
+            target_mode,
+            direction=ctx.direction,
+            focus_airport=ctx.focus_airport,
+        )
         if not entities:
             st.caption("No lower-level entities are available in this route.")
             return

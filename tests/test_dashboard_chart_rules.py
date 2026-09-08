@@ -125,6 +125,28 @@ def test_route_deep_dive_supports_grouped_modes() -> None:
     assert "Share of city flights per day by airport" in source
 
 
+def test_route_deep_dive_supports_hierarchical_drill_down() -> None:
+    route_dive = (
+        STREAMLIT_DIR / "dashboard" / "sections" / "route_dive" / "__init__.py"
+    ).read_text()
+    tabs = (
+        STREAMLIT_DIR / "dashboard" / "sections" / "route_dive" / "tabs.py"
+    ).read_text()
+    drilldown = (
+        STREAMLIT_DIR / "dashboard" / "sections" / "route_dive" / "drilldown.py"
+    ).read_text()
+    action_logger = (STREAMLIT_DIR / "dashboard" / "action_logger.py").read_text()
+
+    assert "from .drilldown import consume_drill_request" in route_dive
+    assert 'key="route_dive_selection"' in route_dive
+    assert "consume_pending_drill_match(" in route_dive
+    assert "Investigate at lower level" in tabs
+    assert "_render_route_drill_down_panel(" in tabs
+    assert "RouteDrillRequest" in drilldown
+    assert "route_dive_drill_request" in drilldown
+    assert "def button(" in action_logger
+
+
 def test_route_deep_dive_top_airports_imports_get_destination_column() -> None:
     tabs = (
         STREAMLIT_DIR / "dashboard" / "sections" / "route_dive" / "tabs.py"

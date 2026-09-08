@@ -216,3 +216,9 @@ def number_input(label: str, *args: Any, **kwargs: Any) -> Any:
 def checkbox(label: str, *args: Any, **kwargs: Any) -> Any:
     value = st.checkbox(label, *args, **kwargs)
     return _track_call("checkbox", label, value, kwargs)
+
+
+def button(label: str, *args: Any, **kwargs: Any) -> bool:
+    clicked = st.button(label, *args, **kwargs)
+    _track_call("button", label, clicked, kwargs)
+    return clicked
